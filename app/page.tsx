@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 import LiveSetLists, { SharePageButton } from "./live-set-lists";
 import SongBoard from "./song-board";
 import styles from "./show-page.module.css";
@@ -28,9 +27,9 @@ export default async function Home() {
             <a href="#run-of-show">Run of show</a>
             <a href="#official-sets">Set lists</a>
             <a href="#suggestions">Suggest a song</a>
-            <Link className={styles.controlLink} href="/show-control">
-              Edit official set
-            </Link>
+            <a className={styles.controlLink} href="/show-control">
+              Owner: edit set
+            </a>
           </div>
         </div>
       </nav>
@@ -191,9 +190,9 @@ export default async function Home() {
             {SHOW_DETAILS.date} / {SHOW_DETAILS.venue}
           </p>
         </div>
-        <Link className={styles.footerControl} href="/show-control">
-          Jeff: open Show Control
-        </Link>
+        <a className={styles.footerControl} href="/show-control">
+          Owner: open Show Control
+        </a>
       </footer>
     </main>
   );
