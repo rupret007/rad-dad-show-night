@@ -1,100 +1,108 @@
-# vinext-starter
+# Rad Dad + Friends Show Night
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+The shared show-night hub for **Rad Dad + Friends** at **Guitars & Growlers** on
+**Saturday, September 19, 2026, from 7:00-10:00 PM**.
 
-## Prerequisites
+<p align="center">
+  <img src="public/rad-dad-friends-flyer.png" alt="Rad Dad and Friends show flyer" width="420">
+</p>
 
-- Node.js `>=22.13.0`
+## Open the site
 
-## Quick Start
+### [OPEN THE PUBLIC SHOW PAGE](https://rad-dad-show-night.jeffstory007.chatgpt.site)
+
+The public page is the link to send performers, friends, and guests. It includes
+the master timeline, current official sets, production notes, YouTube links, and
+the public suggestion board.
+
+### [OPEN PRIVATE SHOW CONTROL](https://rad-dad-show-night.jeffstory007.chatgpt.site/show-control)
+
+Show Control is the owner-only editor. Sign in with ChatGPT using
+`jeffstory007@gmail.com` to add, edit, remove, and reorder songs. Saving a set
+updates the public page without requiring a code change or GitHub commit.
+
+## What the site does
+
+- Keeps the complete 7:00-10:00 PM run of show in one place.
+- Stores the official set lists in a shared production database.
+- Lets the owner reorder songs by dragging or using Move Up and Move Down.
+- Preserves intentional song-flow arrows and performer cues.
+- Stores keys, tunings, endings, and private rehearsal notes per song.
+- Gives every song a direct YouTube link or an immediate YouTube search.
+- Refreshes the public set lists automatically while the page is open.
+- Collects public song ideas without allowing suggestions to alter the set.
+- Protects all official-set changes behind owner authentication.
+- Keeps the established black, electric-blue, lime, and hot-pink Rad Dad brand.
+
+Lyrics and chord-sheet features are intentionally not included. The current
+workflow focuses on a clean YouTube reference plus the band's own rehearsal
+notes.
+
+## Documentation
+
+- [Show Control owner guide](docs/SHOW_CONTROL.md)
+- [Canonical show plan and set lists](docs/SHOW_PLAN.md)
+- [Technical, data, security, and deployment guide](docs/TECHNICAL_GUIDE.md)
+
+## Quick owner workflow
+
+1. Open [Show Control](https://rad-dad-show-night.jeffstory007.chatgpt.site/show-control).
+2. Sign in with the authorized ChatGPT account.
+3. Choose **Jeff Story & Friends**, **Stalemate**, or **Rad Dad**.
+4. Add a song, edit its details, or move it into position.
+5. Paste the exact YouTube version when you have one.
+6. Turn on **Flows to next** when the transition arrow is intentional.
+7. Press **Save** for that set to publish it.
+
+Unsaved changes remain private in the browser. Public suggestions also remain
+separate until the owner deliberately adds one to a draft and saves it.
+
+## Local development
+
+Requirements: a current Node.js installation and npm.
 
 ```bash
-npm install
+npm ci
 npm run dev
+```
+
+Create a local `.env` when testing authenticated or automatic YouTube features:
+
+```bash
+ADMIN_EMAIL=jeffstory007@gmail.com
+YOUTUBE_API_KEY=
+```
+
+`ADMIN_EMAIL` is required for owner writes. `YOUTUBE_API_KEY` is optional. When
+the key is absent, Show Control creates a YouTube search link and lets the owner
+paste the preferred video URL.
+
+Build the production application with:
+
+```bash
 npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+## Hosting
 
-## Included Shape
+The production application is hosted with OpenAI Sites rather than GitHub
+Pages. GitHub is the public source repository; Sites supplies the server routes,
+owner sign-in, environment variables, and D1 database required by the live
+editor.
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+Pushing code to `main` keeps the repository current but does not, by itself,
+replace the Sites production deployment. Changes made inside Show Control are
+database updates and appear publicly without a GitHub deployment.
 
-## Workspace Auth Headers
+## Source of truth
 
-Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
+- Live set data: Sites D1 database
+- Initial confirmed set data: `lib/show-data.ts`
+- Database schema: `db/schema.ts`
+- Database migration: `drizzle/0000_show_control.sql`
+- Public suggestions: connected Google Form and response Sheet
+- Canonical human-readable plan: [docs/SHOW_PLAN.md](docs/SHOW_PLAN.md)
 
-The user ID is stable for the same user on the same Site and different across Sites. Email and name are intended for display or contact purposes.
+The expected finish is around 10:00 PM. It is a planned wrap time, not a venue
+curfew.
 
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("oai-authenticated-user-id");
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
