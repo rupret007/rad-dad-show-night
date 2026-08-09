@@ -1,0 +1,178 @@
+.controlShell, .accessPage {
+  --black: #050506;
+  --panel: #0c0c0f;
+  --paper: #f3f5ef;
+  --muted: #92979a;
+  --blue: #18aaf5;
+  --lime: #b8f527;
+  --pink: #ff3d87;
+  min-height: 100vh;
+  color: var(--paper);
+  background:
+    radial-gradient(circle at 8% 10%, rgba(24, 170, 245, 0.11), transparent 24rem),
+    radial-gradient(circle at 94% 30%, rgba(255, 61, 135, 0.08), transparent 28rem),
+    var(--black);
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+}
+.controlTopbar { position: sticky; top: 0; z-index: 30; min-height: 68px; padding: 0 max(24px, calc((100vw - 1400px) / 2)); display: flex; align-items: center; justify-content: space-between; gap: 22px; border-bottom: 1px solid rgba(255, 255, 255, 0.13); background: rgba(5, 5, 6, 0.94); backdrop-filter: blur(16px); }
+.controlTopbar::after { position: absolute; right: 0; bottom: -4px; left: 0; height: 4px; content: ""; background: repeating-linear-gradient(90deg, var(--blue) 0 28px, var(--lime) 28px 56px, var(--pink) 56px 84px, transparent 84px 112px); }
+.controlBrand { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; }
+.controlBrand > span { display: grid; width: 40px; height: 40px; place-items: center; transform: rotate(-3deg); color: var(--black); background: var(--lime); box-shadow: 4px 4px 0 var(--pink); font-family: Impact, sans-serif; }
+.controlBrand strong, .controlBrand small { display: block; }
+.controlBrand strong { font-size: 1rem; letter-spacing: 0.1em; }
+.controlBrand small { color: var(--muted); font-size: 0.65rem; letter-spacing: 0.13em; }
+.ownerStrip { display: flex; align-items: center; gap: 14px; color: #c6c9c6; font-size: 0.78rem; }
+.ownerStrip a { color: #c6c9c6; font-weight: 800; letter-spacing: 0.06em; text-decoration: none; text-transform: uppercase; }
+.ownerStrip a:hover { color: var(--blue); }
+.privateBadge { padding: 6px 9px; color: var(--black); background: var(--pink); font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+.ownerName { color: white; font-weight: 700; }
+.workspace { width: min(1400px, calc(100% - 40px)); margin: 0 auto; padding: 58px 0 128px; }
+.controlIntro { margin-bottom: 36px; display: flex; align-items: end; justify-content: space-between; gap: 40px; }
+.controlKicker { margin: 0 0 7px; color: var(--blue); font-size: 0.72rem; font-weight: 900; letter-spacing: 0.18em; }
+.controlIntro h1 { margin: 0; font-family: Impact, "Arial Black", sans-serif; font-size: clamp(4rem, 8vw, 7.5rem); line-height: 0.8; letter-spacing: -0.045em; }
+.controlIntro p:not(.controlKicker) { max-width: 690px; margin: 25px 0 0; color: #aeb2b1; font-size: 1.08rem; line-height: 1.5; }
+.controlStats { display: flex; border: 1px solid rgba(255, 255, 255, 0.13); }
+.controlStats div { min-width: 120px; padding: 18px; }
+.controlStats div + div { border-left: 1px solid rgba(255, 255, 255, 0.13); }
+.controlStats strong, .controlStats span { display: block; }
+.controlStats strong { color: var(--lime); font-family: Impact, sans-serif; font-size: 2rem; }
+.controlStats span { color: var(--muted); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.setTabs { margin-bottom: 18px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.setTabs button { position: relative; min-height: 100px; padding: 17px 20px; border: 1px solid rgba(255, 255, 255, 0.13); color: var(--paper); background: rgba(255, 255, 255, 0.025); cursor: pointer; font: inherit; text-align: left; }
+.setTabs button::after { position: absolute; right: 0; bottom: 0; left: 0; height: 4px; content: ""; opacity: 0.35; background: var(--blue); }
+.setTabs button[data-accent="pink"]::after { background: var(--pink); }
+.setTabs button[data-accent="lime"]::after { background: var(--lime); }
+.setTabs .activeTab { border-color: rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.07); }
+.setTabs .activeTab::after { height: 7px; opacity: 1; }
+.setTabs span, .setTabs strong, .setTabs small { display: block; }
+.setTabs span { color: var(--muted); font-size: 0.64rem; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; }
+.setTabs strong { margin-top: 3px; font-size: 1.35rem; text-transform: uppercase; }
+.setTabs small { margin-top: 5px; color: #7e8386; font-size: 0.72rem; }
+.controlGrid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; align-items: start; gap: 18px; }
+.editorPanel, .suggestionInbox { border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(10, 10, 13, 0.88); }
+.editorHeader { min-height: 96px; padding: 21px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+.editorHeader span { color: var(--blue); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.editorHeader h2 { margin: 2px 0 0; font-family: Impact, "Arial Black", sans-serif; font-size: 2.8rem; line-height: 0.95; text-transform: uppercase; }
+.editorHeader .liveState { padding: 7px 10px; color: var(--black); background: var(--lime); }
+.composer { margin: 16px; padding: 14px; display: grid; grid-template-columns: 1.1fr 1fr 0.75fr auto; align-items: center; gap: 8px; border: 1px dashed rgba(184, 245, 39, 0.5); background: rgba(184, 245, 39, 0.045); }
+.composerTitle { display: flex; align-items: center; gap: 10px; }
+.composerTitle > span { display: grid; width: 30px; height: 30px; place-items: center; color: var(--black); background: var(--lime); font-size: 1.5rem; font-weight: 900; }
+.composerTitle strong, .composerTitle small { display: block; }
+.composerTitle strong { text-transform: uppercase; }
+.composerTitle small { color: var(--muted); font-size: 0.7rem; }
+.composer input, .primaryFields input, .detailGrid input, .detailGrid textarea { box-sizing: border-box; width: 100%; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 0; outline: 0; color: white; background: #111116; font: inherit; }
+.composer input { height: 42px; padding: 0 10px; }
+.composer button { height: 42px; padding: 0 14px; border: 0; color: var(--black); background: var(--lime); cursor: pointer; font: inherit; font-size: 0.74rem; font-weight: 900; letter-spacing: 0.07em; text-transform: uppercase; }
+.songEditorList { border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.songEditorCard { position: relative; padding: 16px 15px; display: grid; grid-template-columns: 28px 42px minmax(0, 1fr) auto; align-items: start; gap: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.012); }
+.songEditorCard[data-transition="true"] { background: linear-gradient(90deg, rgba(184, 245, 39, 0.08), transparent 44%); }
+.dragHandle { padding-top: 27px; color: #666b6e; cursor: grab; font-weight: 900; letter-spacing: -0.16em; user-select: none; }
+.dragHandle:active { cursor: grabbing; }
+.editorPosition { display: grid; width: 36px; height: 36px; margin-top: 18px; place-items: center; color: var(--black); background: var(--paper); font-size: 0.78rem; font-weight: 900; }
+.songEditorMain { min-width: 0; }
+.primaryFields { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 8px; }
+.primaryFields label > span, .detailGrid label > span { display: block; margin-bottom: 4px; color: #858a8d; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.primaryFields input { height: 40px; padding: 0 10px; font-size: 1rem; font-weight: 700; }
+.primaryFields label:first-child input { font-size: 1.12rem; text-transform: uppercase; }
+.composer input:focus, .primaryFields input:focus, .detailGrid input:focus, .detailGrid textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(24, 170, 245, 0.11); }
+.quickTools { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+.quickTools button, .quickTools a { min-height: 30px; padding: 0 8px; display: inline-flex; align-items: center; border: 1px solid rgba(255, 255, 255, 0.14); color: #afb3b2; background: transparent; cursor: pointer; font: inherit; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.05em; text-decoration: none; text-transform: uppercase; }
+.quickTools button:hover, .quickTools a:hover { color: var(--black); border-color: var(--blue); background: var(--blue); }
+.quickTools button:disabled { cursor: default; opacity: 0.3; }
+.flowToggle { min-height: 30px; padding: 0 8px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(184, 245, 39, 0.25); color: var(--lime); font-size: 0.66rem; font-weight: 800; text-transform: uppercase; }
+.flowToggle input { accent-color: var(--lime); }
+.songDetailsEditor { margin-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.songDetailsEditor summary { padding: 10px 0 2px; color: #969b9d; cursor: pointer; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.detailGrid { padding: 12px 0 5px; display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+.detailGrid input { height: 40px; padding: 0 10px; }
+.detailGrid textarea { padding: 10px; resize: vertical; }
+.wideField { grid-column: 1 / -1; }
+.urlField { display: grid; grid-template-columns: 1fr auto auto; gap: 5px; }
+.urlField button, .urlField a { min-height: 40px; padding: 0 10px; display: inline-flex; align-items: center; border: 0; color: var(--black); background: var(--blue); cursor: pointer; font: inherit; font-size: 0.67rem; font-weight: 900; text-decoration: none; text-transform: uppercase; }
+.deleteButton { margin-top: 18px; padding: 8px; border: 1px solid rgba(255, 61, 135, 0.25); color: #c9819c; background: transparent; cursor: pointer; font: inherit; font-size: 0.62rem; font-weight: 800; text-transform: uppercase; }
+.deleteButton:hover { color: var(--black); background: var(--pink); }
+.suggestionInbox { position: sticky; top: 90px; overflow: hidden; }
+.inboxHeader { min-height: 69px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+.inboxHeader span { font-size: 0.74rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+.inboxHeader strong { display: grid; width: 30px; height: 30px; place-items: center; color: var(--black); background: var(--pink); }
+.suggestionInbox > p { margin: 0; padding: 15px 18px; color: var(--muted); font-size: 0.84rem; line-height: 1.35; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.inboxList { max-height: 620px; overflow: auto; }
+.inboxSong { padding: 15px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.09); }
+.inboxSong strong, .inboxSong span { display: block; }
+.inboxSong strong { font-size: 1rem; text-transform: uppercase; }
+.inboxSong span { margin-top: 2px; color: var(--muted); font-size: 0.8rem; }
+.inboxSong p { margin: 8px 0; color: #747a7d; font-size: 0.72rem; line-height: 1.3; }
+.inboxSong button { width: 100%; min-height: 34px; border: 1px solid rgba(24, 170, 245, 0.3); color: var(--blue); background: transparent; cursor: pointer; font: inherit; font-size: 0.65rem; font-weight: 900; text-transform: uppercase; }
+.inboxSong button:hover { color: var(--black); background: var(--blue); }
+.inboxEmpty { display: block; padding: 24px 18px; color: var(--muted); }
+.ownerNote { padding: 15px 18px; border-top: 1px solid rgba(255, 255, 255, 0.11); background: rgba(255, 255, 255, 0.025); }
+.ownerNote strong, .ownerNote span { display: block; }
+.ownerNote strong { color: var(--lime); font-size: 0.63rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.ownerNote span { margin-top: 3px; color: var(--muted); font-size: 0.75rem; }
+.saveDock { position: fixed; right: 0; bottom: 0; left: 0; z-index: 40; min-height: 74px; padding: 10px max(24px, calc((100vw - 1400px) / 2)); display: flex; align-items: center; justify-content: space-between; gap: 20px; border-top: 1px solid rgba(255, 255, 255, 0.18); background: rgba(5, 5, 6, 0.96); backdrop-filter: blur(18px); }
+.saveDock > div:first-child { display: flex; align-items: center; gap: 10px; }
+.saveDock p { margin: 0; color: #a9adae; font-size: 0.86rem; }
+.unsavedDot, .savedDot { width: 9px; height: 9px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 0 5px rgba(255, 61, 135, 0.12); }
+.savedDot { background: var(--lime); box-shadow: 0 0 0 5px rgba(184, 245, 39, 0.1); }
+.saveActions { display: flex; gap: 8px; }
+.saveActions button { min-height: 43px; padding: 0 16px; border: 1px solid rgba(255, 255, 255, 0.18); color: white; background: transparent; cursor: pointer; font: inherit; font-size: 0.74rem; font-weight: 900; letter-spacing: 0.07em; text-transform: uppercase; }
+.saveActions .saveButton { min-width: 190px; border: 0; color: var(--black); background: var(--lime); box-shadow: 4px 4px 0 var(--blue); }
+.saveActions .saveButton:disabled { cursor: default; opacity: 0.35; box-shadow: none; }
+.previewBackdrop { position: fixed; inset: 0; z-index: 100; padding: 24px; display: grid; place-items: center; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px); }
+.previewModal { width: min(920px, 100%); border: 1px solid rgba(255, 255, 255, 0.25); background: #08080a; box-shadow: 12px 12px 0 var(--blue); }
+.previewTop { padding: 17px 19px; display: flex; align-items: center; justify-content: space-between; }
+.previewTop span, .previewTop strong { display: block; }
+.previewTop span { color: var(--lime); font-size: 0.65rem; letter-spacing: 0.13em; text-transform: uppercase; }
+.previewTop strong { margin-top: 3px; font-size: 1.3rem; text-transform: uppercase; }
+.previewTop button { padding: 8px 12px; border: 1px solid rgba(255, 255, 255, 0.2); color: white; background: transparent; cursor: pointer; font: inherit; font-weight: 800; text-transform: uppercase; }
+.previewFrame { position: relative; padding-top: 56.25%; background: black; }
+.previewFrame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.accessPage { display: grid; place-items: center; padding: 24px; }
+.accessCard, .loadingCard { width: min(540px, 100%); padding: 42px; border: 1px solid rgba(255, 255, 255, 0.18); background: #0c0c0f; box-shadow: 10px 10px 0 var(--blue); }
+.accessBadge { display: inline-block; padding: 6px 9px; color: var(--black); background: var(--pink); font-size: 0.7rem; font-weight: 900; text-transform: uppercase; }
+.accessCard h1 { margin: 24px 0 13px; font-family: Impact, sans-serif; font-size: 3rem; line-height: 0.95; text-transform: uppercase; }
+.accessCard p { color: #afb3b2; line-height: 1.5; }
+.accessActions { margin-top: 24px; display: flex; gap: 9px; }
+.accessActions a { padding: 11px 13px; color: var(--black); background: var(--lime); font-weight: 900; text-decoration: none; text-transform: uppercase; }
+.accessActions a + a { color: white; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; }
+.loadingCard { color: var(--lime); font-size: 1.2rem; font-weight: 900; text-align: center; text-transform: uppercase; }
+
+@media (max-width: 1060px) {
+  .controlGrid { grid-template-columns: 1fr; }
+  .suggestionInbox { position: static; }
+  .inboxList { max-height: 430px; }
+  .composer { grid-template-columns: 1fr 1fr; }
+  .composerTitle { grid-column: 1 / -1; }
+}
+
+@media (max-width: 760px) {
+  .controlTopbar { padding: 10px 14px; align-items: flex-start; }
+  .ownerStrip { justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+  .ownerName { display: none; }
+  .workspace { width: calc(100% - 22px); padding-top: 40px; }
+  .controlIntro { align-items: flex-start; flex-direction: column; }
+  .controlIntro h1 { font-size: clamp(4rem, 20vw, 6rem); }
+  .controlStats { width: 100%; }
+  .controlStats div { flex: 1; }
+  .setTabs { grid-template-columns: 1fr; }
+  .setTabs button { min-height: 78px; }
+  .composer { grid-template-columns: 1fr; }
+  .composerTitle { grid-column: auto; }
+  .songEditorCard { padding: 14px 10px; grid-template-columns: 25px 35px minmax(0, 1fr); }
+  .dragHandle { display: none; }
+  .editorPosition { grid-column: 1; width: 32px; height: 32px; }
+  .songEditorMain { grid-column: 2 / -1; }
+  .deleteButton { grid-column: 2 / -1; justify-self: start; margin-top: 2px; }
+  .primaryFields { grid-template-columns: 1fr; }
+  .detailGrid { grid-template-columns: 1fr; }
+  .wideField { grid-column: auto; }
+  .urlField { grid-template-columns: 1fr; }
+  .saveDock { padding: 10px 12px; align-items: stretch; flex-direction: column; gap: 8px; }
+  .saveActions { width: 100%; }
+  .saveActions button { flex: 1; }
+  .saveDock p { font-size: 0.75rem; }
+  .workspace { padding-bottom: 160px; }
+  .previewBackdrop { padding: 10px; }
+  .previewModal { box-shadow: 5px 5px 0 var(--blue); }
+}
+
