@@ -151,7 +151,7 @@ export default function SongBoard() {
 
           <label className={styles.honeypot} aria-hidden="true">
             Website
-            <input name="website" type="text" tabIndex={-1} autoComplete="off" />
+            <input name="website" type="text" tabIndex={-1} autoComplete="off" aria-hidden="true" />
           </label>
 
           <button className={styles.submit} type="submit">

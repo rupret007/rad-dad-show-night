@@ -16,6 +16,7 @@ export default function Home() {
           <a href="#timeline">Timeline</a>
           <a href="#guest-sets">Guest sets</a>
           <a href="#rad-dad">Rad Dad</a>
+          <a href="#suggestions">Suggestions</a>
         </nav>
         <a className="packet-link" href="/Rad_Dad_Friends_Show_Packet_2026-09-19.pdf">
           PDF packet
@@ -33,7 +34,7 @@ export default function Home() {
               <div><dt>Date</dt><dd>{show.event.dateLong}</dd></div>
               <div><dt>Venue</dt><dd>{show.event.venue} · {show.event.city}</dd></div>
               <div><dt>Show</dt><dd>{show.event.showTime}</dd></div>
-              <div><dt>Planned wrap</dt><dd>{show.event.plannedWrap}</dd></div>
+              <div><dt>Expected finish</dt><dd>{show.event.plannedWrap}</dd></div>
             </dl>
 
             <div className="hero-actions">
@@ -41,7 +42,10 @@ export default function Home() {
               <a className="button button-secondary" href="/Rad_Dad_Friends_Show_Packet_2026-09-19.pdf">Download PDF</a>
               <ShareButton />
               <PrintButton />
-            </div>
+                      <a className="button button-suggestion" href="#suggestions">
+            Suggest a song
+          </a>
+</div>
 
             <div className="revision">
               <strong>{show.site.status}</strong>

@@ -212,3 +212,24 @@ footer { border-top: 1px solid var(--line); background: #030508; }
   .timeline-row > *, .set-card, .rad-list li, .priority-grid article { background: #fff !important; color: #111 !important; }
   .section-heading > p, .hero-deck, .set-card li small { color: #444 !important; }
 }
+
+
+.button-suggestion {
+  grid-column: 1 / -1;
+  flex-basis: 100%;
+  color: #080b0f;
+  background: #ff3d9a;
+  border-color: #ff3d9a;
+}
+
+.button-suggestion:hover {
+  color: #080b0f;
+  background: #ff69ad;
+  border-color: #ff69ad;
+}
+
+@media print {
+  .button-suggestion {
+    display: none;
+  }
+}
