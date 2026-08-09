@@ -26,8 +26,8 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Rad Dad + Friends | Show Night",
     description,
     icons: {
-      icon: "/rad-dad-friends-flyer.png",
-      shortcut: "/rad-dad-friends-flyer.png",
+      icon: "/favicon.svg",
+      shortcut: "/favicon.svg",
     },
     openGraph: {
       title: "Rad Dad + Friends | Show Night",
@@ -44,6 +44,8 @@ export async function generateMetadata(): Promise<Metadata> {
     },
   };
 }
+
+export const viewport = { themeColor: "#07090c" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
