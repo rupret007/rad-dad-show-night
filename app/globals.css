@@ -52,6 +52,7 @@ h1 { margin: 10px 0 18px; font-family: var(--font-display), sans-serif; font-siz
 .button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 10px 17px; border: 1px solid var(--line); background: transparent; color: var(--cream); cursor: pointer; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; }
 .button-primary { border-color: var(--lime); background: var(--lime); color: #0a0c0f; }
 .button-secondary { border-color: var(--blue); color: var(--blue); }
+.button-share { border-color: var(--pink); color: var(--pink); }
 .button-quiet { color: var(--muted); }
 .button:hover, .button:focus-visible { transform: translateY(-2px); filter: brightness(1.1); }
 .revision { display: flex; gap: 16px; margin-top: 24px; color: var(--muted); font-size: 14px; text-transform: uppercase; letter-spacing: .08em; }

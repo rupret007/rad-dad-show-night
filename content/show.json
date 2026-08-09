@@ -3,7 +3,8 @@
     "eyebrow": "Live performer run sheet",
     "lastUpdated": "August 9, 2026",
     "status": "Current working order",
-    "sourceNote": "This page is the source of truth. Refresh before showtime."
+    "sourceNote": "This page is the source of truth. Refresh before showtime.",
+    "liveUrl": "https://rad-dad-show-night.jeffstory007.chatgpt.site"
   },
   "event": {
     "name": "Rad Dad + Friends",

@@ -1,5 +1,6 @@
+import SongBoard from "./song-board";
 import show from "../content/show.json";
-import { PrintButton } from "./print-button";
+import { PrintButton, ShareButton } from "./print-button";
 
 const radDadColumns = [show.radDadSet.slice(0, 10), show.radDadSet.slice(10)];
 
@@ -38,6 +39,7 @@ export default function Home() {
             <div className="hero-actions">
               <a className="button button-primary" href="#timeline">View run of show</a>
               <a className="button button-secondary" href="/Rad_Dad_Friends_Show_Packet_2026-09-19.pdf">Download PDF</a>
+              <ShareButton />
               <PrintButton />
             </div>
 
@@ -140,7 +142,8 @@ export default function Home() {
             ))}
           </div>
         </section>
-      </main>
+            <SongBoard />
+</main>
 
       <footer>
         <div className="section-wrap footer-inner">
