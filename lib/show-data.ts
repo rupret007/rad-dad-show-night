@@ -2,12 +2,14 @@ export type SetSlug = "jeff-story-friends" | "stalemate" | "rad-dad";
 
 export type ShowSong = {
   id: number | string;
+  showId: string;
   setSlug: SetSlug;
   position: number;
   title: string;
   artist: string;
   transition: boolean;
   isOriginal: boolean;
+  durationSeconds: number;
   performanceNote: string;
   songKey: string;
   tuning: string;
@@ -20,12 +22,35 @@ export type ShowSong = {
 };
 
 export const SHOW_DETAILS = {
+  id: "show-guitars-growlers-2026-09-19",
+  slug: "guitars-growlers-2026-09-19",
   title: "Rad Dad + Friends",
+  showDate: "2026-09-19",
   date: "Saturday, September 19, 2026",
+  startTime: "7:00 PM",
+  endTime: "10:00 PM",
   hours: "7:00-10:00 PM",
   venue: "Guitars & Growlers",
   expectedWrap: "Expected wrap near 10:00 PM",
+  status: "published",
 } as const;
+
+export type ManagedShow = {
+  id: string;
+  slug: string;
+  title: string;
+  venue: string;
+  showDate: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  hours: string;
+  expectedWrap: string;
+  status: "draft" | "published" | "archived";
+  isDefault: boolean;
+};
+
+export type RunOfShowBlock = (typeof RUN_OF_SHOW)[number];
 
 export const RUN_OF_SHOW = [
   {
@@ -124,12 +149,14 @@ function makeSong(
 ): ShowSong {
   return {
     id,
+    showId: SHOW_DETAILS.id,
     setSlug,
     position,
     title,
     artist,
     transition: false,
     isOriginal: false,
+    durationSeconds: 180,
     performanceNote: "",
     songKey: "",
     tuning: "",

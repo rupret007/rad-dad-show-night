@@ -23,6 +23,9 @@ updates the public page without requiring a code change or GitHub commit.
 
 ## What the site does
 
+- Manages multiple shows from one owner dashboard.
+- Clones a complete show into a new private draft.
+- Gives every show its own shareable public link and lifecycle status.
 - Keeps the complete 7:00-10:00 PM run of show in one place.
 - Stores the official set lists in a shared production database.
 - Lets the owner reorder songs by dragging or using Move Up and Move Down.
@@ -34,6 +37,8 @@ updates the public page without requiring a code change or GitHub commit.
 - Assumes suggestions are covers unless the submitter marks one original.
 - Protects all official-set changes behind owner authentication.
 - Keeps the established black, electric-blue, lime, and hot-pink Rad Dad brand.
+- Estimates set runtime from per-song durations.
+- Runs Set Coach for timing, transitions, guest load, and readiness checks.
 
 Chord-sheet features are intentionally not included. Covers receive YouTube and
 lyrics resources; songs marked original hide both while retaining the band's
@@ -79,6 +84,10 @@ YOUTUBE_API_KEY=
 the key is absent, Show Control creates a YouTube search link and lets the owner
 paste the preferred video URL.
 
+Set Coach always provides a local smart review. Add `OPENAI_API_KEY` as a Sites
+secret to enable the optional AI review, and optionally set `OPENAI_MODEL`
+(default: `gpt-5.4-mini`).
+
 Build the production application with:
 
 ```bash
@@ -99,6 +108,7 @@ database updates and appear publicly without a GitHub deployment.
 ## Source of truth
 
 - Live set data: Sites D1 database
+- Show records and cloned timelines: Sites D1 database
 - Initial confirmed set data: `lib/show-data.ts`
 - Database schema: `db/schema.ts`
 - Database migration: `drizzle/0000_show_control.sql`

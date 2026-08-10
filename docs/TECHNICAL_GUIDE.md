@@ -21,6 +21,8 @@ owner can publish set changes through an authenticated browser interface.
 | `app/show-control/` | Owner-only song editor |
 | `app/song-board.tsx` | Public suggestion form and feed |
 | `app/api/show/route.ts` | Public show reads and authenticated set writes |
+| `app/api/shows/route.ts` | Owner show listing, cloning, and lifecycle status |
+| `app/api/coach/route.ts` | Local set review and optional OpenAI analysis |
 | `app/api/enrich/route.ts` | Authenticated YouTube lookup and search fallback |
 | `app/api/suggestions/route.ts` | Canonical public suggestion GET and POST route |
 | `lib/show-data.ts` | Event constants and initial confirmed songs |
@@ -56,6 +58,10 @@ The editor keeps changes in browser state until the owner saves the active set.
 `POST /api/show` validates the payload, replaces that set in one D1 batch, and
 returns the canonical saved rows.
 
+Show Control can switch between D1-backed show records and clone an existing
+show into a new draft. Cloning duplicates the timeline and show-specific songs,
+so the original event remains unchanged.
+
 ### Suggestions
 
 Public suggestions remain separate from official songs. The canonical
@@ -82,6 +88,13 @@ states,
 performance cue, key, tuning, YouTube information, rehearsal notes, updater,
 and timestamps.
 
+Each song belongs to a show and carries an estimated duration used by Set Coach.
+
+### `shows` and `show_blocks`
+
+`shows` stores the public slug, event metadata, lifecycle status, and default
+event. `show_blocks` stores the ordered performance and changeover timeline.
+
 The schema retains an unused chord URL column for migration stability. Lyrics
 URLs are exposed for covers and hidden for originals.
 
@@ -99,6 +112,8 @@ The index `idx_songs_set_position` supports ordered reads by set.
 | --- | --- | --- |
 | `ADMIN_EMAIL` | Yes | Comma-separated owner email allowlist for official-set writes |
 | `YOUTUBE_API_KEY` | No | Enables automatic selection of an embeddable YouTube result |
+| `OPENAI_API_KEY` | No | Adds OpenAI pacing and handoff analysis to Set Coach |
+| `OPENAI_MODEL` | No | Overrides the Set Coach model; defaults to `gpt-5.4-mini` |
 
 Production values belong in Sites environment settings. Do not put API keys in
 Git, `.openai/hosting.json`, client components, or documentation.
@@ -134,6 +149,17 @@ Public. Reads and parses the connected Google Sheet CSV feed.
 Public. Validates the submission, checks for a duplicate when possible, and
 submits it to the connected Google Form. Suggestions never write to D1.
 
+### `GET/POST /api/shows`
+
+Owner-only. Lists shows, clones a source show into a draft, and updates draft,
+published, or archived status.
+
+### `POST /api/coach`
+
+Owner-only. Always returns deterministic timing and readiness findings. When an
+OpenAI key is available, it also calls the Responses API with `store: false` for
+a short set-coaching review. It never mutates show data.
+
 ## Authentication and security
 
 - The public page and read APIs allow anonymous visitors.
@@ -141,6 +167,7 @@ submits it to the connected Google Form. Suggestions never write to D1.
 - Every official write independently checks the authenticated email.
 - `ADMIN_EMAIL` is configured in the Sites runtime environment.
 - YouTube credentials, if added, must be stored as a Sites secret.
+- OpenAI credentials, if added, must be stored as a Sites secret.
 - Public suggestion input is length-limited and includes a honeypot field.
 - User-supplied resource links are limited to HTTP and HTTPS URLs.
 

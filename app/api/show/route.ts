@@ -9,13 +9,15 @@ import {
   ensureShowSeeded,
   getOfficialSongs,
   getShowPayload,
+  getShowRecord,
 } from "../../../lib/show-store";
 import { getYouTubeVideoId } from "../../../lib/song-resources";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  return Response.json(await getShowPayload(), {
+export async function GET(request: Request) {
+  const slug = new URL(request.url).searchParams.get("show");
+  return Response.json(await getShowPayload(slug), {
     headers: { "Cache-Control": "no-store" },
   });
 }
@@ -28,11 +30,11 @@ export async function POST(request: Request) {
 
   try {
     const payload = (await request.json()) as {
+      showSlug?: string;
       setSlug?: string;
       songs?: Partial<ShowSong>[];
     };
     const setSlug = payload.setSlug as SetSlug;
-
     if (!EDITABLE_SET_SLUGS.includes(setSlug)) {
       return Response.json({ error: "Unknown set." }, { status: 400 });
     }
@@ -43,20 +45,21 @@ export async function POST(request: Request) {
       );
     }
 
+    await ensureShowSeeded();
+    const show = await getShowRecord(payload.showSlug);
     const normalized = payload.songs.map((song, index) => {
       const title = cleanText(song.title, 140);
       if (!title) throw new Error(`Song ${index + 1} needs a title.`);
-
       const youtubeUrl = cleanUrl(song.youtubeUrl);
       const youtubeVideoId =
         getYouTubeVideoId(youtubeUrl) || cleanText(song.youtubeVideoId, 20);
-
       return {
         position: index + 1,
         title,
         artist: cleanText(song.artist, 140),
         transition: Boolean(song.transition),
         isOriginal: Boolean(song.isOriginal),
+        durationSeconds: clampNumber(song.durationSeconds, 30, 1200, 180),
         performanceNote: cleanText(song.performanceNote, 300),
         songKey: cleanText(song.songKey, 40),
         tuning: cleanText(song.tuning, 80),
@@ -72,27 +75,30 @@ export async function POST(request: Request) {
       };
     });
 
-    await ensureShowSeeded();
     const now = new Date().toISOString();
     const statements = [
-      env.DB.prepare("DELETE FROM songs WHERE set_slug = ?").bind(setSlug),
+      env.DB.prepare(
+        "DELETE FROM songs WHERE show_id = ? AND set_slug = ?",
+      ).bind(show.id, setSlug),
     ];
-
     for (const song of normalized) {
       statements.push(
         env.DB.prepare(
           `INSERT INTO songs (
-            set_slug, position, title, artist, transition, is_original, performance_note,
-            song_key, tuning, youtube_url, youtube_video_id, chords_url,
-            lyrics_url, rehearsal_notes, updated_by, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            show_id, set_slug, position, title, artist, transition, is_original,
+            duration_seconds, performance_note, song_key, tuning, youtube_url,
+            youtube_video_id, chords_url, lyrics_url, rehearsal_notes,
+            updated_by, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).bind(
+          show.id,
           setSlug,
           song.position,
           song.title,
           song.artist,
           song.transition ? 1 : 0,
           song.isOriginal ? 1 : 0,
+          song.durationSeconds,
           song.performanceNote,
           song.songKey,
           song.tuning,
@@ -107,19 +113,15 @@ export async function POST(request: Request) {
         ),
       );
     }
-
     await env.DB.batch(statements);
-    const officialSongs = await getOfficialSongs();
-
+    const officialSongs = await getOfficialSongs(show.id);
     return Response.json({
       songs: officialSongs.filter((song) => song.setSlug === setSlug),
       updatedAt: now,
     });
   } catch (error) {
     return Response.json(
-      {
-        error: error instanceof Error ? error.message : "Could not save the set.",
-      },
+      { error: error instanceof Error ? error.message : "Could not save the set." },
       { status: 500 },
     );
   }
@@ -140,3 +142,16 @@ function cleanUrl(value: unknown): string {
     return "";
   }
 }
+
+function clampNumber(
+  value: unknown,
+  minimum: number,
+  maximum: number,
+  fallback: number,
+) {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number)
+    ? Math.min(maximum, Math.max(minimum, Math.round(number)))
+    : fallback;
+}
+

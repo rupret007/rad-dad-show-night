@@ -2,13 +2,18 @@ import Image from "next/image";
 import LiveSetLists, { SharePageButton } from "./live-set-lists";
 import SongBoard from "./song-board";
 import styles from "./show-page.module.css";
-import { RUN_OF_SHOW, SHOW_DETAILS } from "../lib/show-data";
-import { getOfficialSongs } from "../lib/show-store";
+import { getShowPayload } from "../lib/show-store";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
-  const songs = await getOfficialSongs();
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<{ show?: string }> | { show?: string };
+}) {
+  const params = await Promise.resolve(searchParams ?? {});
+  const { songs, show, timeline } = await getShowPayload(params.show);
+  const controlHref = `/show-control?show=${encodeURIComponent(show.slug)}`;
 
   return (
     <main className={styles.page}>
@@ -27,7 +32,7 @@ export default async function Home() {
             <a href="#run-of-show">Run of show</a>
             <a href="#official-sets">Set lists</a>
             <a href="#suggestions">Suggest a song</a>
-            <a className={styles.controlLink} href="/show-control">
+            <a className={styles.controlLink} href={controlHref}>
               Owner: edit set
             </a>
           </div>
@@ -66,15 +71,15 @@ export default async function Home() {
           <div className={styles.eventGrid}>
             <div className={styles.eventFact}>
               <span className={styles.factLabel}>When</span>
-              <strong className={styles.factValue}>{SHOW_DETAILS.date}</strong>
+              <strong className={styles.factValue}>{show.date}</strong>
             </div>
             <div className={styles.eventFact}>
               <span className={styles.factLabel}>Time</span>
-              <strong className={styles.factValue}>{SHOW_DETAILS.hours}</strong>
+              <strong className={styles.factValue}>{show.hours}</strong>
             </div>
             <div className={styles.eventFact}>
               <span className={styles.factLabel}>Where</span>
-              <strong className={styles.factValue}>{SHOW_DETAILS.venue}</strong>
+              <strong className={styles.factValue}>{show.venue}</strong>
             </div>
           </div>
 
@@ -100,7 +105,7 @@ export default async function Home() {
         </div>
 
         <div className={styles.schedule}>
-          {RUN_OF_SHOW.map((slot, index) => (
+          {timeline.map((slot, index) => (
             <article
               className={`${styles.scheduleRow} ${
                 slot.type === "changeover"
@@ -152,7 +157,7 @@ export default async function Home() {
             transitions, and every song has a direct YouTube path.
           </p>
         </div>
-        <LiveSetLists initialSongs={songs} />
+        <LiveSetLists initialSongs={songs} showSlug={show.slug} />
       </section>
 
       <section className={styles.section} aria-labelledby="notes-title">
@@ -187,10 +192,10 @@ export default async function Home() {
         <div>
           <strong className={styles.footerBrand}>RAD DAD + FRIENDS</strong>
           <p className={styles.footerMeta}>
-            {SHOW_DETAILS.date} / {SHOW_DETAILS.venue}
+            {show.date} / {show.venue}
           </p>
         </div>
-        <a className={styles.footerControl} href="/show-control">
+        <a className={styles.footerControl} href={controlHref}>
           Owner: open Show Control
         </a>
       </footer>

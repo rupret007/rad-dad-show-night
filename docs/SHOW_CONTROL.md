@@ -24,6 +24,27 @@ Show Control manages these official sets:
 Mason / The Fault Lines retains a dedicated setup and performance window in the
 master timeline, but its song list is not managed in Show Control.
 
+## Reuse the site for another show
+
+Use the show picker at the top of Show Control to switch events. Select **Clone
+show** to copy the current timeline, sets, cues, song resources, original flags,
+and durations into a new private draft. Enter the new date, venue, and title,
+then create the draft.
+
+Every show has a unique share link using `?show=show-slug`. Mark a draft
+**Published** when it is ready for the band, and archive completed events to keep
+the picker organized without deleting their history.
+
+## Set Coach
+
+Select **Review this set** to check estimated runtime, transitions, performance
+cues, and missing exact practice references. Set Coach never changes song order
+or publishes anything.
+
+The smart timing review works without an AI key. When `OPENAI_API_KEY` is
+configured, the same button adds a concise OpenAI review of pacing and handoffs.
+Only the active set's titles and operational metadata are sent; lyrics are not.
+
 For every editable song, the owner can change:
 
 - Song title and artist

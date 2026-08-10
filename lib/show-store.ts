@@ -1,11 +1,14 @@
 import { env } from "cloudflare:workers";
-import { asc } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { getDb } from "../db";
-import { songs } from "../db/schema";
+import { showBlocks, shows, songs } from "../db/schema";
 import {
   DEFAULT_SONGS,
+  RUN_OF_SHOW,
   SET_DEFINITIONS,
   SHOW_DETAILS,
+  type ManagedShow,
+  type RunOfShowBlock,
   type ShowSong,
 } from "./show-data";
 import { buildSongResourceLinks, getYouTubeVideoId } from "./song-resources";
@@ -26,18 +29,21 @@ export async function ensureShowSeeded() {
   const statements = DEFAULT_SONGS.map((song) =>
     env.DB.prepare(
       `INSERT OR IGNORE INTO songs (
-        id, set_slug, position, title, artist, transition, is_original, performance_note,
-        song_key, tuning, youtube_url, youtube_video_id, chords_url,
-        lyrics_url, rehearsal_notes, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, show_id, set_slug, position, title, artist, transition, is_original,
+        duration_seconds, performance_note, song_key, tuning, youtube_url,
+        youtube_video_id, chords_url, lyrics_url, rehearsal_notes, updated_by,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(
       song.id,
+      song.showId,
       song.setSlug,
       song.position,
       song.title,
       song.artist,
       song.transition ? 1 : 0,
       song.isOriginal ? 1 : 0,
+      song.durationSeconds,
       song.performanceNote,
       song.songKey,
       song.tuning,
@@ -57,40 +63,94 @@ export async function ensureShowSeeded() {
       "INSERT OR REPLACE INTO site_settings (key, value, updated_at) VALUES (?, ?, ?)",
     ).bind(SEED_KEY, "complete", now),
   );
-
   await env.DB.batch(statements);
 }
 
 export function hydrateSong(song: ShowSong): ShowSong {
   const resources = buildSongResourceLinks(song.title, song.artist);
-  const youtubeVideoId =
-    song.youtubeVideoId || getYouTubeVideoId(song.youtubeUrl);
-
   return {
     ...song,
-    youtubeVideoId,
+    youtubeVideoId:
+      song.youtubeVideoId || getYouTubeVideoId(song.youtubeUrl),
     chordsUrl: song.chordsUrl || resources.chordsSearchUrl,
     lyricsUrl: song.lyricsUrl || resources.lyricsSearchUrl,
   };
 }
 
-export async function getOfficialSongs(): Promise<ShowSong[]> {
+function formatShowDate(value: string): string {
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function mapShow(row: typeof shows.$inferSelect): ManagedShow {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    venue: row.venue,
+    showDate: row.showDate,
+    date: formatShowDate(row.showDate),
+    startTime: row.startTime,
+    endTime: row.endTime,
+    hours: `${row.startTime}-${row.endTime}`,
+    expectedWrap: row.expectedWrap,
+    status: row.status as ManagedShow["status"],
+    isDefault: row.isDefault,
+  };
+}
+
+export async function getShowRecord(slug?: string | null): Promise<ManagedShow> {
+  const db = getDb();
+  if (slug) {
+    const [row] = await db.select().from(shows).where(eq(shows.slug, slug)).limit(1);
+    if (row) return mapShow(row);
+  }
+
+  const [defaultShow] = await db
+    .select()
+    .from(shows)
+    .where(eq(shows.isDefault, true))
+    .limit(1);
+  if (defaultShow) return mapShow(defaultShow);
+
+  const [latest] = await db.select().from(shows).orderBy(desc(shows.showDate)).limit(1);
+  return latest ? mapShow(latest) : (SHOW_DETAILS as ManagedShow);
+}
+
+export async function getManagedShows(): Promise<ManagedShow[]> {
+  await ensureShowSeeded();
+  const rows = await getDb().select().from(shows).orderBy(desc(shows.showDate));
+  return rows.map(mapShow);
+}
+
+export async function getOfficialSongs(
+  showId = SHOW_DETAILS.id,
+): Promise<ShowSong[]> {
   try {
     await ensureShowSeeded();
     const rows = await getDb()
       .select()
       .from(songs)
+      .where(eq(songs.showId, showId))
       .orderBy(asc(songs.setSlug), asc(songs.position), asc(songs.id));
 
     return rows.map((row) =>
       hydrateSong({
         id: row.id,
+        showId: row.showId,
         setSlug: row.setSlug as ShowSong["setSlug"],
         position: row.position,
         title: row.title,
         artist: row.artist,
         transition: row.transition,
         isOriginal: row.isOriginal,
+        durationSeconds: row.durationSeconds,
         performanceNote: row.performanceNote,
         songKey: row.songKey,
         tuning: row.tuning,
@@ -107,17 +167,46 @@ export async function getOfficialSongs(): Promise<ShowSong[]> {
   }
 }
 
-export async function getShowPayload() {
-  const officialSongs = await getOfficialSongs();
-  const updatedAt = officialSongs.reduce(
-    (latest, song) => (song.updatedAt > latest ? song.updatedAt : latest),
-    "",
-  );
-
-  return {
-    show: SHOW_DETAILS,
-    sets: SET_DEFINITIONS,
-    songs: officialSongs,
-    updatedAt,
-  };
+export async function getShowPayload(slug?: string | null) {
+  try {
+    await ensureShowSeeded();
+    const show = await getShowRecord(slug);
+    const [officialSongs, blocks] = await Promise.all([
+      getOfficialSongs(show.id),
+      getDb()
+        .select()
+        .from(showBlocks)
+        .where(eq(showBlocks.showId, show.id))
+        .orderBy(asc(showBlocks.position)),
+    ]);
+    const timeline = blocks.map((block) => ({
+      time: `${block.startTime}-${block.endTime}`,
+      duration: block.duration,
+      title: block.title,
+      note: block.note,
+      type: block.type as "performance" | "changeover",
+      accent: block.accent as "blue" | "lime" | "pink",
+    })) as RunOfShowBlock[];
+    const updatedAt = officialSongs.reduce(
+      (latest, song) => (song.updatedAt > latest ? song.updatedAt : latest),
+      "",
+    );
+    return {
+      show,
+      timeline: timeline.length ? timeline : RUN_OF_SHOW,
+      sets: SET_DEFINITIONS,
+      songs: officialSongs,
+      updatedAt,
+    };
+  } catch {
+    const officialSongs = DEFAULT_SONGS.map(hydrateSong);
+    return {
+      show: SHOW_DETAILS,
+      timeline: RUN_OF_SHOW,
+      sets: SET_DEFINITIONS,
+      songs: officialSongs,
+      updatedAt: officialSongs[0]?.updatedAt ?? "",
+    };
+  }
 }
+

@@ -37,8 +37,10 @@ export function SharePageButton() {
 
 export default function LiveSetLists({
   initialSongs,
+  showSlug,
 }: {
   initialSongs: ShowSong[];
+  showSlug: string;
 }) {
   const [songs, setSongs] = useState(initialSongs);
   const [updatedAt, setUpdatedAt] = useState(
@@ -52,7 +54,10 @@ export default function LiveSetLists({
     let active = true;
     async function refresh() {
       try {
-        const response = await fetch("/api/show", { cache: "no-store" });
+        const response = await fetch(
+          `/api/show?show=${encodeURIComponent(showSlug)}`,
+          { cache: "no-store" },
+        );
         if (!response.ok) return;
         const data = (await response.json()) as {
           songs?: ShowSong[];
@@ -77,7 +82,7 @@ export default function LiveSetLists({
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, []);
+  }, [showSlug]);
 
   const grouped = useMemo(
     () =>
@@ -110,6 +115,9 @@ export default function LiveSetLists({
               <div className={styles.setMeta}>
                 <strong className={styles.setTime}>{set.time}</strong>
                 <span className={styles.songCount}>{setSongs.length} songs</span>
+                <span className={styles.songCount}>
+                  ~{Math.round(setSongs.reduce((total, song) => total + (song.durationSeconds || 180), 0) / 60)} min
+                </span>
               </div>
             </header>
 

@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   SET_DEFINITIONS,
+  SHOW_DETAILS,
+  type ManagedShow,
   type SetSlug,
   type ShowSong,
 } from "../../lib/show-data";
@@ -16,6 +18,18 @@ import styles from "./show-control.module.css";
 
 type SongMap = Record<SetSlug, ShowSong[]>;
 type DeletedSong = { song: ShowSong; index: number } | null;
+type CoachResult = {
+  source: "smart-check" | "openai";
+  score: number;
+  estimatedMinutes: number;
+  scheduledMinutes: number;
+  findings: Array<{
+    tone: "good" | "watch" | "action";
+    title: string;
+    detail: string;
+  }>;
+  aiNotes: string;
+};
 
 const emptySongMap = (): SongMap => ({
   "jeff-story-friends": [],
@@ -45,22 +59,35 @@ export default function ShowControlClient({
   const [deleted, setDeleted] = useState<DeletedSong>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+  const [shows, setShows] = useState<ManagedShow[]>([]);
+  const [activeShowSlug, setActiveShowSlug] = useState(SHOW_DETAILS.slug);
+  const [cloneOpen, setCloneOpen] = useState(false);
+  const [cloning, setCloning] = useState(false);
+  const [coach, setCoach] = useState<CoachResult | null>(null);
+  const [coaching, setCoaching] = useState(false);
   const dragIndex = useRef<number | null>(null);
 
   useEffect(() => {
     let active = true;
+    const requestedShow =
+      new URLSearchParams(window.location.search).get("show") || SHOW_DETAILS.slug;
     Promise.all([
-      fetch("/api/show", { cache: "no-store" }).then((response) => {
+      fetch(`/api/show?show=${encodeURIComponent(requestedShow)}`, { cache: "no-store" }).then((response) => {
         if (!response.ok) throw new Error("Could not load the official sets.");
-        return response.json() as Promise<{ songs: ShowSong[] }>;
+        return response.json() as Promise<{ songs: ShowSong[]; show: ManagedShow }>;
       }),
+      fetch("/api/shows", { cache: "no-store" }).then((response) =>
+        response.json() as Promise<{ shows?: ManagedShow[] }>,
+      ),
       fetch("/api/suggestions", { cache: "no-store" })
         .then((response) => response.json() as Promise<{ suggestions?: Suggestion[] }>)
         .catch(() => ({ suggestions: [] })),
     ])
-      .then(([showData, suggestionData]) => {
+      .then(([showData, showList, suggestionData]) => {
         if (!active) return;
         setSongsBySet(groupSongs(showData.songs));
+        setShows(showList.shows ?? [showData.show]);
+        setActiveShowSlug(showData.show.slug);
         setSuggestions(suggestionData.suggestions ?? []);
       })
       .catch((error) => {
@@ -96,6 +123,9 @@ export default function ShowControlClient({
   }, [preview]);
 
   const activeDefinition = SET_DEFINITIONS.find((set) => set.slug === activeSet)!;
+  const activeShow =
+    shows.find((show) => show.slug === activeShowSlug) ??
+    (SHOW_DETAILS as ManagedShow);
   const activeSongs = songsBySet[activeSet];
   const totalSongs = useMemo(
     () => Object.values(songsBySet).reduce((total, setSongs) => total + setSongs.length, 0),
@@ -157,6 +187,7 @@ export default function ShowControlClient({
       artist: artist.trim(),
       transition: false,
       isOriginal,
+      durationSeconds: 180,
       performanceNote,
       songKey: "",
       tuning: "",
@@ -254,7 +285,11 @@ export default function ShowControlClient({
       const response = await fetch("/api/show", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ setSlug: activeSet, songs: activeSongs }),
+        body: JSON.stringify({
+          showSlug: activeShowSlug,
+          setSlug: activeSet,
+          songs: activeSongs,
+        }),
       });
       const result = (await response.json()) as { error?: string; songs?: ShowSong[] };
       if (!response.ok || !result.songs) {
@@ -293,6 +328,103 @@ export default function ShowControlClient({
     );
   }
 
+  async function switchShow(slug: string) {
+    if (dirtySets.size && !window.confirm("Switch shows and discard unsaved changes?")) return;
+    setLoading(true);
+    setNotice("");
+    setCoach(null);
+    try {
+      const response = await fetch(`/api/show?show=${encodeURIComponent(slug)}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Could not load that show.");
+      const data = (await response.json()) as { songs: ShowSong[]; show: ManagedShow };
+      setSongsBySet(groupSongs(data.songs));
+      setActiveShowSlug(data.show.slug);
+      setDirtySets(new Set());
+      window.history.replaceState(null, "", `/show-control?show=${encodeURIComponent(data.show.slug)}`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not load that show.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function cloneShow(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCloning(true);
+    setNotice("Cloning the show plan...");
+    try {
+      const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+      const response = await fetch("/api/shows", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "clone",
+          sourceSlug: activeShowSlug,
+          title: data.title,
+          venue: data.venue,
+          showDate: data.showDate,
+        }),
+      });
+      const result = (await response.json()) as { show?: ManagedShow; error?: string };
+      if (!response.ok || !result.show) throw new Error(result.error || "Could not clone the show.");
+      setShows((current) => [result.show!, ...current]);
+      setCloneOpen(false);
+      await switchShow(result.show.slug);
+      setNotice("New draft created. Its sets, cues, and resources were copied.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not clone the show.");
+    } finally {
+      setCloning(false);
+    }
+  }
+
+  async function changeShowStatus(status: ManagedShow["status"]) {
+    const response = await fetch("/api/shows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "status", showSlug: activeShowSlug, status }),
+    });
+    const result = (await response.json()) as { show?: ManagedShow; error?: string };
+    if (!response.ok || !result.show) {
+      setNotice(result.error || "Could not update show status.");
+      return;
+    }
+    setShows((current) =>
+      current.map((show) => (show.slug === result.show!.slug ? result.show! : show)),
+    );
+    setNotice(`Show marked ${status}.`);
+  }
+
+  async function runCoach() {
+    setCoaching(true);
+    setNotice("Set Coach is reviewing the active set...");
+    try {
+      const response = await fetch("/api/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          showTitle: `${activeShow.title} at ${activeShow.venue}`,
+          setSlug: activeSet,
+          songs: activeSongs,
+        }),
+      });
+      const result = (await response.json()) as CoachResult & { error?: string };
+      if (!response.ok) throw new Error(result.error || "Set Coach could not run.");
+      setCoach(result);
+      setNotice(
+        result.source === "openai"
+          ? "AI Set Coach review is ready."
+          : "Set timing and readiness check is ready.",
+      );
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Set Coach could not run.");
+    } finally {
+      setCoaching(false);
+    }
+  }
+
   if (loading) {
     return <main className={styles.controlShell}><div className={styles.loadingCard}>Loading official sets...</div></main>;
   }
@@ -307,7 +439,7 @@ export default function ShowControlClient({
         <div className={styles.ownerStrip}>
           <span className={styles.privateBadge}>Owner only</span>
           <span className={styles.ownerName}>{userName}</span>
-          <a href="/" target="_blank">Open public show</a>
+          <a href={`/?show=${encodeURIComponent(activeShowSlug)}`} target="_blank">Open public show</a>
           <a href={signOutHref}>Sign out</a>
         </div>
       </header>
@@ -315,7 +447,9 @@ export default function ShowControlClient({
       <div className={styles.workspace}>
         <section className={styles.controlIntro}>
           <div>
-            <p className={styles.controlKicker}>SEPT 19 / GUITARS & GROWLERS</p>
+            <p className={styles.controlKicker}>
+              {activeShow.showDate} / {activeShow.venue}
+            </p>
             <h1>BUILD THE NIGHT.</h1>
             <p>
               Reorder by dragging or using Move. Open Details for keys, cues,
@@ -328,6 +462,53 @@ export default function ShowControlClient({
             <div><strong>{dirtySets.size}</strong><span>Sets changed</span></div>
           </div>
         </section>
+
+        <section className={styles.showManager}>
+          <div className={styles.showSelect}>
+            <label htmlFor="show-picker">Editing show</label>
+            <select
+              id="show-picker"
+              value={activeShowSlug}
+              onChange={(event) => void switchShow(event.target.value)}
+            >
+              {shows.map((show) => (
+                <option value={show.slug} key={show.id}>
+                  {show.showDate} - {show.venue} ({show.status})
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className={styles.showStatus} data-status={activeShow.status}>
+            {activeShow.status}
+          </span>
+          <div className={styles.showActions}>
+            <a href={`/?show=${encodeURIComponent(activeShowSlug)}`} target="_blank" rel="noreferrer">
+              Open share link
+            </a>
+            <button type="button" onClick={() => setCloneOpen((value) => !value)}>
+              Clone show
+            </button>
+            {activeShow.status !== "published" ? (
+              <button type="button" onClick={() => void changeShowStatus("published")}>Publish</button>
+            ) : null}
+            {activeShow.status !== "archived" ? (
+              <button type="button" onClick={() => void changeShowStatus("archived")}>Archive</button>
+            ) : null}
+          </div>
+        </section>
+
+        {cloneOpen ? (
+          <form className={styles.clonePanel} onSubmit={cloneShow}>
+            <div>
+              <strong>Clone this show</strong>
+              <span>Copies the timeline, sets, cues, originals, and resource links into a private draft.</span>
+            </div>
+            <input name="title" defaultValue={activeShow.title} aria-label="New show title" required />
+            <input name="venue" defaultValue={activeShow.venue} aria-label="New show venue" required />
+            <input name="showDate" type="date" aria-label="New show date" required />
+            <button type="submit" disabled={cloning}>{cloning ? "Cloning..." : "Create draft"}</button>
+          </form>
+        ) : null}
 
         <nav className={styles.setTabs} aria-label="Choose a set to edit">
           {SET_DEFINITIONS.map((set) => (
@@ -384,6 +565,38 @@ export default function ShowControlClient({
               />
               <button type="submit">Add + find</button>
             </form>
+
+            <section className={styles.coachPanel}>
+              <div>
+                <span>SET COACH</span>
+                <strong>Timing, pacing, and readiness</strong>
+                <p>Reviews only this active set and never changes the order.</p>
+              </div>
+              <button type="button" onClick={runCoach} disabled={coaching || !activeSongs.length}>
+                {coaching ? "Reviewing..." : "Review this set"}
+              </button>
+            </section>
+
+            {coach ? (
+              <section className={styles.coachResult}>
+                <header>
+                  <strong>{coach.score}/100</strong>
+                  <span>
+                    {coach.estimatedMinutes} estimated / {coach.scheduledMinutes} scheduled minutes
+                  </span>
+                  <small>{coach.source === "openai" ? "AI review" : "Smart set check"}</small>
+                </header>
+                <div className={styles.coachFindings}>
+                  {coach.findings.map((finding) => (
+                    <article data-tone={finding.tone} key={finding.title}>
+                      <strong>{finding.title}</strong>
+                      <p>{finding.detail}</p>
+                    </article>
+                  ))}
+                </div>
+                {coach.aiNotes ? <p className={styles.aiNotes}>{coach.aiNotes}</p> : null}
+              </section>
+            ) : null}
 
             <div className={styles.songEditorList}>
               {activeSongs.map((song, index) => {
@@ -464,6 +677,21 @@ export default function ShowControlClient({
                           <label>
                             <span>Tuning</span>
                             <input value={song.tuning} onChange={(event) => updateSong(song.id, { tuning: event.target.value })} placeholder="e.g. Eb standard" />
+                          </label>
+                          <label>
+                            <span>Estimated minutes</span>
+                            <input
+                              type="number"
+                              min="0.5"
+                              max="20"
+                              step="0.25"
+                              value={Math.round((song.durationSeconds / 60) * 100) / 100}
+                              onChange={(event) =>
+                                updateSong(song.id, {
+                                  durationSeconds: Math.round(Number(event.target.value) * 60),
+                                })
+                              }
+                            />
                           </label>
                           {!song.isOriginal ? (
                             <>
