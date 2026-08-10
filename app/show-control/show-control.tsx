@@ -139,7 +139,12 @@ export default function ShowControlClient({
     replaceSet(activeSet, reordered);
   }
 
-  async function addSong(title: string, artist: string, performanceNote = "") {
+  async function addSong(
+    title: string,
+    artist: string,
+    performanceNote = "",
+    findYouTube = true,
+  ) {
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
     const resources = buildSongResourceLinks(cleanTitle, artist);
@@ -163,7 +168,13 @@ export default function ShowControlClient({
     replaceSet(activeSet, [...activeSongs, song]);
     setDraftTitle("");
     setDraftArtist("");
-    await findResources(song);
+    if (findYouTube) {
+      await findResources(song);
+    } else {
+      setNotice(
+        `${cleanTitle} was added as a draft. YouTube is optional; add a link only if there is a useful reference.`,
+      );
+    }
   }
 
   async function addFromComposer(event: FormEvent<HTMLFormElement>) {
@@ -272,6 +283,7 @@ export default function ShowControlClient({
       song.title,
       song.artist,
       `Suggested by ${song.addedBy}${song.notes ? ` / ${song.notes}` : ""}`,
+      false,
     );
   }
 

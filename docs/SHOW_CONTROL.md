@@ -75,6 +75,10 @@ enables a private preview.
 The public page uses a direct YouTube link rather than embedding every video.
 This keeps the set list fast and uncluttered on phones.
 
+Songs without a saved, specific YouTube URL display no public video button.
+That is intentional for originals such as The Drinking Song and the Stalemate
+material.
+
 Without a configured YouTube Data API key, **Find YouTube** opens or prepares a
 search instead of choosing a video without the owner's review. This is the
 expected fallback behavior.
@@ -105,6 +109,10 @@ The right-side **Suggestion inbox** contains songs submitted on the public page.
 
 A suggestion never changes the official set by itself.
 
+Suggested songs do not trigger automatic YouTube matching when they are moved
+into a draft. This prevents an original or unreleased song from receiving an
+unrelated video. Add a reference manually only when one is useful.
+
 ## Save and publish
 
 The status bar at the bottom explains whether the active set matches the public
@@ -124,10 +132,11 @@ page or contains unsaved changes.
 Sign out and sign back in with `jeffstory007@gmail.com`. The production
 `ADMIN_EMAIL` environment value must match that address.
 
-### A new song only shows Find on YouTube
+### A new song has no YouTube button on the public page
 
-That is normal when no exact video has been selected. Open the search, choose
-the correct version, paste its URL into Show Control, and save.
+That is normal when no exact video has been selected. Originals can remain that
+way. For a cover or other published reference, open the search, choose the
+correct version, paste its URL into Show Control, and save.
 
 ### A suggestion is missing
 
@@ -139,4 +148,3 @@ is temporarily unavailable.
 
 Confirm that **Save [set name]** completed. Draft reordering does not become
 public automatically.
-

@@ -28,9 +28,10 @@ updates the public page without requiring a code change or GitHub commit.
 - Lets the owner reorder songs by dragging or using Move Up and Move Down.
 - Preserves intentional song-flow arrows and performer cues.
 - Stores keys, tunings, endings, and private rehearsal notes per song.
-- Gives every song a direct YouTube link or an immediate YouTube search.
+- Shows a YouTube button only when the owner has saved a specific reference.
 - Refreshes the public set lists automatically while the page is open.
 - Collects public song ideas without allowing suggestions to alter the set.
+- Accepts originals and unreleased suggestions without requiring YouTube.
 - Protects all official-set changes behind owner authentication.
 - Keeps the established black, electric-blue, lime, and hot-pink Rad Dad brand.
 
@@ -105,4 +106,3 @@ database updates and appear publicly without a GitHub deployment.
 
 The expected finish is around 10:00 PM. It is a planned wrap time, not a venue
 curfew.
-

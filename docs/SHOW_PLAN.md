@@ -27,7 +27,7 @@ confirmed baseline used to seed it.
 
 1. Badfish - Sublime
 2. Nutshell - Alice in Chains
-3. The Drinking Song
+3. The Drinking Song - original
 4. Heart-Shaped Box - Nirvana - Travis Story, guitar
 5. Creep - Radiohead - Carly, vocals / Travis Worsham, guitar
 6. Just a Girl - No Doubt - Zella, vocals / Kelly, guitar
@@ -39,6 +39,9 @@ Mason / The Fault Lines owns its song list. The shared show plan protects its
 7:35-7:45 PM setup window and 7:45-8:25 PM performance window.
 
 ## Stalemate
+
+This set is primarily original material. No public YouTube reference is assumed
+unless the band saves a specific video in Show Control.
 
 1. Turn Over the Flag
 2. TBFH
@@ -94,4 +97,3 @@ changes.
 - Protect the Mason / Fault Lines setup window.
 - Confirm all guest-song keys and endings before show day.
 - Plan the night to land near 10:00 PM; this is not a venue curfew.
-

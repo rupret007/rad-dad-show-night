@@ -75,10 +75,11 @@ export default function SongBoard() {
           <p className={styles.kicker}>04 / Open suggestion board</p>
           <h2 className={styles.title}>WHAT SHOULD WE LEARN NEXT?</h2>
         </div>
-        <p className={styles.intro}>
-          Add an idea for a future show. Suggestions stay here for the band to
-          review; they never alter the official running order.
-        </p>
+          <p className={styles.intro}>
+            Add an idea for a future show. Suggestions stay here for the band to
+            review; they never alter the official running order. Originals and
+            unreleased songs are welcome, and no YouTube link is required.
+          </p>
       </div>
 
       <div className={styles.layout}>
@@ -161,4 +162,3 @@ function formatDate(value: string) {
     minute: "2-digit",
   }).format(date);
 }
-
