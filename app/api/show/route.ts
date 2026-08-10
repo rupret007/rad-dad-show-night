@@ -56,6 +56,7 @@ export async function POST(request: Request) {
         title,
         artist: cleanText(song.artist, 140),
         transition: Boolean(song.transition),
+        isOriginal: Boolean(song.isOriginal),
         performanceNote: cleanText(song.performanceNote, 300),
         songKey: cleanText(song.songKey, 40),
         tuning: cleanText(song.tuning, 80),
@@ -81,16 +82,17 @@ export async function POST(request: Request) {
       statements.push(
         env.DB.prepare(
           `INSERT INTO songs (
-            set_slug, position, title, artist, transition, performance_note,
+            set_slug, position, title, artist, transition, is_original, performance_note,
             song_key, tuning, youtube_url, youtube_video_id, chords_url,
             lyrics_url, rehearsal_notes, updated_by, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).bind(
           setSlug,
           song.position,
           song.title,
           song.artist,
           song.transition ? 1 : 0,
+          song.isOriginal ? 1 : 0,
           song.performanceNote,
           song.songKey,
           song.tuning,
@@ -138,4 +140,3 @@ function cleanUrl(value: unknown): string {
     return "";
   }
 }
-

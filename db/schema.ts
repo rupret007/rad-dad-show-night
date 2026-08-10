@@ -12,6 +12,9 @@ export const songs = sqliteTable(
     transition: integer("transition", { mode: "boolean" })
       .notNull()
       .default(false),
+    isOriginal: integer("is_original", { mode: "boolean" })
+      .notNull()
+      .default(false),
     performanceNote: text("performance_note").notNull().default(""),
     songKey: text("song_key").notNull().default(""),
     tuning: text("tuning").notNull().default(""),
@@ -34,4 +37,3 @@ export const siteSettings = sqliteTable("site_settings", {
   value: text("value").notNull(),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
-

@@ -64,7 +64,7 @@ changes.
 7. First Date - blink-182 &rarr;
 8. Chick Magnet - MxPx
 9. Blind - Face to Face
-10. The Way I Love You - Paco Estrada &rarr;
+10. The Way I Love You - Paco Estrada - original &rarr;
 11. The Story Of Us - Taylor Swift / Rad Dad
 12. The Middle - Jimmy Eat World
 13. On The Road Again - Me First and the Gimme Gimmes
@@ -81,6 +81,13 @@ changes.
 - Country Roads is added.
 - First Date flows directly into Chick Magnet.
 - The Way I Love You flows directly into The Story Of Us.
+
+### Resource policy
+
+- The Drinking Song has no public YouTube or lyrics resources.
+- Stalemate songs have no public YouTube or lyrics resources.
+- The Way I Love You is the only Rad Dad original and has no public resources.
+- The remaining Rad Dad songs display YouTube and lyrics links when available.
 
 ### Not in the confirmed Rad Dad set
 

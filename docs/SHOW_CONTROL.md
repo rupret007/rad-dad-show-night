@@ -29,9 +29,11 @@ For every editable song, the owner can change:
 - Song title and artist
 - Position in the set
 - Intentional flow into the next song
+- Original-song resource policy
 - Performance or guest cue
 - Key and tuning
 - YouTube link
+- Lyrics link
 - Band-owned rehearsal notes
 
 ## Add a song
@@ -72,12 +74,15 @@ Open a song's detail panel and paste a normal YouTube, `youtu.be`, Shorts, Live,
 or embed URL into **YouTube video**. Show Control extracts the video ID and
 enables a private preview.
 
-The public page uses a direct YouTube link rather than embedding every video.
-This keeps the set list fast and uncluttered on phones.
+The public page uses links rather than embedding every video. This keeps the set
+list fast and uncluttered on phones.
 
-Songs without a saved, specific YouTube URL display no public video button.
-That is intentional for originals such as The Drinking Song and the Stalemate
-material.
+Covers display YouTube and lyrics actions. A saved exact URL is preferred; when
+one is not saved, the site opens a targeted search. Songs marked **Original /
+hide resources** display neither action.
+
+The confirmed originals are The Drinking Song, all Stalemate songs, and The Way
+I Love You. The remaining Rad Dad songs are covers and retain both resources.
 
 Without a configured YouTube Data API key, **Find YouTube** opens or prepares a
 search instead of choosing a video without the owner's review. This is the
@@ -109,9 +114,10 @@ The right-side **Suggestion inbox** contains songs submitted on the public page.
 
 A suggestion never changes the official set by itself.
 
-Suggested songs do not trigger automatic YouTube matching when they are moved
-into a draft. This prevents an original or unreleased song from receiving an
-unrelated video. Add a reference manually only when one is useful.
+The suggestion form assumes a song is a cover. Submitters check **This is an
+original / unreleased song** when appropriate. Cover suggestions run the normal
+resource lookup when moved into a draft; checked originals enter Show Control
+with YouTube and lyrics hidden.
 
 ## Save and publish
 
@@ -132,11 +138,11 @@ page or contains unsaved changes.
 Sign out and sign back in with `jeffstory007@gmail.com`. The production
 `ADMIN_EMAIL` environment value must match that address.
 
-### A new song has no YouTube button on the public page
+### A song has no YouTube or lyrics buttons on the public page
 
-That is normal when no exact video has been selected. Originals can remain that
-way. For a cover or other published reference, open the search, choose the
-correct version, paste its URL into Show Control, and save.
+Confirm whether **Original / hide resources** is enabled. That is correct for an
+original. For a cover, turn it off, choose the preferred YouTube and lyrics
+pages when available, and save.
 
 ### A suggestion is missing
 

@@ -26,10 +26,10 @@ export async function ensureShowSeeded() {
   const statements = DEFAULT_SONGS.map((song) =>
     env.DB.prepare(
       `INSERT OR IGNORE INTO songs (
-        id, set_slug, position, title, artist, transition, performance_note,
+        id, set_slug, position, title, artist, transition, is_original, performance_note,
         song_key, tuning, youtube_url, youtube_video_id, chords_url,
         lyrics_url, rehearsal_notes, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(
       song.id,
       song.setSlug,
@@ -37,6 +37,7 @@ export async function ensureShowSeeded() {
       song.title,
       song.artist,
       song.transition ? 1 : 0,
+      song.isOriginal ? 1 : 0,
       song.performanceNote,
       song.songKey,
       song.tuning,
@@ -89,6 +90,7 @@ export async function getOfficialSongs(): Promise<ShowSong[]> {
         title: row.title,
         artist: row.artist,
         transition: row.transition,
+        isOriginal: row.isOriginal,
         performanceNote: row.performanceNote,
         songKey: row.songKey,
         tuning: row.tuning,
@@ -119,4 +121,3 @@ export async function getShowPayload() {
     updatedAt,
   };
 }
-

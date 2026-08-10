@@ -143,7 +143,8 @@ export default function ShowControlClient({
     title: string,
     artist: string,
     performanceNote = "",
-    findYouTube = true,
+    isOriginal = false,
+    findYouTube = !isOriginal,
   ) {
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
@@ -155,6 +156,7 @@ export default function ShowControlClient({
       title: cleanTitle,
       artist: artist.trim(),
       transition: false,
+      isOriginal,
       performanceNote,
       songKey: "",
       tuning: "",
@@ -184,6 +186,10 @@ export default function ShowControlClient({
 
   async function findResources(song: ShowSong) {
     if (!song.title.trim()) return;
+    if (song.isOriginal) {
+      setNotice(`${song.title} is marked original, so public resource links stay hidden.`);
+      return;
+    }
     setEnriching(String(song.id));
     setNotice(`Finding YouTube for ${song.title}...`);
     try {
@@ -283,7 +289,7 @@ export default function ShowControlClient({
       song.title,
       song.artist,
       `Suggested by ${song.addedBy}${song.notes ? ` / ${song.notes}` : ""}`,
-      false,
+      song.isOriginal,
     );
   }
 
@@ -424,12 +430,28 @@ export default function ShowControlClient({
                           <input type="checkbox" checked={song.transition} onChange={(event) => updateSong(song.id, { transition: event.target.checked })} />
                           <span>Flows to next {"\u2192"}</span>
                         </label>
-                        {videoId ? <button type="button" onClick={() => setPreview({ ...song, youtubeVideoId: videoId })}>Preview video</button> : null}
-                        <a href={song.youtubeUrl || searches.youtubeSearchUrl} target="_blank" rel="noreferrer">Open YouTube</a>
+                        <label className={styles.flowToggle}>
+                          <input
+                            type="checkbox"
+                            checked={song.isOriginal}
+                            onChange={(event) =>
+                              updateSong(song.id, {
+                                isOriginal: event.target.checked,
+                                youtubeUrl: event.target.checked ? "" : song.youtubeUrl,
+                                youtubeVideoId: event.target.checked ? "" : song.youtubeVideoId,
+                                lyricsUrl: event.target.checked ? "" : song.lyricsUrl,
+                              })
+                            }
+                          />
+                          <span>Original / hide resources</span>
+                        </label>
+                        {!song.isOriginal && videoId ? <button type="button" onClick={() => setPreview({ ...song, youtubeVideoId: videoId })}>Preview video</button> : null}
+                        {!song.isOriginal ? <a href={song.youtubeUrl || searches.youtubeSearchUrl} target="_blank" rel="noreferrer">Open YouTube</a> : null}
+                        {!song.isOriginal ? <a href={song.lyricsUrl || searches.lyricsSearchUrl} target="_blank" rel="noreferrer">Open lyrics</a> : null}
                       </div>
 
                       <details className={styles.songDetailsEditor}>
-                        <summary>Details, YouTube, and rehearsal notes</summary>
+                        <summary>Details, song resources, and rehearsal notes</summary>
                         <div className={styles.detailGrid}>
                           <label className={styles.wideField}>
                             <span>Performance cue</span>
@@ -443,14 +465,22 @@ export default function ShowControlClient({
                             <span>Tuning</span>
                             <input value={song.tuning} onChange={(event) => updateSong(song.id, { tuning: event.target.value })} placeholder="e.g. Eb standard" />
                           </label>
-                          <label className={styles.wideField}>
-                            <span>YouTube video</span>
-                            <div className={styles.urlField}>
-                              <input value={song.youtubeUrl} onChange={(event) => updateSong(song.id, { youtubeUrl: event.target.value, youtubeVideoId: getYouTubeVideoId(event.target.value) })} placeholder="Paste a YouTube link" />
-                              <button type="button" onClick={() => findResources(song)} disabled={isEnriching}>{isEnriching ? "Finding..." : "Find YouTube"}</button>
-                              {!videoId ? <a href={searches.youtubeSearchUrl} target="_blank" rel="noreferrer">Search</a> : null}
-                            </div>
-                          </label>
+                          {!song.isOriginal ? (
+                            <>
+                              <label className={styles.wideField}>
+                                <span>YouTube video</span>
+                                <div className={styles.urlField}>
+                                  <input value={song.youtubeUrl} onChange={(event) => updateSong(song.id, { youtubeUrl: event.target.value, youtubeVideoId: getYouTubeVideoId(event.target.value) })} placeholder="Paste a YouTube link" />
+                                  <button type="button" onClick={() => findResources(song)} disabled={isEnriching}>{isEnriching ? "Finding..." : "Find resources"}</button>
+                                  {!videoId ? <a href={searches.youtubeSearchUrl} target="_blank" rel="noreferrer">Search</a> : null}
+                                </div>
+                              </label>
+                              <label className={styles.wideField}>
+                                <span>Lyrics link</span>
+                                <input value={song.lyricsUrl} onChange={(event) => updateSong(song.id, { lyricsUrl: event.target.value })} placeholder="Paste the preferred lyrics page or use the generated search" />
+                              </label>
+                            </>
+                          ) : null}
                           <label className={styles.wideField}>
                             <span>Our rehearsal notes</span>
                             <textarea rows={4} value={song.rehearsalNotes} onChange={(event) => updateSong(song.id, { rehearsalNotes: event.target.value })} placeholder="Structure, stops, harmony, solo length, special ending..." />
@@ -476,7 +506,7 @@ export default function ShowControlClient({
               {!suggestionsLoading && !suggestions.length ? <span className={styles.inboxEmpty}>No suggestions yet.</span> : null}
               {suggestions.slice(0, 12).map((song) => (
                 <article className={styles.inboxSong} key={song.id}>
-                  <div><strong>{song.title}</strong><span>{song.artist || "Artist not listed"}</span></div>
+                  <div><strong>{song.title}</strong><span>{song.artist || "Artist not listed"}{song.isOriginal ? " / Original" : ""}</span></div>
                   <p>By {song.addedBy}{song.notes ? ` / ${song.notes}` : ""}</p>
                   <button type="button" onClick={() => addSuggestion(song)}>Add to {activeDefinition.title}</button>
                 </article>

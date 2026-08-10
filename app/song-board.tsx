@@ -12,6 +12,7 @@ export type Suggestion = {
   artist: string;
   addedBy: string;
   notes: string;
+  isOriginal: boolean;
   submittedAt: string;
 };
 
@@ -104,6 +105,13 @@ export default function SongBoard() {
             <span>Why this one?</span>
             <textarea name="notes" maxLength={500} rows={3} placeholder="Singer, version, key, or why it would crush." />
           </label>
+          <label className={styles.originalChoice}>
+            <input name="isOriginal" type="checkbox" value="true" />
+            <span>
+              <strong>This is an original / unreleased song</strong>
+              <small>Skip automatic YouTube and lyrics lookup.</small>
+            </span>
+          </label>
           <label className={styles.honeypot} aria-hidden="true">
             Website
             <input name="website" tabIndex={-1} autoComplete="off" />
@@ -135,6 +143,7 @@ export default function SongBoard() {
                 <span className={styles.rank}>{String(index + 1).padStart(2, "0")}</span>
                 <div>
                   <h3>{song.title}</h3>
+                  {song.isOriginal ? <span className={styles.originalTag}>Original</span> : null}
                   {song.artist ? <p className={styles.artist}>{song.artist}</p> : null}
                   {song.notes ? <p className={styles.notes}>{song.notes}</p> : null}
                   <p className={styles.byline}>

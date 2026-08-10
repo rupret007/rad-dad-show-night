@@ -28,16 +28,16 @@ updates the public page without requiring a code change or GitHub commit.
 - Lets the owner reorder songs by dragging or using Move Up and Move Down.
 - Preserves intentional song-flow arrows and performer cues.
 - Stores keys, tunings, endings, and private rehearsal notes per song.
-- Shows a YouTube button only when the owner has saved a specific reference.
+- Shows YouTube and lyrics resources for covers while originals can hide them.
 - Refreshes the public set lists automatically while the page is open.
 - Collects public song ideas without allowing suggestions to alter the set.
-- Accepts originals and unreleased suggestions without requiring YouTube.
+- Assumes suggestions are covers unless the submitter marks one original.
 - Protects all official-set changes behind owner authentication.
 - Keeps the established black, electric-blue, lime, and hot-pink Rad Dad brand.
 
-Lyrics and chord-sheet features are intentionally not included. The current
-workflow focuses on a clean YouTube reference plus the band's own rehearsal
-notes.
+Chord-sheet features are intentionally not included. Covers receive YouTube and
+lyrics resources; songs marked original hide both while retaining the band's
+own rehearsal notes.
 
 ## Documentation
 
@@ -52,8 +52,9 @@ notes.
 3. Choose **Jeff Story & Friends**, **Stalemate**, or **Rad Dad**.
 4. Add a song, edit its details, or move it into position.
 5. Paste the exact YouTube version when you have one.
-6. Turn on **Flows to next** when the transition arrow is intentional.
-7. Press **Save** for that set to publish it.
+6. Mark **Original / hide resources** when YouTube and lyrics do not apply.
+7. Turn on **Flows to next** when the transition arrow is intentional.
+8. Press **Save** for that set to publish it.
 
 Unsaved changes remain private in the browser. Public suggestions also remain
 separate until the owner deliberately adds one to a draft and saves it.

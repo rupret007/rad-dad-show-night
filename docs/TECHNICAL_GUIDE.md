@@ -39,8 +39,9 @@ The server renders the current set from D1. `LiveSetLists` then requests
 `GET /api/show` every 30 seconds and after the tab returns to the foreground.
 This lets an already-open page receive changes made in Show Control.
 
-The public list renders a YouTube action only when the official song record has
-a specific saved URL. It does not expose generic search links for originals.
+The public list renders YouTube and lyrics actions for songs not marked
+original. Exact saved URLs take priority; otherwise it exposes targeted search
+links. Original songs display neither resource.
 
 If D1 is temporarily unavailable, the server returns the confirmed defaults in
 `lib/show-data.ts` so the show plan does not disappear.
@@ -62,9 +63,11 @@ Public suggestions remain separate from official songs. The canonical
 to the connected Google Form. It rejects obvious duplicate title-and-artist
 pairs when the feed is available.
 
-YouTube is optional for suggestions. Moving a suggestion into an official-set
-draft does not run automatic matching, because originals and unreleased songs
-may not have any valid public video.
+Suggestions default to covers. The inline form includes an original/unreleased
+checkbox, encoded in the existing Google Form notes field as an `[ORIGINAL]`
+marker. The API strips that marker before display and returns `isOriginal` to
+Show Control. Cover suggestions run resource lookup when added to a draft;
+checked originals skip it and hide public YouTube and lyrics actions.
 
 The backup form remains linked from the public page.
 
@@ -74,12 +77,13 @@ The logical D1 binding is `DB`.
 
 ### `songs`
 
-Stores the official set slug, position, title, artist, transition state,
+Stores the official set slug, position, title, artist, transition and original
+states,
 performance cue, key, tuning, YouTube information, rehearsal notes, updater,
 and timestamps.
 
-The schema retains unused chord and lyric URL columns for migration stability,
-but the product does not expose chord or lyric features.
+The schema retains an unused chord URL column for migration stability. Lyrics
+URLs are exposed for covers and hidden for originals.
 
 ### `site_settings`
 
@@ -200,7 +204,8 @@ GitHub and Sites are intentionally separate:
 - Add a migration whenever the database schema changes.
 - Keep `ADMIN_EMAIL` server-side and verify it on every write route.
 - Keep suggestions separate from official-set records.
+- Mark originals explicitly so public YouTube and lyrics links stay hidden.
 - Preserve the two intentional transition arrows unless the owner changes them.
 - Describe 10:00 PM as the expected wrap, not a curfew.
-- Do not add lyrics or chord-sheet interfaces unless the product decision is
-  explicitly revisited.
+- Do not add chord-sheet interfaces unless the product decision is explicitly
+  revisited.

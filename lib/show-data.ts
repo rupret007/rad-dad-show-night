@@ -7,6 +7,7 @@ export type ShowSong = {
   title: string;
   artist: string;
   transition: boolean;
+  isOriginal: boolean;
   performanceNote: string;
   songKey: string;
   tuning: string;
@@ -128,6 +129,7 @@ function makeSong(
     title,
     artist,
     transition: false,
+    isOriginal: false,
     performanceNote: "",
     songKey: "",
     tuning: "",
@@ -144,7 +146,9 @@ function makeSong(
 export const DEFAULT_SONGS: ShowSong[] = [
   makeSong(1001, "jeff-story-friends", 1, "Badfish", "Sublime"),
   makeSong(1002, "jeff-story-friends", 2, "Nutshell", "Alice in Chains"),
-  makeSong(1003, "jeff-story-friends", 3, "The Drinking Song"),
+  makeSong(1003, "jeff-story-friends", 3, "The Drinking Song", "", {
+    isOriginal: true,
+  }),
   makeSong(1004, "jeff-story-friends", 4, "Heart-Shaped Box", "Nirvana", {
     performanceNote: "Travis Story - guitar",
   }),
@@ -158,12 +162,24 @@ export const DEFAULT_SONGS: ShowSong[] = [
     performanceNote: "Zella - vocals",
   }),
 
-  makeSong(1101, "stalemate", 1, "Turn Over the Flag", "Stalemate"),
-  makeSong(1102, "stalemate", 2, "TBFH", "Stalemate"),
-  makeSong(1103, "stalemate", 3, "Manic", "Stalemate"),
-  makeSong(1104, "stalemate", 4, "Be With You", "Stalemate"),
-  makeSong(1105, "stalemate", 5, "Better Than Now", "Stalemate"),
-  makeSong(1106, "stalemate", 6, "Take the Step", "Stalemate"),
+  makeSong(1101, "stalemate", 1, "Turn Over the Flag", "Stalemate", {
+    isOriginal: true,
+  }),
+  makeSong(1102, "stalemate", 2, "TBFH", "Stalemate", {
+    isOriginal: true,
+  }),
+  makeSong(1103, "stalemate", 3, "Manic", "Stalemate", {
+    isOriginal: true,
+  }),
+  makeSong(1104, "stalemate", 4, "Be With You", "Stalemate", {
+    isOriginal: true,
+  }),
+  makeSong(1105, "stalemate", 5, "Better Than Now", "Stalemate", {
+    isOriginal: true,
+  }),
+  makeSong(1106, "stalemate", 6, "Take the Step", "Stalemate", {
+    isOriginal: true,
+  }),
 
   makeSong(1201, "rad-dad", 1, "Basket Case", "Green Day"),
   makeSong(1202, "rad-dad", 2, "The Rock Show", "blink-182"),
@@ -178,6 +194,7 @@ export const DEFAULT_SONGS: ShowSong[] = [
   makeSong(1209, "rad-dad", 9, "Blind", "Face to Face"),
   makeSong(1210, "rad-dad", 10, "The Way I Love You", "Paco Estrada", {
     transition: true,
+    isOriginal: true,
   }),
   makeSong(1211, "rad-dad", 11, "The Story Of Us", "Taylor Swift / Rad Dad"),
   makeSong(1212, "rad-dad", 12, "The Middle", "Jimmy Eat World"),
@@ -201,4 +218,3 @@ export const DEFAULT_SONGS: ShowSong[] = [
   makeSong(1218, "rad-dad", 18, "All The Small Things", "blink-182"),
   makeSong(1219, "rad-dad", 19, "She", "Green Day"),
 ];
-

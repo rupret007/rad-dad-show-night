@@ -11,6 +11,7 @@ type Suggestion = {
   artist: string;
   addedBy: string;
   notes: string;
+  isOriginal: boolean;
   submittedAt: string;
 };
 
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
       artist?: string;
       addedBy?: string;
       notes?: string;
+      isOriginal?: boolean | string;
       website?: string;
     };
     if (payload.website) return Response.json({ ok: true });
@@ -40,6 +42,8 @@ export async function POST(request: Request) {
     const artist = clean(payload.artist, 140);
     const addedBy = clean(payload.addedBy, 100);
     const notes = clean(payload.notes, 500);
+    const isOriginal =
+      payload.isOriginal === true || payload.isOriginal === "true";
     if (!title || !addedBy) {
       return Response.json(
         { error: "Song title and your name are required." },
@@ -68,7 +72,9 @@ export async function POST(request: Request) {
       "entry.988161673": title,
       "entry.515724080": artist,
       "entry.1834262230": addedBy,
-      "entry.286610891": notes,
+      "entry.286610891": isOriginal
+        ? `[ORIGINAL]${notes ? ` ${notes}` : ""}`
+        : notes,
     });
     const response = await fetch(FORM_RESPONSE_URL, {
       method: "POST",
@@ -86,6 +92,7 @@ export async function POST(request: Request) {
       artist,
       addedBy,
       notes,
+      isOriginal,
       submittedAt: new Date().toISOString(),
     };
     return Response.json({ suggestion }, { status: 201 });
@@ -111,14 +118,21 @@ async function loadSuggestions(): Promise<Suggestion[]> {
   return rows
     .slice(1)
     .filter((row) => row.some((cell) => cell.trim()))
-    .map((row, index) => ({
-      id: `${row[0] || "suggestion"}-${index}`,
-      submittedAt: row[0] ?? "",
-      title: row[1]?.trim() ?? "",
-      artist: row[2]?.trim() ?? "",
-      addedBy: row[3]?.trim() ?? "Anonymous",
-      notes: row[4]?.trim() ?? "",
-    }))
+    .map((row, index) => {
+      const rawNotes = row[4]?.trim() ?? "";
+      const isOriginal = /^\[ORIGINAL\](?:\s|$)/i.test(rawNotes);
+      return {
+        id: `${row[0] || "suggestion"}-${index}`,
+        submittedAt: row[0] ?? "",
+        title: row[1]?.trim() ?? "",
+        artist: row[2]?.trim() ?? "",
+        addedBy: row[3]?.trim() ?? "Anonymous",
+        notes: isOriginal
+          ? rawNotes.replace(/^\[ORIGINAL\]\s*/i, "")
+          : rawNotes,
+        isOriginal,
+      };
+    })
     .filter((song) => song.title)
     .reverse();
 }
@@ -161,4 +175,3 @@ function parseCsv(input: string): string[][] {
 function clean(value: unknown, maxLength: number): string {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
-

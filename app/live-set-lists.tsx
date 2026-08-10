@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SET_DEFINITIONS, type ShowSong } from "../lib/show-data";
+import { buildSongResourceLinks } from "../lib/song-resources";
 import styles from "./show-page.module.css";
 
 export function SharePageButton() {
@@ -114,6 +115,7 @@ export default function LiveSetLists({
 
             <ol className={styles.songList}>
               {setSongs.map((song) => {
+                const searches = buildSongResourceLinks(song.title, song.artist);
                 return (
                   <li
                     className={`${styles.songRow} ${
@@ -146,16 +148,27 @@ export default function LiveSetLists({
                           {song.tuning ? `Tuning: ${song.tuning}` : ""}
                         </span>
                       ) : null}
+                      {song.isOriginal ? (
+                        <span className={styles.songDetails}>Original</span>
+                      ) : null}
                     </div>
-                    {song.youtubeUrl ? (
+                    {!song.isOriginal ? (
                       <div className={styles.resourceBar} aria-label={`${song.title} resources`}>
                         <a
                           className={styles.resourceLink}
-                          href={song.youtubeUrl}
+                          href={song.youtubeUrl || searches.youtubeSearchUrl}
                           target="_blank"
                           rel="noreferrer"
                         >
-                          YouTube
+                          {song.youtubeUrl ? "YouTube" : "YouTube search"}
+                        </a>
+                        <a
+                          className={styles.resourceLink}
+                          href={song.lyricsUrl || searches.lyricsSearchUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Lyrics
                         </a>
                       </div>
                     ) : null}
