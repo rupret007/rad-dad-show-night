@@ -18,7 +18,6 @@ export default async function Home({
   const practiceMode = params.practice === "1" || params.practice === "true";
   const controlHref = `/show-control?show=${encodeURIComponent(show.slug)}`;
   const showHref = `/?show=${encodeURIComponent(show.slug)}`;
-  const practiceHref = `${showHref}&practice=1#official-sets`;
 
   return (
     <main className={`${styles.page} ${practiceMode ? styles.practicePage : ""}`}>
@@ -50,9 +49,6 @@ export default async function Home({
                 <a href="#run-of-show">Run of show</a>
                 <a href="#official-sets">Set lists</a>
                 <a href="#suggestions">Suggest a song</a>
-                <a className={styles.practiceLink} href={practiceHref}>
-                  Practice mode
-                </a>
                 <a className={styles.controlLink} href={controlHref}>
                   Owner: edit set
                 </a>
@@ -126,9 +122,6 @@ export default async function Home({
           <div className={styles.heroActions}>
             <a className={styles.primaryAction} href="#run-of-show">
               See the running order
-            </a>
-            <a className={styles.practiceAction} href={practiceHref}>
-              Open practice mode
             </a>
             <SharePageButton />
           </div>
