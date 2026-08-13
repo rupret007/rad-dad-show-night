@@ -58,6 +58,9 @@ export const viewport = { themeColor: "#07090c", viewportFit: "cover" };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+      </head>
       <body className={`${display.variable} ${body.variable}`}>
         {children}
         <OfflineSupport />

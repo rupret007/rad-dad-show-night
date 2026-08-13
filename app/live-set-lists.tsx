@@ -56,6 +56,7 @@ export default function LiveSetLists({
   const [isOnline, setIsOnline] = useState(true);
   const [offlineReady, setOfflineReady] = useState(false);
   const [resourceNotice, setResourceNotice] = useState("");
+  const [showInstallHint, setShowInstallHint] = useState(false);
   const wakeLockRef = useRef<WakeLockHandle | null>(null);
   const [updatedAt, setUpdatedAt] = useState(
     initialSongs.reduce(
@@ -80,7 +81,9 @@ export default function LiveSetLists({
         if (active && data.songs) {
           setSongs(data.songs);
           setUpdatedAt(data.updatedAt ?? "");
-          setIsOnline(true);
+          setIsOnline(
+            navigator.onLine && response.headers.get("x-rad-dad-offline") !== "1",
+          );
         }
       } catch {
         // Keep the last good set visible if the refresh is interrupted.
@@ -104,6 +107,12 @@ export default function LiveSetLists({
     const snapshotKey = `rad-dad-show-snapshot:${showSlug}`;
     const positionKey = `rad-dad-practice-position:${showSlug}`;
     setIsOnline(navigator.onLine);
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+    setShowInstallHint(
+      /iPhone|iPad|iPod/i.test(navigator.userAgent) && !standalone,
+    );
     setOfflineReady(
       Boolean(localStorage.getItem(`rad-dad-offline-ready:${showSlug}`)),
     );
@@ -315,7 +324,9 @@ export default function LiveSetLists({
         <span>
           {!isOnline
             ? "Set order, details, and your current-song marker remain available."
-            : "Open this page once before practice and it can reload without service."}
+            : showInstallHint
+              ? "For best iPhone reliability: tap Share, then Add to Home Screen."
+              : "Open this page once before practice and it can reload without service."}
         </span>
       </div>
       {resourceNotice ? (

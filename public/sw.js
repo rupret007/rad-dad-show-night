@@ -96,10 +96,10 @@ async function networkFirst(request, timeoutMs, navigation) {
     return await withTimeout(network, timeoutMs);
   } catch {
     const exact = await cache.match(request);
-    if (exact) return exact;
+    if (exact) return markOfflineResponse(exact);
     if (navigation) {
       const related = await findRelatedShowPage(cache, new URL(request.url));
-      if (related) return related;
+      if (related) return markOfflineResponse(related);
       return (await cache.match("/offline.html")) || Response.error();
     }
     return new Response(
@@ -139,4 +139,14 @@ function withTimeout(promise, timeoutMs) {
       setTimeout(() => reject(new Error("Network timeout")), timeoutMs),
     ),
   ]);
+}
+
+function markOfflineResponse(response) {
+  const headers = new Headers(response.headers);
+  headers.set("X-Rad-Dad-Offline", "1");
+  return new Response(response.clone().body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
