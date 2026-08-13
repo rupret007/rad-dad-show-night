@@ -9,19 +9,28 @@ export const dynamic = "force-dynamic";
 export default async function Home({
   searchParams,
 }: {
-  searchParams?: Promise<{ show?: string }> | { show?: string };
+  searchParams?:
+    | Promise<{ show?: string; practice?: string }>
+    | { show?: string; practice?: string };
 }) {
   const params = await Promise.resolve(searchParams ?? {});
   const { songs, show, timeline } = await getShowPayload(params.show);
+  const practiceMode = params.practice === "1" || params.practice === "true";
   const controlHref = `/show-control?show=${encodeURIComponent(show.slug)}`;
+  const showHref = `/?show=${encodeURIComponent(show.slug)}`;
+  const practiceHref = `${showHref}&practice=1#official-sets`;
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${practiceMode ? styles.practicePage : ""}`}>
       <div className={styles.atmosphere} aria-hidden="true" />
 
       <nav className={styles.topBar} aria-label="Show page navigation">
         <div className={styles.topBarInner}>
-          <a className={styles.identity} href="#top" aria-label="Rad Dad show night home">
+          <a
+            className={styles.identity}
+            href={practiceMode ? showHref : "#top"}
+            aria-label="Rad Dad show night home"
+          >
             <span className={styles.logoMark}>RD</span>
             <span>
               <strong>RAD DAD + FRIENDS</strong>
@@ -29,16 +38,47 @@ export default async function Home({
             </span>
           </a>
           <div className={styles.topLinks}>
-            <a href="#run-of-show">Run of show</a>
-            <a href="#official-sets">Set lists</a>
-            <a href="#suggestions">Suggest a song</a>
-            <a className={styles.controlLink} href={controlHref}>
-              Owner: edit set
-            </a>
+            {practiceMode ? (
+              <>
+                <a href="#official-sets">Set lists</a>
+                <a className={styles.practiceLink} href={showHref}>
+                  Exit practice mode
+                </a>
+              </>
+            ) : (
+              <>
+                <a href="#run-of-show">Run of show</a>
+                <a href="#official-sets">Set lists</a>
+                <a href="#suggestions">Suggest a song</a>
+                <a className={styles.practiceLink} href={practiceHref}>
+                  Practice mode
+                </a>
+                <a className={styles.controlLink} href={controlHref}>
+                  Owner: edit set
+                </a>
+              </>
+            )}
           </div>
         </div>
       </nav>
 
+      {practiceMode ? (
+        <header className={styles.practiceHero} id="top">
+          <div>
+            <p className={styles.practiceEyebrow}>Rehearsal reference / live list</p>
+            <h1 className={styles.practiceTitle}>PRACTICE MODE</h1>
+            <p className={styles.practiceDek}>
+              Tap a song to mark your place. Lyrics and YouTube open in a new tab,
+              so this set order stays ready when you come back.
+            </p>
+          </div>
+          <div className={styles.practiceShowMeta}>
+            <strong>{show.title}</strong>
+            <span>{show.date}</span>
+            <span>{show.venue}</span>
+          </div>
+        </header>
+      ) : (
       <header className={styles.hero} id="top">
         <div className={styles.heroPosterWrap}>
           <div className={styles.posterFrame}>
@@ -87,11 +127,16 @@ export default async function Home({
             <a className={styles.primaryAction} href="#run-of-show">
               See the running order
             </a>
+            <a className={styles.practiceAction} href={practiceHref}>
+              Open practice mode
+            </a>
             <SharePageButton />
           </div>
         </div>
       </header>
+      )}
 
+      {!practiceMode ? (
       <section className={styles.section} id="run-of-show">
         <div className={styles.sectionHeader}>
           <div>
@@ -131,7 +176,9 @@ export default async function Home({
           ))}
         </div>
       </section>
+      ) : null}
 
+      {!practiceMode ? (
       <section className={styles.featureSet} aria-labelledby="fault-lines-title">
         <div className={styles.featureStripe} aria-hidden="true" />
         <div>
@@ -145,21 +192,33 @@ export default async function Home({
           with the band; the master timeline above is the stage cue.
         </p>
       </section>
+      ) : null}
 
-      <section className={styles.section} id="official-sets">
+      <section
+        className={`${styles.section} ${practiceMode ? styles.practiceSection : ""}`}
+        id="official-sets"
+      >
         <div className={styles.sectionHeader}>
           <div>
-            <p className={styles.sectionKicker}>02 / Live source of truth</p>
+            <p className={styles.sectionKicker}>
+              {practiceMode ? "Live rehearsal reference" : "02 / Live source of truth"}
+            </p>
             <h2 className={styles.sectionTitle}>OFFICIAL SETS</h2>
           </div>
           <p className={styles.sectionCopy}>
-            These lists update from Show Control. Flow arrows are intentional
-            transitions, and every song has a direct YouTube path.
+            {practiceMode
+              ? "This is the official live order. Tap any song to mark it current, then use the large resource buttons without losing your place."
+              : "These lists update from Show Control. Flow arrows are intentional transitions, and every song has a direct YouTube path."}
           </p>
         </div>
-        <LiveSetLists initialSongs={songs} showSlug={show.slug} />
+        <LiveSetLists
+          initialSongs={songs}
+          showSlug={show.slug}
+          practiceMode={practiceMode}
+        />
       </section>
 
+      {!practiceMode ? (
       <section className={styles.section} aria-labelledby="notes-title">
         <div className={styles.sectionHeader}>
           <div>
@@ -183,10 +242,13 @@ export default async function Home({
           ))}
         </div>
       </section>
+      ) : null}
 
+      {!practiceMode ? (
       <section className={`${styles.section} ${styles.suggestionsSection}`} id="suggestions">
         <SongBoard />
       </section>
+      ) : null}
 
       <footer className={styles.footer}>
         <div>
@@ -195,8 +257,8 @@ export default async function Home({
             {show.date} / {show.venue}
           </p>
         </div>
-        <a className={styles.footerControl} href={controlHref}>
-          Owner: open Show Control
+        <a className={styles.footerControl} href={practiceMode ? showHref : controlHref}>
+          {practiceMode ? "Return to full show page" : "Owner: open Show Control"}
         </a>
       </footer>
     </main>
