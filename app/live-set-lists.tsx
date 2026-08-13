@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SET_DEFINITIONS, type ShowSong } from "../lib/show-data";
-import { buildSongResourceLinks } from "../lib/song-resources";
+import { resolveSongResourceLinks } from "../lib/song-resources";
 import styles from "./show-page.module.css";
 
 export function SharePageButton({ label = "Share this page" }: { label?: string }) {
@@ -244,7 +244,7 @@ export default function LiveSetLists({
 
             <ol className={styles.songList}>
               {setSongs.map((song) => {
-                const searches = buildSongResourceLinks(song.title, song.artist);
+                const resources = resolveSongResourceLinks(song);
                 return (
                   <li
                     className={`${styles.songRow} ${
@@ -296,24 +296,30 @@ export default function LiveSetLists({
                       <div className={styles.resourceBar} aria-label={`${song.title} resources`}>
                         <a
                           className={styles.resourceLink}
-                          href={song.lyricsUrl || searches.lyricsSearchUrl}
+                          href={resources.lyricsUrl}
                           target="_blank"
                           rel="noreferrer"
                         >
-                          {practiceMode ? "Open lyrics" : "Lyrics"}
+                          {practiceMode
+                            ? resources.lyricsIsDirect
+                              ? "Open lyrics"
+                              : "Find lyrics"
+                            : resources.lyricsIsDirect
+                              ? "Lyrics"
+                              : "Lyrics search"}
                         </a>
                         <a
                           className={styles.resourceLink}
-                          href={song.youtubeUrl || searches.youtubeSearchUrl}
+                          href={resources.youtubeUrl}
                           target="_blank"
                           rel="noreferrer"
                         >
-                          {song.youtubeUrl ? "YouTube" : "YouTube search"}
+                          {resources.youtubeIsDirect ? "YouTube" : "YouTube search"}
                         </a>
                         {practiceMode && song.chordsUrl ? (
                           <a
                             className={styles.resourceLink}
-                            href={song.chordsUrl}
+                            href={resources.chordsUrl}
                             target="_blank"
                             rel="noreferrer"
                           >
