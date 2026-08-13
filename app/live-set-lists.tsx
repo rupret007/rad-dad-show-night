@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import { SET_DEFINITIONS, type ShowSong } from "../lib/show-data";
 import { resolveSongResourceLinks } from "../lib/song-resources";
 import styles from "./show-page.module.css";
@@ -47,6 +53,9 @@ export default function LiveSetLists({
   const [songs, setSongs] = useState(initialSongs);
   const [currentSongId, setCurrentSongId] = useState<string | null>(null);
   const [wakeStatus, setWakeStatus] = useState<"off" | "on" | "unsupported">("off");
+  const [isOnline, setIsOnline] = useState(true);
+  const [offlineReady, setOfflineReady] = useState(false);
+  const [resourceNotice, setResourceNotice] = useState("");
   const wakeLockRef = useRef<WakeLockHandle | null>(null);
   const [updatedAt, setUpdatedAt] = useState(
     initialSongs.reduce(
@@ -71,9 +80,11 @@ export default function LiveSetLists({
         if (active && data.songs) {
           setSongs(data.songs);
           setUpdatedAt(data.updatedAt ?? "");
+          setIsOnline(true);
         }
       } catch {
         // Keep the last good set visible if the refresh is interrupted.
+        if (active && !navigator.onLine) setIsOnline(false);
       }
     }
 
@@ -88,6 +99,61 @@ export default function LiveSetLists({
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [showSlug]);
+
+  useEffect(() => {
+    const snapshotKey = `rad-dad-show-snapshot:${showSlug}`;
+    const positionKey = `rad-dad-practice-position:${showSlug}`;
+    setIsOnline(navigator.onLine);
+    setOfflineReady(
+      Boolean(localStorage.getItem(`rad-dad-offline-ready:${showSlug}`)),
+    );
+    const savedPosition = localStorage.getItem(positionKey);
+    if (savedPosition) setCurrentSongId(savedPosition);
+
+    if (!navigator.onLine) {
+      try {
+        const snapshot = JSON.parse(localStorage.getItem(snapshotKey) ?? "null") as {
+          songs?: ShowSong[];
+          updatedAt?: string;
+        } | null;
+        if (snapshot?.songs?.length) {
+          setSongs(snapshot.songs);
+          setUpdatedAt(snapshot.updatedAt ?? "");
+        }
+      } catch {
+        // Keep the server-rendered cached set if the local snapshot is invalid.
+      }
+    }
+
+    const onOnline = () => {
+      setIsOnline(true);
+      setResourceNotice("");
+    };
+    const onOffline = () => setIsOnline(false);
+    const onOfflineReady = (event: Event) => {
+      const detail = (event as CustomEvent<{ showSlug?: string }>).detail;
+      if (detail?.showSlug === showSlug) setOfflineReady(true);
+    };
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("rad-dad-offline-ready", onOfflineReady);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("rad-dad-offline-ready", onOfflineReady);
+    };
+  }, [showSlug]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        `rad-dad-show-snapshot:${showSlug}`,
+        JSON.stringify({ songs, updatedAt, savedAt: new Date().toISOString() }),
+      );
+    } catch {
+      // Safari can evict storage under pressure; the service worker remains primary.
+    }
+  }, [showSlug, songs, updatedAt]);
 
   const grouped = useMemo(
     () =>
@@ -120,6 +186,11 @@ export default function LiveSetLists({
 
   function selectSong(songId: string, scroll = false) {
     setCurrentSongId(songId);
+    try {
+      localStorage.setItem(`rad-dad-practice-position:${showSlug}`, songId);
+    } catch {
+      // Remembering position is a convenience, not required for rehearsal.
+    }
     if (scroll) {
       window.requestAnimationFrame(() => {
         document.getElementById(`practice-song-${songId}`)?.scrollIntoView({
@@ -164,6 +235,14 @@ export default function LiveSetLists({
     } catch {
       setWakeStatus("unsupported");
     }
+  }
+
+  function handleExternalResource(event: MouseEvent<HTMLAnchorElement>) {
+    if (isOnline && navigator.onLine) return;
+    event.preventDefault();
+    setResourceNotice(
+      "The set is saved offline. Lyrics and YouTube are external services and need a connection.",
+    );
   }
 
   return (
@@ -217,6 +296,32 @@ export default function LiveSetLists({
             </div>
           </div>
         </div>
+      ) : null}
+
+      <div
+        className={styles.offlineStatus}
+        data-state={!isOnline ? "offline" : offlineReady ? "ready" : "preparing"}
+        role="status"
+        aria-live="polite"
+      >
+        <span className={styles.offlineDot} aria-hidden="true" />
+        <strong>
+          {!isOnline
+            ? "Offline / showing saved set"
+            : offlineReady
+              ? "Offline copy ready on this device"
+              : "Preparing this device for offline use"}
+        </strong>
+        <span>
+          {!isOnline
+            ? "Set order, details, and your current-song marker remain available."
+            : "Open this page once before practice and it can reload without service."}
+        </span>
+      </div>
+      {resourceNotice ? (
+        <p className={styles.offlineNotice} role="alert">
+          {resourceNotice}
+        </p>
       ) : null}
 
       {SET_DEFINITIONS.map((set) => {
@@ -299,6 +404,7 @@ export default function LiveSetLists({
                           href={resources.lyricsUrl}
                           target="_blank"
                           rel="noreferrer"
+                          onClick={handleExternalResource}
                         >
                           {practiceMode
                             ? resources.lyricsIsDirect
@@ -313,6 +419,7 @@ export default function LiveSetLists({
                           href={resources.youtubeUrl}
                           target="_blank"
                           rel="noreferrer"
+                          onClick={handleExternalResource}
                         >
                           {resources.youtubeIsDirect ? "YouTube" : "YouTube search"}
                         </a>
@@ -322,6 +429,7 @@ export default function LiveSetLists({
                             href={resources.chordsUrl}
                             target="_blank"
                             rel="noreferrer"
+                            onClick={handleExternalResource}
                           >
                             Chords
                           </a>

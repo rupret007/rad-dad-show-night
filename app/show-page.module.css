@@ -185,6 +185,15 @@
 
 .livePanel { display: grid; gap: 30px; }
 .practiceLivePanel { gap: 24px; }
+.offlineStatus { min-height: 54px; padding: 10px 14px; display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 8px 12px; border: 1px solid rgba(255, 255, 255, 0.14); color: var(--muted); background: rgba(255, 255, 255, 0.025); }
+.offlineStatus strong { color: var(--paper); font-size: 0.78rem; letter-spacing: 0.07em; text-transform: uppercase; }
+.offlineStatus > span:last-child { font-size: 0.76rem; }
+.offlineDot { width: 9px; height: 9px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 0 5px rgba(255, 61, 135, 0.1); }
+.offlineStatus[data-state="ready"] { border-color: rgba(184, 245, 39, 0.3); }
+.offlineStatus[data-state="ready"] .offlineDot { background: var(--lime); box-shadow: 0 0 0 5px rgba(184, 245, 39, 0.1); }
+.offlineStatus[data-state="offline"] { border-color: rgba(24, 170, 245, 0.38); background: rgba(24, 170, 245, 0.07); }
+.offlineStatus[data-state="offline"] .offlineDot { background: var(--blue); box-shadow: 0 0 0 5px rgba(24, 170, 245, 0.12); }
+.offlineNotice { margin: -12px 0 0; padding: 11px 14px; color: var(--black); background: var(--pink); font-size: 0.82rem; font-weight: 800; letter-spacing: 0.04em; }
 .practiceToolbar { position: sticky; top: 72px; z-index: 15; margin-bottom: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(5, 5, 6, 0.96); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55); backdrop-filter: blur(18px); }
 .practiceSetNav { padding: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
 .practiceSetNav a { min-height: 38px; padding: 8px 10px; display: grid; place-items: center; color: var(--paper); border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.035); font-size: 0.76rem; font-weight: 800; letter-spacing: 0.07em; text-align: center; text-decoration: none; text-transform: uppercase; }
@@ -293,6 +302,8 @@
   .practiceSection { padding-top: 32px; }
   .practiceSection .sectionHeader { margin-bottom: 24px; }
   .practiceToolbar { top: 66px; margin-right: -7px; margin-left: -7px; }
+  .offlineStatus { grid-template-columns: auto 1fr; }
+  .offlineStatus > span:last-child { grid-column: 2; }
   .practiceSetNav { padding: 7px; gap: 5px; }
   .practiceSetNav a { min-height: 42px; padding: 6px 4px; font-size: 0.64rem; letter-spacing: 0.035em; }
   .nowPlaying { align-items: stretch; flex-direction: column; gap: 9px; }

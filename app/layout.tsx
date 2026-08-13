@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Barlow_Condensed, Bebas_Neue } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
+import OfflineSupport from "./offline-support";
 
 const display = Bebas_Neue({
   variable: "--font-display",
@@ -25,9 +26,16 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Rad Dad + Friends | Show Night",
     description,
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "Rad Dad Sets",
+    },
     icons: {
       icon: "/favicon.svg",
       shortcut: "/favicon.svg",
+      apple: "/icon-180.png",
     },
     openGraph: {
       title: "Rad Dad + Friends | Show Night",
@@ -45,12 +53,15 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport = { themeColor: "#07090c" };
+export const viewport = { themeColor: "#07090c", viewportFit: "cover" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${display.variable} ${body.variable}`}>{children}</body>
+      <body className={`${display.variable} ${body.variable}`}>
+        {children}
+        <OfflineSupport />
+      </body>
     </html>
   );
 }

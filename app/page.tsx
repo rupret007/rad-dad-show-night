@@ -21,7 +21,10 @@ export default async function Home({
   const practiceHref = `${showHref}&practice=1#official-sets`;
 
   return (
-    <main className={`${styles.page} ${practiceMode ? styles.practicePage : ""}`}>
+    <main
+      className={`${styles.page} ${practiceMode ? styles.practicePage : ""}`}
+      data-show-slug={show.slug}
+    >
       <div className={styles.atmosphere} aria-hidden="true" />
 
       <nav className={styles.topBar} aria-label="Show page navigation">
