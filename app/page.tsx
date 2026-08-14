@@ -88,10 +88,10 @@ export default async function Home({
             <span className={styles.posterTape} aria-hidden="true" />
             <Image
               className={styles.poster}
-              src="/rad-dad-friends-flyer.png"
-              alt="Rad Dad and Friends show flyer"
-              width={900}
-              height={1125}
+              src="/rad-dad-friends-guitars-growlers-flyer-v8.png"
+              alt="Rad Dad and Friends at Guitars and Growlers on Saturday, September 19, 2026, from 7 to 10 PM"
+              width={1024}
+              height={1536}
               priority
             />
           </div>
@@ -129,6 +129,14 @@ export default async function Home({
           <div className={styles.heroActions}>
             <a className={styles.primaryAction} href="#run-of-show">
               See the running order
+            </a>
+            <a
+              className={styles.secondaryAction}
+              href="/rad-dad-friends-guitars-growlers-flyer-v8.png"
+              target="_blank"
+              rel="noreferrer"
+            >
+              View full flyer
             </a>
             <SharePageButton />
           </div>
