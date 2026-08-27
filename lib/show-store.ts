@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { showBlocks, shows, songs } from "../db/schema";
 import {
@@ -11,7 +11,7 @@ import {
   type RunOfShowBlock,
   type ShowSong,
 } from "./show-data";
-import { buildSongResourceLinks, getYouTubeVideoId } from "./song-resources";
+import { hydrateOfficialSongMedia } from "./song-resources";
 
 const SEED_KEY = "show-control-seed-v1";
 
@@ -67,14 +67,7 @@ export async function ensureShowSeeded() {
 }
 
 export function hydrateSong(song: ShowSong): ShowSong {
-  const resources = buildSongResourceLinks(song.title, song.artist);
-  return {
-    ...song,
-    youtubeVideoId:
-      song.youtubeVideoId || getYouTubeVideoId(song.youtubeUrl),
-    chordsUrl: song.chordsUrl || resources.chordsSearchUrl,
-    lyricsUrl: song.lyricsUrl || resources.lyricsSearchUrl,
-  };
+  return hydrateOfficialSongMedia(song);
 }
 
 function formatShowDate(value: string): string {

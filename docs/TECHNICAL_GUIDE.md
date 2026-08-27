@@ -2,11 +2,12 @@
 
 ## Purpose
 
-This is the live set surface for show night, not the public band site and not
-the catalog. The public page reads the current official sets from a shared
-database, and the owner can publish set changes through an authenticated
-browser interface. Show Night does not expand Vault. The public band site stays
-at <https://www.raddadband.com>.
+This is the live set surface for show night, not the public band site, not the
+catalog, and not the band OS. The public page reads the current official sets
+from a shared database, and the owner can publish set changes through an
+authenticated browser interface. Show Night does not expand Vault. Missing
+media fails closed. The public band site stays at
+<https://www.raddadband.com>.
 
 ## Production links
 
@@ -31,8 +32,10 @@ at <https://www.raddadband.com>.
 | `lib/show-data.ts` | Event constants and initial confirmed songs |
 | `lib/show-store.ts` | Database seeding, reads, and song hydration |
 | `lib/admin-access.ts` | Owner email authorization |
-| `lib/surface-roles.ts` | Live-set / catalog / public-site roles |
-| `lib/song-resources.ts` | YouTube URL parsing and resource-search URLs |
+| `lib/surface-roles.ts` | Live-set / catalog / public-site / band-OS roles |
+| `lib/song-resources.ts` | YouTube URL parsing and fail-closed public media |
+| `lib/show-media.ts` | Existing flyer fallbacks for first paint |
+| `app/show-flyer.tsx` | Fail-closed public flyer |
 | `db/schema.ts` | Drizzle schema |
 | `drizzle/0000_show_control.sql` | Initial D1 migration |
 | `.openai/hosting.json` | Sites project and logical storage bindings |
@@ -46,8 +49,8 @@ The server renders the current set from D1. `LiveSetLists` then requests
 This lets an already-open page receive changes made in Show Control.
 
 The public list renders YouTube and lyrics actions for songs not marked
-original. Exact saved URLs take priority; otherwise it exposes targeted search
-links. Original songs display neither resource.
+original only when a curated or saved direct URL exists. Search fallbacks are
+not shown as if they were media. Original songs display neither resource.
 
 If D1 is temporarily unavailable, the server returns the confirmed defaults in
 `lib/show-data.ts` so the show plan does not disappear.

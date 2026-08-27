@@ -134,6 +134,7 @@
 .heroDek { max-width: 610px; margin: 36px 0 30px; color: #c4c8c7; font-size: clamp(1.2rem, 2vw, 1.48rem); line-height: 1.45; }
 
 .eventGrid { display: grid; grid-template-columns: 1.35fr 0.85fr 1fr; border-top: 1px solid rgba(255, 255, 255, 0.18); border-bottom: 1px solid rgba(255, 255, 255, 0.18); }
+.officialSetGrid { margin-top: 14px; }
 .eventFact { padding: 18px 17px 18px 0; }
 .eventFact + .eventFact { padding-left: 17px; border-left: 1px solid rgba(255, 255, 255, 0.13); }
 .factLabel { display: block; margin-bottom: 5px; color: var(--lime); font-size: 0.69rem; font-weight: 800; letter-spacing: 0.17em; text-transform: uppercase; }

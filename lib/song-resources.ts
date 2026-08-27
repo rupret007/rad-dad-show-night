@@ -107,6 +107,54 @@ export function isSearchResourceUrl(value: string) {
   }
 }
 
+export function hydrateOfficialSongMedia<
+  T extends {
+    youtubeUrl: string;
+    youtubeVideoId: string;
+    lyricsUrl: string;
+    chordsUrl: string;
+  },
+>(song: T): T {
+  const youtubeUrl = isSearchResourceUrl(song.youtubeUrl)
+    ? ""
+    : song.youtubeUrl.trim();
+  const lyricsUrl = isSearchResourceUrl(song.lyricsUrl)
+    ? ""
+    : song.lyricsUrl.trim();
+  const chordsUrl = isSearchResourceUrl(song.chordsUrl)
+    ? ""
+    : song.chordsUrl.trim();
+
+  return {
+    ...song,
+    youtubeUrl,
+    lyricsUrl,
+    chordsUrl,
+    youtubeVideoId: song.youtubeVideoId.trim() || getYouTubeVideoId(youtubeUrl),
+  };
+}
+
+export function publicSongResourceActions(
+  song: SongResourceInput & { isOriginal?: boolean },
+) {
+  if (song.isOriginal) {
+    return {
+      youtubeUrl: "",
+      lyricsUrl: "",
+      youtubeIsDirect: false,
+      lyricsIsDirect: false,
+    };
+  }
+
+  const resources = resolveSongResourceLinks(song);
+  return {
+    youtubeUrl: resources.youtubeIsDirect ? resources.youtubeUrl : "",
+    lyricsUrl: resources.lyricsIsDirect ? resources.lyricsUrl : "",
+    youtubeIsDirect: resources.youtubeIsDirect,
+    lyricsIsDirect: resources.lyricsIsDirect,
+  };
+}
+
 export function resolveSongResourceLinks(song: SongResourceInput) {
   const searches = buildSongResourceLinks(song.title, song.artist);
   const curated = getCuratedSongResources(song.title, song.artist);

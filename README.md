@@ -4,7 +4,7 @@ The shared show-night hub for **Rad Dad + Friends** at **Guitars & Growlers** on
 **Saturday, September 19, 2026, from 7:00-10:00 PM**.
 
 <p align="center">
-  <img src="public/rad-dad-friends-flyer.png" alt="Rad Dad and Friends show flyer" width="420">
+  <img src="public/rad-dad-friends-guitars-growlers-flyer-v8.png" alt="Rad Dad and Friends show flyer" width="420">
 </p>
 
 ## Open the site
@@ -12,9 +12,10 @@ The shared show-night hub for **Rad Dad + Friends** at **Guitars & Growlers** on
 ### [OPEN THE PUBLIC SHOW PAGE](https://rad-dad-show-night.jeffstory007.chatgpt.site)
 
 The public page is the link to send performers, friends, and guests. It includes
-the master timeline, current official sets, production notes, YouTube links, and
-the public suggestion board. This is the live set surface, not the public band
-site and not the catalog. Show Night does not expand Vault. The public band site
+the master timeline, current official sets, production notes, and the public
+suggestion board. Covers can show YouTube and lyrics when saved; originals hide
+both. This is the live set surface, not the public band site, not the catalog,
+and not the band OS. Show Night does not expand Vault. The public band site
 stays at [raddadband.com](https://www.raddadband.com).
 
 ### [OPEN PRIVATE SHOW CONTROL](https://rad-dad-show-night.jeffstory007.chatgpt.site/show-control)
@@ -115,6 +116,7 @@ database updates and appear publicly without a GitHub deployment.
   live in Sites D1 and are edited in Show Control.
 - Catalog: Vault. Show Night does not expand Vault and does not dump catalog
   titles onto the public page.
+- Band OS: StoryBoard. Show Night does not become a second homepage or band OS.
 - Public band site: [raddadband.com](https://www.raddadband.com). That site is
   the public Rad Dad homepage, not the night-of set.
 

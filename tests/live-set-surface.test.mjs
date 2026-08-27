@@ -14,6 +14,7 @@ const {
   RADDAD_SITE_ROLE,
   SHOW_NIGHT_DOES_NOT_EXPAND_VAULT,
   SHOW_NIGHT_ROLE,
+  STORYBOARD_ROLE,
   TRAVIS_BOOKS,
   VAULT_ROLE,
 } = await import("../lib/surface-roles.ts");
@@ -92,6 +93,8 @@ test("surface roles name Show Night as the live set, not the catalog or public s
   assert.equal(SHOW_NIGHT_ROLE, "live_set_surface");
   assert.equal(VAULT_ROLE, "catalog");
   assert.equal(RADDAD_SITE_ROLE, "public_site");
+  assert.equal(STORYBOARD_ROLE, "band_os");
+  assert.notEqual(SHOW_NIGHT_ROLE, STORYBOARD_ROLE);
   assert.equal(SHOW_NIGHT_DOES_NOT_EXPAND_VAULT, true);
   assert.equal(NEVER_AUTO_POST, true);
   assert.equal(TRAVIS_BOOKS, true);

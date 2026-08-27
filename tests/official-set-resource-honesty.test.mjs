@@ -4,11 +4,16 @@ import test from "node:test";
 
 const {
   LIVE_SET_SLUGS,
+  MISSING_MEDIA_FAILS_CLOSED,
   ORIGINALS_HIDE_PUBLIC_RESOURCES,
   SHOW_NIGHT_DOES_NOT_EXPAND_VAULT,
 } = await import("../lib/surface-roles.ts");
 const { DEFAULT_SONGS } = await import("../lib/show-data.ts");
-const { getCuratedSongResources } = await import("../lib/song-resources.ts");
+const {
+  getCuratedSongResources,
+  hydrateOfficialSongMedia,
+  publicSongResourceActions,
+} = await import("../lib/song-resources.ts");
 
 const pageUrl = new URL("../app/page.tsx", import.meta.url);
 const liveSetListsUrl = new URL("../app/live-set-lists.tsx", import.meta.url);
@@ -46,6 +51,7 @@ const everySongHasYouTubeLies = [
 
 test("surface roles admit originals hide public resources on the live set", () => {
   assert.equal(ORIGINALS_HIDE_PUBLIC_RESOURCES, true);
+  assert.equal(MISSING_MEDIA_FAILS_CLOSED, true);
   assert.equal(SHOW_NIGHT_DOES_NOT_EXPAND_VAULT, true);
   assert.deepEqual([...LIVE_SET_SLUGS], [
     "jeff-story-friends",
@@ -68,7 +74,10 @@ test("official-set copy does not claim every song has a YouTube path", async () 
       assert.doesNotMatch(source, token);
     }
   }
-  assert.match(page, /Covers can show YouTube and lyrics; originals hide both/);
+  assert.match(
+    page,
+    /Covers can show YouTube and lyrics when saved; originals hide both/,
+  );
   assert.match(page, /These lists update from Show Control/);
   assert.match(plan, /The Way I Love You is the only Rad Dad original/);
   assert.match(guide, /Original songs display neither resource/);
@@ -76,10 +85,50 @@ test("official-set copy does not claim every song has a YouTube path", async () 
 
 test("the live list hides YouTube and lyrics for official originals", async () => {
   const source = await readFile(liveSetListsUrl, "utf8");
-  assert.match(source, /\{!song\.isOriginal \? \(/);
+  assert.match(source, /publicSongResourceActions/);
+  assert.match(source, /\{!song\.isOriginal &&/);
   assert.match(source, /styles\.resourceBar/);
   assert.match(source, /song\.isOriginal \? \(/);
   assert.match(source, /Original/);
+  assert.doesNotMatch(source, /YouTube search/);
+  assert.doesNotMatch(source, /Lyrics search/);
+});
+
+test("missing official-set media fails closed instead of inventing a search", () => {
+  const original = publicSongResourceActions({
+    title: "The Drinking Song",
+    artist: "",
+    isOriginal: true,
+  });
+  assert.equal(original.youtubeUrl, "");
+  assert.equal(original.lyricsUrl, "");
+
+  const excludedSiteRow = publicSongResourceActions({
+    title: "Song 2",
+    artist: "Blur",
+    isOriginal: false,
+  });
+  assert.equal(excludedSiteRow.youtubeUrl, "");
+  assert.equal(excludedSiteRow.lyricsUrl, "");
+
+  const officialCover = publicSongResourceActions({
+    title: "Badfish",
+    artist: "Sublime",
+    isOriginal: false,
+  });
+  assert.match(officialCover.youtubeUrl, /youtube\.com\/watch\?v=/);
+  assert.equal(officialCover.youtubeIsDirect, true);
+
+  const hydratedSearch = hydrateOfficialSongMedia({
+    youtubeUrl: "https://www.youtube.com/results?search_query=santeria",
+    youtubeVideoId: "",
+    lyricsUrl: "https://genius.com/search?q=santeria",
+    chordsUrl: "https://www.ultimate-guitar.com/search.php?search_type=title&value=santeria",
+  });
+  assert.equal(hydratedSearch.youtubeUrl, "");
+  assert.equal(hydratedSearch.lyricsUrl, "");
+  assert.equal(hydratedSearch.chordsUrl, "");
+  assert.equal(hydratedSearch.youtubeVideoId, "");
 });
 
 test("curated resources do not invent YouTube for official originals", async () => {
