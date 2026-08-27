@@ -6,6 +6,7 @@ export const PUBLIC_SITE_URL = "https://www.raddadband.com";
 export const PUBLIC_SITE_LABEL = "Public band site";
 
 export const SHOW_NIGHT_DOES_NOT_EXPAND_VAULT = true;
+export const ORIGINALS_HIDE_PUBLIC_RESOURCES = true;
 export const NEVER_AUTO_POST = true;
 export const TRAVIS_BOOKS = true;
 
