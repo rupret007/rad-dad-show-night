@@ -2,14 +2,17 @@
 
 ## Purpose
 
-This is a dynamic show-management application, not a static event flyer. The
-public page reads the current official sets from a shared database, and the
-owner can publish set changes through an authenticated browser interface.
+This is the live set surface for show night, not the public band site and not
+the catalog. The public page reads the current official sets from a shared
+database, and the owner can publish set changes through an authenticated
+browser interface. Show Night does not expand Vault. The public band site stays
+at <https://www.raddadband.com>.
 
 ## Production links
 
-- Public site: <https://rad-dad-show-night.jeffstory007.chatgpt.site>
+- Live set surface: <https://rad-dad-show-night.jeffstory007.chatgpt.site>
 - Owner editor: <https://rad-dad-show-night.jeffstory007.chatgpt.site/show-control>
+- Public band site: <https://www.raddadband.com>
 - GitHub: <https://github.com/rupret007/rad-dad-show-night>
 
 ## Application structure
@@ -28,6 +31,7 @@ owner can publish set changes through an authenticated browser interface.
 | `lib/show-data.ts` | Event constants and initial confirmed songs |
 | `lib/show-store.ts` | Database seeding, reads, and song hydration |
 | `lib/admin-access.ts` | Owner email authorization |
+| `lib/surface-roles.ts` | Live-set / catalog / public-site roles |
 | `lib/song-resources.ts` | YouTube URL parsing and resource-search URLs |
 | `db/schema.ts` | Drizzle schema |
 | `drizzle/0000_show_control.sql` | Initial D1 migration |

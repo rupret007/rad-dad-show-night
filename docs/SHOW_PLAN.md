@@ -8,8 +8,10 @@
 - Show window: 7:00-10:00 PM
 - Finish language: expected wrap near 10:00 PM, not a venue curfew
 
-The live database is the operational source of truth. This document records the
-confirmed baseline used to seed it.
+The live database is the operational source of truth for this live set surface.
+This document records the confirmed baseline used to seed it. Show Night does
+not expand Vault. The public band site stays at
+<https://www.raddadband.com>.
 
 ## Master run of show
 

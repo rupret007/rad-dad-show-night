@@ -13,7 +13,9 @@ The shared show-night hub for **Rad Dad + Friends** at **Guitars & Growlers** on
 
 The public page is the link to send performers, friends, and guests. It includes
 the master timeline, current official sets, production notes, YouTube links, and
-the public suggestion board.
+the public suggestion board. This is the live set surface, not the public band
+site and not the catalog. Show Night does not expand Vault. The public band site
+stays at [raddadband.com](https://www.raddadband.com).
 
 ### [OPEN PRIVATE SHOW CONTROL](https://rad-dad-show-night.jeffstory007.chatgpt.site/show-control)
 
@@ -107,6 +109,15 @@ Pushing code to `main` keeps the repository current but does not, by itself,
 replace the Sites production deployment. Changes made inside Show Control are
 database updates and appear publicly without a GitHub deployment.
 
+## Surfaces
+
+- Live set surface: this Show Night app. Official order, keys, and handoffs
+  live in Sites D1 and are edited in Show Control.
+- Catalog: Vault. Show Night does not expand Vault and does not dump catalog
+  titles onto the public page.
+- Public band site: [raddadband.com](https://www.raddadband.com). That site is
+  the public Rad Dad homepage, not the night-of set.
+
 ## Source of truth
 
 - Live set data: Sites D1 database
@@ -116,6 +127,7 @@ database updates and appear publicly without a GitHub deployment.
 - Database migration: `drizzle/0000_show_control.sql`
 - Public suggestions: connected Google Form and response Sheet
 - Canonical human-readable plan: [docs/SHOW_PLAN.md](docs/SHOW_PLAN.md)
+- Public band site: [raddadband.com](https://www.raddadband.com)
 
 The expected finish is around 10:00 PM. It is a planned wrap time, not a venue
 curfew.

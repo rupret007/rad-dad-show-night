@@ -1,0 +1,25 @@
+export const SHOW_NIGHT_ROLE = "live_set_surface" as const;
+export const VAULT_ROLE = "catalog" as const;
+export const RADDAD_SITE_ROLE = "public_site" as const;
+
+export const PUBLIC_SITE_URL = "https://www.raddadband.com";
+export const PUBLIC_SITE_LABEL = "Public band site";
+
+export const SHOW_NIGHT_DOES_NOT_EXPAND_VAULT = true;
+export const NEVER_AUTO_POST = true;
+export const TRAVIS_BOOKS = true;
+
+export const PUBLIC_SUGGESTION_WRITER = "POST /api/suggestions";
+export const OFFICIAL_SET_WRITER = "POST /api/show";
+
+export const LIVE_SET_SLUGS = [
+  "jeff-story-friends",
+  "stalemate",
+  "rad-dad",
+] as const;
+
+export const SURFACE_ROLES = {
+  showNight: SHOW_NIGHT_ROLE,
+  vault: VAULT_ROLE,
+  radDadSite: RADDAD_SITE_ROLE,
+} as const;
