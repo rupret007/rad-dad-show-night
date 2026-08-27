@@ -1,7 +1,9 @@
-import Image from "next/image";
 import LiveSetLists, { SharePageButton } from "./live-set-lists";
+import ShowFlyer from "./show-flyer";
 import SongBoard from "./song-board";
 import styles from "./show-page.module.css";
+import { SET_DEFINITIONS } from "../lib/show-data";
+import { SHOW_FLYER_CANDIDATES } from "../lib/show-media";
 import { getShowPayload } from "../lib/show-store";
 import { PUBLIC_SITE_LABEL, PUBLIC_SITE_URL } from "../lib/surface-roles";
 
@@ -33,12 +35,12 @@ export default async function Home({
           <a
             className={styles.identity}
             href={practiceMode ? showHref : "#top"}
-            aria-label="Rad Dad show night home"
+            aria-label="Rad Dad show night"
           >
             <span className={styles.logoMark}>RD</span>
             <span>
               <strong>RAD DAD + FRIENDS</strong>
-              <small>SHOW NIGHT HQ</small>
+              <small>SHOW NIGHT</small>
             </span>
           </a>
           <div className={styles.topLinks}>
@@ -55,7 +57,7 @@ export default async function Home({
                 <a href="#official-sets">Set lists</a>
                 <a href="#suggestions">Suggest a song</a>
                 <a className={styles.practiceLink} href={practiceHref}>
-                  Practice + lyrics
+                  Practice mode
                 </a>
                 <a className={styles.controlLink} href={controlHref}>
                   Owner: edit set
@@ -72,8 +74,8 @@ export default async function Home({
             <p className={styles.practiceEyebrow}>Rehearsal reference / live list</p>
             <h1 className={styles.practiceTitle}>PRACTICE MODE</h1>
             <p className={styles.practiceDek}>
-              Tap a song to mark your place. Lyrics and YouTube open in a new tab,
-              so this set order stays ready when you come back.
+              Tap a song to mark your place. Saved lyrics and YouTube open in a
+              new tab when a song has them.
             </p>
           </div>
           <div className={styles.practiceShowMeta}>
@@ -84,19 +86,7 @@ export default async function Home({
         </header>
       ) : (
       <header className={styles.hero} id="top">
-        <div className={styles.heroPosterWrap}>
-          <div className={styles.posterFrame}>
-            <span className={styles.posterTape} aria-hidden="true" />
-            <Image
-              className={styles.poster}
-              src="/rad-dad-friends-guitars-growlers-flyer-v8.png"
-              alt="Rad Dad and Friends at Guitars and Growlers on Saturday, September 19, 2026, from 7 to 10 PM"
-              width={1024}
-              height={1536}
-              priority
-            />
-          </div>
-        </div>
+        <ShowFlyer alt="Rad Dad and Friends at Guitars and Growlers on Saturday, September 19, 2026, from 7 to 10 PM" />
 
         <div className={styles.heroCopy}>
           <div className={styles.eyebrow}>
@@ -109,7 +99,8 @@ export default async function Home({
           </h1>
           <p className={styles.heroDek}>
             The live set surface for this night: official order, handoffs, and
-            keys. The public band site stays on raddadband.com.
+            keys. Covers can show YouTube and lyrics when saved; originals hide
+            both. The public band site stays on raddadband.com.
           </p>
 
           <div className={styles.eventGrid}>
@@ -127,13 +118,28 @@ export default async function Home({
             </div>
           </div>
 
+          <div
+            className={`${styles.eventGrid} ${styles.officialSetGrid}`}
+            aria-label="Official sets"
+          >
+            {SET_DEFINITIONS.map((set) => (
+              <div className={styles.eventFact} key={set.slug}>
+                <span className={styles.factLabel}>{set.time}</span>
+                <strong className={styles.factValue}>{set.title}</strong>
+              </div>
+            ))}
+          </div>
+
           <div className={styles.heroActions}>
-            <a className={styles.primaryAction} href="#run-of-show">
+            <a className={styles.primaryAction} href="#official-sets">
+              See the official sets
+            </a>
+            <a className={styles.secondaryAction} href="#run-of-show">
               See the running order
             </a>
             <a
               className={styles.secondaryAction}
-              href="/rad-dad-friends-guitars-growlers-flyer-v8.png"
+              href={SHOW_FLYER_CANDIDATES[0]}
               target="_blank"
               rel="noreferrer"
             >
@@ -216,8 +222,8 @@ export default async function Home({
           </div>
           <p className={styles.sectionCopy}>
             {practiceMode
-              ? "This is the official live order. Tap any song to mark it current, then use the large resource buttons without losing your place."
-              : "These lists update from Show Control. Flow arrows are intentional transitions. Covers can show YouTube and lyrics; originals hide both."}
+              ? "This is the official live order. Tap any song to mark it current. Saved lyrics and YouTube stay on that song when they exist."
+              : "These lists update from Show Control. Flow arrows are intentional transitions. Covers can show YouTube and lyrics when saved; originals hide both."}
           </p>
         </div>
         <LiveSetLists

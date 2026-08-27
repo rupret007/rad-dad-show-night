@@ -8,7 +8,10 @@ import {
   type MouseEvent,
 } from "react";
 import { SET_DEFINITIONS, type ShowSong } from "../lib/show-data";
-import { resolveSongResourceLinks } from "../lib/song-resources";
+import {
+  isSearchResourceUrl,
+  publicSongResourceActions,
+} from "../lib/song-resources";
 import styles from "./show-page.module.css";
 
 export function SharePageButton({ label = "Share this page" }: { label?: string }) {
@@ -360,7 +363,11 @@ export default function LiveSetLists({
 
             <ol className={styles.songList}>
               {setSongs.map((song) => {
-                const resources = resolveSongResourceLinks(song);
+                const resources = publicSongResourceActions(song);
+                const chordsUrl =
+                  practiceMode && song.chordsUrl && !isSearchResourceUrl(song.chordsUrl)
+                    ? song.chordsUrl
+                    : "";
                 return (
                   <li
                     className={`${styles.songRow} ${
@@ -408,36 +415,35 @@ export default function LiveSetLists({
                         <span className={styles.songDetails}>Original</span>
                       ) : null}
                     </button>
-                    {!song.isOriginal ? (
+                    {!song.isOriginal &&
+                    (resources.lyricsUrl || resources.youtubeUrl || chordsUrl) ? (
                       <div className={styles.resourceBar} aria-label={`${song.title} resources`}>
-                        <a
-                          className={styles.resourceLink}
-                          href={resources.lyricsUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={handleExternalResource}
-                        >
-                          {practiceMode
-                            ? resources.lyricsIsDirect
-                              ? "Open lyrics"
-                              : "Find lyrics"
-                            : resources.lyricsIsDirect
-                              ? "Lyrics"
-                              : "Lyrics search"}
-                        </a>
-                        <a
-                          className={styles.resourceLink}
-                          href={resources.youtubeUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={handleExternalResource}
-                        >
-                          {resources.youtubeIsDirect ? "YouTube" : "YouTube search"}
-                        </a>
-                        {practiceMode && song.chordsUrl ? (
+                        {resources.lyricsUrl ? (
                           <a
                             className={styles.resourceLink}
-                            href={resources.chordsUrl}
+                            href={resources.lyricsUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={handleExternalResource}
+                          >
+                            {practiceMode ? "Open lyrics" : "Lyrics"}
+                          </a>
+                        ) : null}
+                        {resources.youtubeUrl ? (
+                          <a
+                            className={styles.resourceLink}
+                            href={resources.youtubeUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={handleExternalResource}
+                          >
+                            YouTube
+                          </a>
+                        ) : null}
+                        {chordsUrl ? (
+                          <a
+                            className={styles.resourceLink}
+                            href={chordsUrl}
                             target="_blank"
                             rel="noreferrer"
                             onClick={handleExternalResource}

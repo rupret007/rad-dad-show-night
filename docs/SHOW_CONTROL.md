@@ -98,12 +98,13 @@ enables a private preview.
 The public page uses links rather than embedding every video. This keeps the set
 list fast and uncluttered on phones.
 
-Covers display YouTube and lyrics actions. A saved exact URL is preferred; when
-one is not saved, the site opens a targeted search. Songs marked **Original /
-hide resources** display neither action.
+Covers display YouTube and lyrics actions only when a saved or curated direct
+URL exists. Missing media fails closed. Songs marked **Original / hide
+resources** display neither action.
 
 The confirmed originals are The Drinking Song, all Stalemate songs, and The Way
-I Love You. The remaining Rad Dad songs are covers and retain both resources.
+I Love You. The remaining Rad Dad songs are covers and can show both resources
+when a direct URL exists.
 
 Without a configured YouTube Data API key, **Find YouTube** opens or prepares a
 search instead of choosing a video without the owner's review. This is the
