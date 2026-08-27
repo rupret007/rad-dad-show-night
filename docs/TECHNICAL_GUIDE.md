@@ -76,6 +76,8 @@ Show Control. Cover suggestions run resource lookup when added to a draft;
 checked originals skip it and hide public YouTube and lyrics actions.
 
 The backup form remains linked from the public page.
+It opens the connected Google Form directly; there is no second application
+write endpoint with separate validation behavior.
 
 ## Database
 

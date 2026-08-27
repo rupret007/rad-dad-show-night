@@ -162,42 +162,11 @@ test("spoofed official-set fields never reach the Google Form write", async () =
   assert.doesNotMatch(calls[0].body, /setSlug|songKey|rad-dad/);
 });
 
-test("backup suggestion submit also posts only sanitized board fields", async () => {
-  const calls = [];
-  const suggestionFetch = createPublicSuggestionFetch(async (url, init = {}) => {
-    calls.push({
-      url: String(url),
-      method: String(init.method ?? "GET").toUpperCase(),
-      body: typeof init.body === "string" ? init.body : String(init.body ?? ""),
-    });
-    return new Response("ok", { status: 200 });
-  });
-
-  const isolated = sanitizePublicSuggestion(
-    spoofedOfficialSetPayload({
-      song: "Public Idea Only",
-      title: undefined,
-    }),
+test("legacy duplicate suggestion writer stays removed", async () => {
+  await assert.rejects(
+    () => readFile(suggestionSubmitUrl, "utf8"),
+    (error) => error?.code === "ENOENT",
   );
-  assert.equal(isolated.kind, "suggestion");
-
-  const form = new URLSearchParams({
-    "entry.988161673": isolated.suggestion.title.slice(0, 120),
-    "entry.515724080": isolated.suggestion.artist.slice(0, 120),
-    "entry.1834262230": isolated.suggestion.addedBy.slice(0, 80),
-    "entry.286610891": isolated.suggestion.notes.slice(0, 400),
-    submit: "Submit",
-  });
-
-  const response = await suggestionFetch(PUBLIC_SUGGESTION_FORM_URL, {
-    method: "POST",
-    body: form.toString(),
-  });
-  assert.equal(response.status, 200);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].url, PUBLIC_SUGGESTION_FORM_URL);
-  assert.doesNotMatch(calls[0].body, /Hijacked Official Title/);
-  assert.doesNotMatch(calls[0].body, /songKey|drop d|setSlug/);
 });
 
 test("guarded suggestion fetch refuses an official-set write URL", async () => {
@@ -217,7 +186,6 @@ test("guarded suggestion fetch refuses an official-set write URL", async () => {
 test("public suggestion routes never import official-set writers", async () => {
   const sources = await Promise.all([
     readFile(suggestionRouteUrl, "utf8"),
-    readFile(suggestionSubmitUrl, "utf8"),
     readFile(publicSuggestionUrl, "utf8"),
     readFile(songBoardUrl, "utf8"),
   ]);
@@ -229,11 +197,9 @@ test("public suggestion routes never import official-set writers", async () => {
     assert.doesNotMatch(source, /\/api\/show/);
   }
 
-  const [canonical, backup] = sources;
+  const [canonical] = sources;
   assert.match(canonical, /writeSanitizedSuggestionToForm/);
   assert.match(canonical, /sanitizePublicSuggestion/);
-  assert.match(backup, /createPublicSuggestionFetch/);
-  assert.match(backup, /sanitizePublicSuggestion/);
 });
 
 test("official set POST requires the owner before any song write", async () => {
