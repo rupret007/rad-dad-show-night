@@ -148,6 +148,10 @@ Public. Reads and parses the connected Google Sheet CSV feed.
 
 Public. Validates the submission, checks for a duplicate when possible, and
 submits it to the connected Google Form. Suggestions never write to D1.
+`lib/public-suggestion.ts` strips official-set fields and allows network writes
+only to the connected Google Form. The regression suite in
+`tests/suggestion-cannot-mutate-set.test.mjs` fails if a public suggestion can
+alter official set order, keys, or song rows.
 
 ### `GET/POST /api/shows`
 

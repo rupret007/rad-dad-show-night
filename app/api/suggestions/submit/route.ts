@@ -1,9 +1,11 @@
-const FORM_URL =
-  "https://docs.google.com/forms/d/e/1FAIpQLSe93ppe0NaWrOBKyfIuuWyMRQrNWpwdwYq8dpTGb0yCnEhjDA/formResponse";
+import {
+  PUBLIC_SUGGESTION_FORM_URL,
+  PUBLIC_SUGGESTION_SHEET_CSV_URL,
+  createPublicSuggestionFetch,
+  sanitizePublicSuggestion,
+} from "../../../../lib/public-suggestion";
 
-const CSV_URL =
-  "https://docs.google.com/spreadsheets/d/1wnw2qENE9v1LVroC-V3sZLyOr1-JKRrHTzr2L2k35kM/gviz/tq?tqx=out:csv&sheet=Form%20Responses%201";
-
+const suggestionFetch = createPublicSuggestionFetch();
 const recentAttempts = new Map<string, number>();
 const RATE_LIMIT_MS = 8000;
 
@@ -41,10 +43,6 @@ function parseCsv(input: string): string[][] {
   return rows;
 }
 
-function clean(value: unknown, limit: number) {
-  return typeof value === "string" ? value.trim().slice(0, limit) : "";
-}
-
 function normalize(value: string) {
   return value
     .normalize("NFKD")
@@ -57,7 +55,9 @@ function normalize(value: string) {
 
 async function alreadySuggested(song: string, artist: string) {
   try {
-    const response = await fetch(CSV_URL, { cache: "no-store" });
+    const response = await suggestionFetch(PUBLIC_SUGGESTION_SHEET_CSV_URL, {
+      cache: "no-store",
+    });
     if (!response.ok) return false;
 
     const rows = parseCsv(await response.text());
@@ -91,19 +91,20 @@ export async function POST(request: Request) {
   let body: Record<string, unknown>;
 
   try {
-    body = await request.json();
+    body = (await request.json()) as Record<string, unknown>;
   } catch {
     return Response.json({ error: "That submission could not be read." }, { status: 400 });
   }
 
-  if (clean(body.website, 200)) {
+  const isolated = sanitizePublicSuggestion(body);
+  if (isolated.kind === "honeypot") {
     return Response.json({ ok: true });
   }
 
-  const song = clean(body.song, 120);
-  const artist = clean(body.artist, 120);
-  const addedBy = clean(body.addedBy, 80);
-  const notes = clean(body.notes, 400);
+  const song = isolated.suggestion.title.slice(0, 120);
+  const artist = isolated.suggestion.artist.slice(0, 120);
+  const addedBy = isolated.suggestion.addedBy.slice(0, 80);
+  const notes = isolated.suggestion.notes.slice(0, 400);
 
   if (song.length < 2 || artist.length < 2 || addedBy.length < 2) {
     return Response.json(
@@ -141,7 +142,7 @@ export async function POST(request: Request) {
   });
 
   try {
-    const response = await fetch(FORM_URL, {
+    const response = await suggestionFetch(PUBLIC_SUGGESTION_FORM_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
