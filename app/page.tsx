@@ -217,7 +217,7 @@ export default async function Home({
           <p className={styles.sectionCopy}>
             {practiceMode
               ? "This is the official live order. Tap any song to mark it current, then use the large resource buttons without losing your place."
-              : "These lists update from Show Control. Flow arrows are intentional transitions, and every song has a direct YouTube path."}
+              : "These lists update from Show Control. Flow arrows are intentional transitions. Covers can show YouTube and lyrics; originals hide both."}
           </p>
         </div>
         <LiveSetLists
