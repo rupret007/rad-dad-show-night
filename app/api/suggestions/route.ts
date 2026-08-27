@@ -1,9 +1,13 @@
-const SHEET_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/1wnw2qENE9v1LVroC-V3sZLyOr1-JKRrHTzr2L2k35kM/gviz/tq?tqx=out:csv&sheet=Form%20Responses%201";
-const FORM_RESPONSE_URL =
-  "https://docs.google.com/forms/d/e/1FAIpQLSe93ppe0NaWrOBKyfIuuWyMRQrNWpwdwYq8dpTGb0yCnEhjDA/formResponse";
+import {
+  PUBLIC_SUGGESTION_SHEET_CSV_URL,
+  createPublicSuggestionFetch,
+  sanitizePublicSuggestion,
+  writeSanitizedSuggestionToForm,
+} from "../../../lib/public-suggestion";
 
 export const dynamic = "force-dynamic";
+
+const suggestionFetch = createPublicSuggestionFetch();
 
 type Suggestion = {
   id: string;
@@ -28,22 +32,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const payload = (await request.json()) as {
-      title?: string;
-      artist?: string;
-      addedBy?: string;
-      notes?: string;
-      isOriginal?: boolean | string;
-      website?: string;
-    };
-    if (payload.website) return Response.json({ ok: true });
+    const payload = (await request.json()) as Record<string, unknown>;
+    const isolated = sanitizePublicSuggestion(payload);
+    if (isolated.kind === "honeypot") return Response.json({ ok: true });
 
-    const title = clean(payload.title, 140);
-    const artist = clean(payload.artist, 140);
-    const addedBy = clean(payload.addedBy, 100);
-    const notes = clean(payload.notes, 500);
-    const isOriginal =
-      payload.isOriginal === true || payload.isOriginal === "true";
+    const { title, artist, addedBy, notes, isOriginal } = isolated.suggestion;
     if (!title || !addedBy) {
       return Response.json(
         { error: "Song title and your name are required." },
@@ -68,23 +61,13 @@ export async function POST(request: Request) {
       // A temporary feed problem should not block a new suggestion.
     }
 
-    const formBody = new URLSearchParams({
-      "entry.988161673": title,
-      "entry.515724080": artist,
-      "entry.1834262230": addedBy,
-      "entry.286610891": isOriginal
-        ? `[ORIGINAL]${notes ? ` ${notes}` : ""}`
-        : notes,
+    await writeSanitizedSuggestionToForm({
+      title,
+      artist,
+      addedBy,
+      notes,
+      isOriginal,
     });
-    const response = await fetch(FORM_RESPONSE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: formBody,
-      redirect: "manual",
-    });
-    if (response.status >= 400) {
-      throw new Error("The suggestion form did not accept the song.");
-    }
 
     const suggestion: Suggestion = {
       id: `${Date.now()}-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
@@ -110,7 +93,9 @@ export async function POST(request: Request) {
 }
 
 async function loadSuggestions(): Promise<Suggestion[]> {
-  const response = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+  const response = await suggestionFetch(PUBLIC_SUGGESTION_SHEET_CSV_URL, {
+    cache: "no-store",
+  });
   if (!response.ok) throw new Error("Suggestion feed unavailable.");
   const rows = parseCsv(await response.text());
   if (rows.length < 2) return [];
@@ -170,8 +155,4 @@ function parseCsv(input: string): string[][] {
     rows.push(row);
   }
   return rows;
-}
-
-function clean(value: unknown, maxLength: number): string {
-  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
