@@ -132,7 +132,7 @@ test("docs keep the three-surface split and do not dump a catalog", async () => 
 
   for (const source of [readme, guide, plan]) {
     assert.match(source, /live set surface/i);
-    assert.match(source, /does not expand Vault/i);
+    assert.match(source, /does\s+not\s+expand\s+Vault/i);
     assert.match(source, /raddadband\.com/);
     assert.doesNotMatch(source, /one shared source of truth/i);
     assert.doesNotMatch(source, /this page is the source of truth/i);
