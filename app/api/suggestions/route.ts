@@ -1,9 +1,8 @@
 import {
-  PUBLIC_SUGGESTION_FORM_URL,
   PUBLIC_SUGGESTION_SHEET_CSV_URL,
-  buildPublicSuggestionFormBody,
   createPublicSuggestionFetch,
   sanitizePublicSuggestion,
+  writeSanitizedSuggestionToForm,
 } from "../../../lib/public-suggestion";
 
 export const dynamic = "force-dynamic";
@@ -62,21 +61,13 @@ export async function POST(request: Request) {
       // A temporary feed problem should not block a new suggestion.
     }
 
-    const response = await suggestionFetch(PUBLIC_SUGGESTION_FORM_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: buildPublicSuggestionFormBody({
-        title,
-        artist,
-        addedBy,
-        notes,
-        isOriginal,
-      }),
-      redirect: "manual",
+    await writeSanitizedSuggestionToForm({
+      title,
+      artist,
+      addedBy,
+      notes,
+      isOriginal,
     });
-    if (response.status >= 400) {
-      throw new Error("The suggestion form did not accept the song.");
-    }
 
     const suggestion: Suggestion = {
       id: `${Date.now()}-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,

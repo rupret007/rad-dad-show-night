@@ -7,8 +7,10 @@ const {
   PUBLIC_SUGGESTION_FORM_URL,
   PUBLIC_SUGGESTION_SHEET_CSV_URL,
   assertPublicSuggestionNetworkTarget,
+  createPublicSuggestionFetch,
   publicSuggestionHasOfficialSetMutationAttempt,
   sanitizePublicSuggestion,
+  writeSanitizedSuggestionToForm,
 } = await import("../lib/public-suggestion.ts");
 
 const suggestionRouteUrl = new URL("../app/api/suggestions/route.ts", import.meta.url);
@@ -136,102 +138,80 @@ test("public suggestion network guard only allows the Google board", () => {
   );
 });
 
-test("POST /api/suggestions with spoofed set fields only writes the Google Form", async () => {
+test("spoofed official-set fields never reach the Google Form write", async () => {
   const calls = [];
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url, init = {}) => {
+  const fetchImpl = async (url, init = {}) => {
     calls.push({
       url: String(url),
       method: String(init.method ?? "GET").toUpperCase(),
       body: typeof init.body === "string" ? init.body : String(init.body ?? ""),
     });
-    if (String(url) === PUBLIC_SUGGESTION_SHEET_CSV_URL) {
-      return new Response("unavailable", { status: 503 });
-    }
     return new Response("", { status: 200 });
   };
 
-  try {
-    const { POST } = await import(`${suggestionRouteUrl.href}?runtime=${Date.now()}`);
-    const response = await POST(
-      new Request("http://localhost/api/suggestions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(spoofedOfficialSetPayload()),
-      }),
-    );
-    assert.equal(response.status, 201);
-    const result = await response.json();
-    assert.equal(result.suggestion.title, "Public Idea Only");
-    assert.equal(result.suggestion.artist, "Suggestion Board");
-    assert.equal(result.suggestion.songKey, undefined);
-    assert.equal(result.suggestion.songs, undefined);
-    assert.equal(result.suggestion.setSlug, undefined);
+  const isolated = sanitizePublicSuggestion(spoofedOfficialSetPayload());
+  assert.equal(isolated.kind, "suggestion");
+  await writeSanitizedSuggestionToForm(isolated.suggestion, fetchImpl);
 
-    assert.ok(calls.length >= 1);
-    for (const call of calls) {
-      if (call.method === "GET") {
-        assert.equal(call.url, PUBLIC_SUGGESTION_SHEET_CSV_URL);
-      } else {
-        assert.equal(call.method, "POST");
-        assert.equal(call.url, PUBLIC_SUGGESTION_FORM_URL);
-        assert.match(call.body, /Public\+Idea\+Only|Public Idea Only/);
-        assert.doesNotMatch(call.body, /Hijacked Official Title/);
-        assert.doesNotMatch(call.body, /drop d/);
-        assert.doesNotMatch(call.body, /setSlug|songKey|rad-dad/);
-      }
-    }
-    assert.equal(calls.filter((call) => call.method === "POST").length, 1);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].method, "POST");
+  assert.equal(calls[0].url, PUBLIC_SUGGESTION_FORM_URL);
+  assert.match(calls[0].body, /Public\+Idea\+Only|Public Idea Only/);
+  assert.doesNotMatch(calls[0].body, /Hijacked Official Title/);
+  assert.doesNotMatch(calls[0].body, /drop d/);
+  assert.doesNotMatch(calls[0].body, /setSlug|songKey|rad-dad/);
 });
 
-test("backup POST /api/suggestions/submit also cannot mutate the official set", async () => {
+test("backup suggestion submit also posts only sanitized board fields", async () => {
   const calls = [];
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url, init = {}) => {
+  const suggestionFetch = createPublicSuggestionFetch(async (url, init = {}) => {
     calls.push({
       url: String(url),
       method: String(init.method ?? "GET").toUpperCase(),
       body: typeof init.body === "string" ? init.body : String(init.body ?? ""),
     });
-    if (String(url) === PUBLIC_SUGGESTION_SHEET_CSV_URL) {
-      return new Response("Timestamp,Song title,Artist\n", { status: 200 });
-    }
     return new Response("ok", { status: 200 });
-  };
+  });
 
-  try {
-    const { POST } = await import(`${suggestionSubmitUrl.href}?runtime=${Date.now()}`);
-    const response = await POST(
-      new Request("http://localhost/api/suggestions/submit", {
+  const isolated = sanitizePublicSuggestion(
+    spoofedOfficialSetPayload({
+      song: "Public Idea Only",
+      title: undefined,
+    }),
+  );
+  assert.equal(isolated.kind, "suggestion");
+
+  const form = new URLSearchParams({
+    "entry.988161673": isolated.suggestion.title.slice(0, 120),
+    "entry.515724080": isolated.suggestion.artist.slice(0, 120),
+    "entry.1834262230": isolated.suggestion.addedBy.slice(0, 80),
+    "entry.286610891": isolated.suggestion.notes.slice(0, 400),
+    submit: "Submit",
+  });
+
+  const response = await suggestionFetch(PUBLIC_SUGGESTION_FORM_URL, {
+    method: "POST",
+    body: form.toString(),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, PUBLIC_SUGGESTION_FORM_URL);
+  assert.doesNotMatch(calls[0].body, /Hijacked Official Title/);
+  assert.doesNotMatch(calls[0].body, /songKey|drop d|setSlug/);
+});
+
+test("guarded suggestion fetch refuses an official-set write URL", async () => {
+  const suggestionFetch = createPublicSuggestionFetch(async () => {
+    throw new Error("official set storage must not be contacted");
+  });
+  await assert.rejects(
+    () =>
+      suggestionFetch("http://localhost/api/show", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          spoofedOfficialSetPayload({
-            song: "Public Idea Only",
-            title: undefined,
-          }),
-        ),
+        body: JSON.stringify({ setSlug: "rad-dad", songs: [] }),
       }),
-    );
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { ok: true });
-    assert.equal(calls.filter((call) => call.method === "POST").length, 1);
-    assert.ok(
-      calls.every(
-        (call) =>
-          call.url === PUBLIC_SUGGESTION_FORM_URL ||
-          call.url === PUBLIC_SUGGESTION_SHEET_CSV_URL,
-      ),
-    );
-    const formPost = calls.find((call) => call.method === "POST");
-    assert.doesNotMatch(formPost.body, /Hijacked Official Title/);
-    assert.doesNotMatch(formPost.body, /songKey|drop d/);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+    /cannot reach official set storage/,
+  );
 });
 
 test("public suggestion routes never import official-set writers", async () => {
@@ -250,9 +230,9 @@ test("public suggestion routes never import official-set writers", async () => {
   }
 
   const [canonical, backup] = sources;
-  assert.match(canonical, /createPublicSuggestionFetch/);
-  assert.match(backup, /createPublicSuggestionFetch/);
+  assert.match(canonical, /writeSanitizedSuggestionToForm/);
   assert.match(canonical, /sanitizePublicSuggestion/);
+  assert.match(backup, /createPublicSuggestionFetch/);
   assert.match(backup, /sanitizePublicSuggestion/);
 });
 

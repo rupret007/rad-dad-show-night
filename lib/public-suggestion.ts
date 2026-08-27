@@ -122,3 +122,19 @@ export function buildPublicSuggestionFormBody(
       : suggestion.notes,
   });
 }
+
+export async function writeSanitizedSuggestionToForm(
+  suggestion: PublicSuggestionFields,
+  fetchImpl?: typeof fetch,
+): Promise<void> {
+  const suggestionFetch = createPublicSuggestionFetch(fetchImpl);
+  const response = await suggestionFetch(PUBLIC_SUGGESTION_FORM_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: buildPublicSuggestionFormBody(suggestion),
+    redirect: "manual",
+  });
+  if (response.status >= 400) {
+    throw new Error("The suggestion form did not accept the song.");
+  }
+}
