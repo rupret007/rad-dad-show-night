@@ -63,6 +63,8 @@ own rehearsal notes.
 
 Unsaved changes remain private in the browser. Public suggestions also remain
 separate until the owner deliberately adds one to a draft and saves it.
+The inline board has one application write path, `/api/suggestions`; its backup
+link opens the connected Google Form directly rather than a second API route.
 
 ## Local development
 
