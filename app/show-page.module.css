@@ -262,6 +262,9 @@
 .footer { position: relative; z-index: 1; width: min(1180px, calc(100% - 40px)); margin: 40px auto 0; padding: 38px 0 52px; display: flex; align-items: end; justify-content: space-between; gap: 20px; border-top: 1px solid rgba(255, 255, 255, 0.14); }
 .footerBrand { font-family: Impact, "Arial Black", sans-serif; font-size: 1.7rem; letter-spacing: 0.03em; }
 .footerMeta { margin: 5px 0 0; color: var(--muted); font-size: 0.78rem; letter-spacing: 0.09em; text-transform: uppercase; }
+.footerSurfaces { margin: 8px 0 0; color: var(--muted); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.footerSurfaces a { color: var(--lime); text-decoration: none; }
+.footerSurfaces a:hover { color: white; }
 .footerControl { padding: 11px 14px; color: var(--black); background: var(--pink); font-size: 0.75rem; font-weight: 900; letter-spacing: 0.08em; text-decoration: none; text-transform: uppercase; }
 
 .modalBackdrop { position: fixed; inset: 0; z-index: 100; padding: 24px; display: grid; place-items: center; background: rgba(0, 0, 0, 0.88); backdrop-filter: blur(10px); }

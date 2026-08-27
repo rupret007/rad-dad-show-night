@@ -3,6 +3,7 @@ import LiveSetLists, { SharePageButton } from "./live-set-lists";
 import SongBoard from "./song-board";
 import styles from "./show-page.module.css";
 import { getShowPayload } from "../lib/show-store";
+import { PUBLIC_SITE_LABEL, PUBLIC_SITE_URL } from "../lib/surface-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -107,8 +108,8 @@ export default async function Home({
             FRIENDS
           </h1>
           <p className={styles.heroDek}>
-            One shared source of truth for every performer, every handoff, and
-            every song on show night.
+            The live set surface for this night: official order, handoffs, and
+            keys. The public band site stays on raddadband.com.
           </p>
 
           <div className={styles.eventGrid}>
@@ -209,7 +210,7 @@ export default async function Home({
         <div className={styles.sectionHeader}>
           <div>
             <p className={styles.sectionKicker}>
-              {practiceMode ? "Live rehearsal reference" : "02 / Live source of truth"}
+              {practiceMode ? "Live rehearsal reference" : "02 / Live set surface"}
             </p>
             <h2 className={styles.sectionTitle}>OFFICIAL SETS</h2>
           </div>
@@ -263,6 +264,13 @@ export default async function Home({
           <strong className={styles.footerBrand}>RAD DAD + FRIENDS</strong>
           <p className={styles.footerMeta}>
             {show.date} / {show.venue}
+          </p>
+          <p className={styles.footerSurfaces}>
+            Live set surface
+            {" · "}
+            <a href={PUBLIC_SITE_URL} target="_blank" rel="noreferrer">
+              {PUBLIC_SITE_LABEL}
+            </a>
           </p>
         </div>
         <a className={styles.footerControl} href={practiceMode ? showHref : controlHref}>
