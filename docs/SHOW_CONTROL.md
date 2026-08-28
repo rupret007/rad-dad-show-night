@@ -98,9 +98,9 @@ enables a private preview.
 The public page uses links rather than embedding every video. This keeps the set
 list fast and uncluttered on phones.
 
-Covers display YouTube and lyrics actions only when a saved or curated direct
-URL exists. Missing media fails closed. Songs marked **Original / hide
-resources** display neither action.
+Covers display YouTube and lyrics actions only when the official set has a
+saved direct URL. Missing media fails closed. A local covers table is not the
+set. Songs marked **Original / hide resources** display neither action.
 
 The confirmed originals are The Drinking Song, all Stalemate songs, and The Way
 I Love You. The remaining Rad Dad songs are covers and can show both resources

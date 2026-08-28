@@ -3,8 +3,10 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const {
+  COVERS_WALL_IS_NOT_THE_SET,
   LIVE_SET_SLUGS,
   MISSING_MEDIA_FAILS_CLOSED,
+  OFFICIAL_SET_MEDIA_IS_SAVED_ONLY,
   ORIGINALS_HIDE_PUBLIC_RESOURCES,
   SHOW_NIGHT_DOES_NOT_EXPAND_VAULT,
 } = await import("../lib/surface-roles.ts");
@@ -52,6 +54,8 @@ const everySongHasYouTubeLies = [
 test("surface roles admit originals hide public resources on the live set", () => {
   assert.equal(ORIGINALS_HIDE_PUBLIC_RESOURCES, true);
   assert.equal(MISSING_MEDIA_FAILS_CLOSED, true);
+  assert.equal(OFFICIAL_SET_MEDIA_IS_SAVED_ONLY, true);
+  assert.equal(COVERS_WALL_IS_NOT_THE_SET, true);
   assert.equal(SHOW_NIGHT_DOES_NOT_EXPAND_VAULT, true);
   assert.deepEqual([...LIVE_SET_SLUGS], [
     "jeff-story-friends",
@@ -111,13 +115,23 @@ test("missing official-set media fails closed instead of inventing a search", ()
   assert.equal(excludedSiteRow.youtubeUrl, "");
   assert.equal(excludedSiteRow.lyricsUrl, "");
 
-  const officialCover = publicSongResourceActions({
+  const officialCoverWithoutSavedMedia = publicSongResourceActions({
     title: "Badfish",
     artist: "Sublime",
     isOriginal: false,
   });
-  assert.match(officialCover.youtubeUrl, /youtube\.com\/watch\?v=/);
-  assert.equal(officialCover.youtubeIsDirect, true);
+  assert.equal(officialCoverWithoutSavedMedia.youtubeUrl, "");
+  assert.equal(officialCoverWithoutSavedMedia.lyricsUrl, "");
+
+  const officialCoverWithSavedMedia = publicSongResourceActions({
+    title: "Badfish",
+    artist: "Sublime",
+    isOriginal: false,
+    youtubeUrl: "https://www.youtube.com/watch?v=rmadSGJCzo8",
+    lyricsUrl: "https://genius.com/Sublime-badfish-lyrics",
+  });
+  assert.match(officialCoverWithSavedMedia.youtubeUrl, /youtube\.com\/watch\?v=/);
+  assert.equal(officialCoverWithSavedMedia.youtubeIsDirect, true);
 
   const hydratedSearch = hydrateOfficialSongMedia({
     youtubeUrl: "https://www.youtube.com/results?search_query=santeria",
