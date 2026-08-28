@@ -49,8 +49,9 @@ The server renders the current set from D1. `LiveSetLists` then requests
 This lets an already-open page receive changes made in Show Control.
 
 The public list renders YouTube and lyrics actions for songs not marked
-original only when a curated or saved direct URL exists. Search fallbacks are
-not shown as if they were media. Original songs display neither resource.
+original only when the official set has a saved direct URL. A local covers
+table is not official-set media. Search fallbacks are not shown as if they
+were media. Original songs display neither resource.
 
 If D1 is temporarily unavailable, the server returns the confirmed defaults in
 `lib/show-data.ts` so the show plan does not disappear.

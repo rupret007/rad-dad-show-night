@@ -34,7 +34,8 @@ updates the public page without requiring a code change or GitHub commit.
 - Lets the owner reorder songs by dragging or using Move Up and Move Down.
 - Preserves intentional song-flow arrows and performer cues.
 - Stores keys, tunings, endings, and private rehearsal notes per song.
-- Shows YouTube and lyrics resources for covers while originals can hide them.
+- Shows YouTube and lyrics for covers only when the official set has a saved
+  direct URL; originals hide both.
 - Refreshes the public set lists automatically while the page is open.
 - Collects public song ideas without allowing suggestions to alter the set.
 - Assumes suggestions are covers unless the submitter marks one original.
@@ -43,9 +44,10 @@ updates the public page without requiring a code change or GitHub commit.
 - Estimates set runtime from per-song durations.
 - Runs Set Coach for timing, transitions, guest load, and readiness checks.
 
-Chord-sheet features are intentionally not included. Covers receive YouTube and
-lyrics resources; songs marked original hide both while retaining the band's
-own rehearsal notes.
+Chord-sheet features are intentionally not included. Covers show YouTube and
+lyrics only when a saved direct URL exists on the official set; songs marked
+original hide both while retaining the band's own rehearsal notes. A local
+covers table is not the set.
 
 ## Documentation
 

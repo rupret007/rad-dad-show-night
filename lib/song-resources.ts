@@ -107,6 +107,11 @@ export function isSearchResourceUrl(value: string) {
   }
 }
 
+export function savedOfficialMediaUrl(value = "") {
+  const trimmed = value.trim();
+  return trimmed && !isSearchResourceUrl(trimmed) ? trimmed : "";
+}
+
 export function hydrateOfficialSongMedia<
   T extends {
     youtubeUrl: string;
@@ -115,15 +120,9 @@ export function hydrateOfficialSongMedia<
     chordsUrl: string;
   },
 >(song: T): T {
-  const youtubeUrl = isSearchResourceUrl(song.youtubeUrl)
-    ? ""
-    : song.youtubeUrl.trim();
-  const lyricsUrl = isSearchResourceUrl(song.lyricsUrl)
-    ? ""
-    : song.lyricsUrl.trim();
-  const chordsUrl = isSearchResourceUrl(song.chordsUrl)
-    ? ""
-    : song.chordsUrl.trim();
+  const youtubeUrl = savedOfficialMediaUrl(song.youtubeUrl);
+  const lyricsUrl = savedOfficialMediaUrl(song.lyricsUrl);
+  const chordsUrl = savedOfficialMediaUrl(song.chordsUrl);
 
   return {
     ...song,
@@ -146,12 +145,13 @@ export function publicSongResourceActions(
     };
   }
 
-  const resources = resolveSongResourceLinks(song);
+  const youtubeUrl = savedOfficialMediaUrl(song.youtubeUrl);
+  const lyricsUrl = savedOfficialMediaUrl(song.lyricsUrl);
   return {
-    youtubeUrl: resources.youtubeIsDirect ? resources.youtubeUrl : "",
-    lyricsUrl: resources.lyricsIsDirect ? resources.lyricsUrl : "",
-    youtubeIsDirect: resources.youtubeIsDirect,
-    lyricsIsDirect: resources.lyricsIsDirect,
+    youtubeUrl,
+    lyricsUrl,
+    youtubeIsDirect: Boolean(youtubeUrl),
+    lyricsIsDirect: Boolean(lyricsUrl),
   };
 }
 

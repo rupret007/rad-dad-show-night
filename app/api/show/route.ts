@@ -11,7 +11,10 @@ import {
   getShowPayload,
   getShowRecord,
 } from "../../../lib/show-store";
-import { getYouTubeVideoId } from "../../../lib/song-resources";
+import {
+  getYouTubeVideoId,
+  hydrateOfficialSongMedia,
+} from "../../../lib/song-resources";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +56,7 @@ export async function POST(request: Request) {
       const youtubeUrl = cleanUrl(song.youtubeUrl);
       const youtubeVideoId =
         getYouTubeVideoId(youtubeUrl) || cleanText(song.youtubeVideoId, 20);
-      return {
+      return hydrateOfficialSongMedia({
         position: index + 1,
         title,
         artist: cleanText(song.artist, 140),
@@ -72,7 +75,7 @@ export async function POST(request: Request) {
         chordsUrl: cleanUrl(song.chordsUrl),
         lyricsUrl: cleanUrl(song.lyricsUrl),
         rehearsalNotes: cleanText(song.rehearsalNotes, 2500),
-      };
+      });
     });
 
     const now = new Date().toISOString();

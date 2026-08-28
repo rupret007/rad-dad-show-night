@@ -12,6 +12,7 @@ import {
   buildSongResourceLinks,
   getYouTubeEmbedUrl,
   getYouTubeVideoId,
+  savedOfficialMediaUrl,
 } from "../../lib/song-resources";
 import type { Suggestion } from "../song-board";
 import styles from "./show-control.module.css";
@@ -178,7 +179,6 @@ export default function ShowControlClient({
   ) {
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
-    const resources = buildSongResourceLinks(cleanTitle, artist);
     const song: ShowSong = {
       id: `draft-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       setSlug: activeSet,
@@ -193,8 +193,8 @@ export default function ShowControlClient({
       tuning: "",
       youtubeUrl: "",
       youtubeVideoId: "",
-      chordsUrl: resources.chordsSearchUrl,
-      lyricsUrl: resources.lyricsSearchUrl,
+      chordsUrl: "",
+      lyricsUrl: "",
       rehearsalNotes: "",
       updatedAt: new Date().toISOString(),
     };
@@ -241,10 +241,10 @@ export default function ShowControlClient({
       updateSong(
         song.id,
         {
-          youtubeUrl: result.youtubeUrl || song.youtubeUrl,
+          youtubeUrl: savedOfficialMediaUrl(result.youtubeUrl) || song.youtubeUrl,
           youtubeVideoId: result.youtubeVideoId || song.youtubeVideoId,
-          chordsUrl: result.chordsUrl || song.chordsUrl,
-          lyricsUrl: result.lyricsUrl || song.lyricsUrl,
+          chordsUrl: savedOfficialMediaUrl(result.chordsUrl) || song.chordsUrl,
+          lyricsUrl: savedOfficialMediaUrl(result.lyricsUrl) || song.lyricsUrl,
         },
         song.setSlug,
       );
@@ -705,7 +705,7 @@ export default function ShowControlClient({
                               </label>
                               <label className={styles.wideField}>
                                 <span>Lyrics link</span>
-                                <input value={song.lyricsUrl} onChange={(event) => updateSong(song.id, { lyricsUrl: event.target.value })} placeholder="Paste the preferred lyrics page or use the generated search" />
+                                <input value={song.lyricsUrl} onChange={(event) => updateSong(song.id, { lyricsUrl: event.target.value })} placeholder="Paste the preferred lyrics page" />
                               </label>
                             </>
                           ) : null}

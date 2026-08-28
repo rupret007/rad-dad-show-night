@@ -9,8 +9,8 @@
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "npm run build && node --experimental-strip-types --test tests/rendered-html.test.mjs tests/suggestion-cannot-mutate-set.test.mjs tests/live-set-surface.test.mjs tests/official-set-resource-honesty.test.mjs tests/official-set-first-paint.test.mjs",
-    "test:isolation": "node --experimental-strip-types --test tests/suggestion-cannot-mutate-set.test.mjs tests/live-set-surface.test.mjs tests/official-set-resource-honesty.test.mjs tests/official-set-first-paint.test.mjs",
+    "test": "npm run build && node --experimental-strip-types --test tests/rendered-html.test.mjs tests/suggestion-cannot-mutate-set.test.mjs tests/live-set-surface.test.mjs tests/official-set-resource-honesty.test.mjs tests/official-set-first-paint.test.mjs tests/official-set-missing-media.test.mjs",
+    "test:isolation": "node --experimental-strip-types --test tests/suggestion-cannot-mutate-set.test.mjs tests/live-set-surface.test.mjs tests/official-set-resource-honesty.test.mjs tests/official-set-first-paint.test.mjs tests/official-set-missing-media.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

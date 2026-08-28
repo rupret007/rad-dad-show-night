@@ -89,8 +89,9 @@ changes.
 - The Drinking Song has no public YouTube or lyrics resources.
 - Stalemate songs have no public YouTube or lyrics resources.
 - The Way I Love You is the only Rad Dad original and has no public resources.
-- The remaining Rad Dad songs display YouTube and lyrics links when a direct
-  URL exists. Search fallbacks are not shown as media.
+- The remaining Rad Dad songs display YouTube and lyrics links when a saved
+  official-set URL exists. Search fallbacks and a local covers table are not
+  shown as media.
 
 ### Not in the confirmed Rad Dad set
 
