@@ -26,6 +26,11 @@ const pageUrl = new URL("../app/page.tsx", import.meta.url);
 const readmeUrl = new URL("../README.md", import.meta.url);
 const technicalGuideUrl = new URL("../docs/TECHNICAL_GUIDE.md", import.meta.url);
 const showPlanUrl = new URL("../docs/SHOW_PLAN.md", import.meta.url);
+const packageJsonUrl = new URL("../package.json", import.meta.url);
+const retiredStarterPreviewTestUrl = new URL(
+  "../tests/rendered-html.test.mjs",
+  import.meta.url,
+);
 
 const catalogExpansionTokens = [
   /app_api\.json/,
@@ -112,6 +117,21 @@ test("surface roles name Show Night as the live set, not the catalog or public s
 test("unused leftover title dump stays removed", async () => {
   await assert.rejects(
     () => readFile(leftoverTitleDumpUrl, "utf8"),
+    (error) => error?.code === "ENOENT",
+  );
+});
+
+test("the active test contract cannot revive the retired starter preview", async () => {
+  const [page, packageJson] = await Promise.all([
+    readFile(pageUrl, "utf8"),
+    readFile(packageJsonUrl, "utf8").then(JSON.parse),
+  ]);
+
+  assert.equal(packageJson.scripts.test, "npm run build && npm run test:isolation");
+  assert.doesNotMatch(packageJson.scripts.test, /rendered-html|_sites-preview/);
+  assert.doesNotMatch(page, /codex-preview|SkeletonPreview|Your site is taking shape/);
+  await assert.rejects(
+    () => readFile(retiredStarterPreviewTestUrl, "utf8"),
     (error) => error?.code === "ENOENT",
   );
 });
