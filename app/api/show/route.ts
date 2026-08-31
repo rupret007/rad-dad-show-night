@@ -11,6 +11,7 @@ import {
   getShowPayload,
   getShowRecord,
 } from "../../../lib/show-store";
+import { isShowNotFoundError } from "../../../lib/show-visibility";
 import {
   getYouTubeVideoId,
   hydrateOfficialSongMedia,
@@ -20,9 +21,17 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const slug = new URL(request.url).searchParams.get("show");
-  return Response.json(await getShowPayload(slug), {
-    headers: { "Cache-Control": "no-store" },
-  });
+  const user = await getAdminUser();
+  try {
+    return Response.json(await getShowPayload(slug, user ? "owner" : "public"), {
+      headers: { "Cache-Control": "no-store" },
+    });
+  } catch (error) {
+    if (isShowNotFoundError(error)) {
+      return Response.json({ error: "Show not found." }, { status: 404 });
+    }
+    return Response.json({ error: "Could not load the show." }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -37,6 +46,9 @@ export async function POST(request: Request) {
       setSlug?: string;
       songs?: Partial<ShowSong>[];
     };
+    if (!payload.showSlug?.trim()) {
+      return Response.json({ error: "Choose a show." }, { status: 400 });
+    }
     const setSlug = payload.setSlug as SetSlug;
     if (!EDITABLE_SET_SLUGS.includes(setSlug)) {
       return Response.json({ error: "Unknown set." }, { status: 400 });
@@ -49,7 +61,7 @@ export async function POST(request: Request) {
     }
 
     await ensureShowSeeded();
-    const show = await getShowRecord(payload.showSlug);
+    const show = await getShowRecord(payload.showSlug, "owner");
     const normalized = payload.songs.map((song, index) => {
       const title = cleanText(song.title, 140);
       if (!title) throw new Error(`Song ${index + 1} needs a title.`);
@@ -123,6 +135,9 @@ export async function POST(request: Request) {
       updatedAt: now,
     });
   } catch (error) {
+    if (isShowNotFoundError(error)) {
+      return Response.json({ error: "Show not found." }, { status: 404 });
+    }
     return Response.json(
       { error: error instanceof Error ? error.message : "Could not save the set." },
       { status: 500 },
@@ -157,4 +172,3 @@ function clampNumber(
     ? Math.min(maximum, Math.max(minimum, Math.round(number)))
     : fallback;
 }
-

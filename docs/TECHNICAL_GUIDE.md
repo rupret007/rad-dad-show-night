@@ -135,14 +135,17 @@ YouTube search URL. The owner can choose and paste the correct version.
 
 ### `GET /api/show`
 
-Public, read-only, and uncached. Returns show metadata, set definitions, songs,
-and the most recent update timestamp.
+Read-only and uncached. Returns show metadata, set definitions, songs, and the
+most recent update timestamp. Public reads return published shows only. Draft
+and archived slugs return the same not-found response as an unknown slug. An
+authenticated owner request from Show Control can read every lifecycle status.
 
 ### `POST /api/show`
 
 Owner-only. Accepts one set slug and its full ordered song array. Positions are
-recalculated server-side. Text lengths, known set slugs, URLs, and maximum set
-size are validated before the D1 batch runs.
+recalculated server-side. The supplied show slug must resolve exactly; it never
+falls back to the default show. Text lengths, known set slugs, URLs, and maximum
+set size are validated before the D1 batch runs.
 
 ### `POST /api/enrich`
 
@@ -176,7 +179,8 @@ a short set-coaching review. It never mutates show data.
 
 ## Authentication and security
 
-- The public page and read APIs allow anonymous visitors.
+- The public page and show-read API allow anonymous visitors to published shows
+  only.
 - Show Control initiates Sign in with ChatGPT.
 - Every official write independently checks the authenticated email.
 - `ADMIN_EMAIL` is configured in the Sites runtime environment.

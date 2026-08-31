@@ -18,13 +18,17 @@ const {
   TRAVIS_BOOKS,
   VAULT_ROLE,
 } = await import("../lib/surface-roles.ts");
+const { canReadShowStatus } = await import("../lib/show-visibility.ts");
 
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 const leftoverTitleDumpUrl = new URL("../content/show.json", import.meta.url);
 const showDataUrl = new URL("../lib/show-data.ts", import.meta.url);
+const showStoreUrl = new URL("../lib/show-store.ts", import.meta.url);
 const pageUrl = new URL("../app/page.tsx", import.meta.url);
+const showRouteUrl = new URL("../app/api/show/route.ts", import.meta.url);
 const readmeUrl = new URL("../README.md", import.meta.url);
 const technicalGuideUrl = new URL("../docs/TECHNICAL_GUIDE.md", import.meta.url);
+const showControlGuideUrl = new URL("../docs/SHOW_CONTROL.md", import.meta.url);
 const showPlanUrl = new URL("../docs/SHOW_PLAN.md", import.meta.url);
 const packageJsonUrl = new URL("../package.json", import.meta.url);
 const retiredStarterPreviewTestUrl = new URL(
@@ -134,6 +138,38 @@ test("the active test contract cannot revive the retired starter preview", async
     () => readFile(retiredStarterPreviewTestUrl, "utf8"),
     (error) => error?.code === "ENOENT",
   );
+});
+
+test("draft and archived show slugs fail closed outside authenticated Show Control", async () => {
+  assert.equal(canReadShowStatus("published", "public"), true);
+  assert.equal(canReadShowStatus("draft", "public"), false);
+  assert.equal(canReadShowStatus("archived", "public"), false);
+  assert.equal(canReadShowStatus("draft", "owner"), true);
+  assert.equal(canReadShowStatus("archived", "owner"), true);
+
+  const [store, route, page, readme, guide, ownerGuide] = await Promise.all([
+    readFile(showStoreUrl, "utf8"),
+    readFile(showRouteUrl, "utf8"),
+    readFile(pageUrl, "utf8"),
+    readFile(readmeUrl, "utf8"),
+    readFile(technicalGuideUrl, "utf8"),
+    readFile(showControlGuideUrl, "utf8"),
+  ]);
+
+  assert.match(store, /return mapShow\(requireVisibleShow\(row, scope\)\)/);
+  assert.match(store, /getShowRecord\(slug, scope\)/);
+  assert.match(store, /if \(isShowNotFoundError\(error\)\) throw error/);
+  assert.match(route, /user \? "owner" : "public"/);
+  assert.match(route, /getShowRecord\(payload\.showSlug, "owner"\)/);
+  assert.match(route, /if \(!payload\.showSlug\?\.trim\(\)\)/);
+  assert.match(page, /getShowPayload\(params\.show, "public"\)/);
+  assert.match(page, /if \(isShowNotFoundError\(error\)\) notFound\(\)/);
+  assert.match(readme, /Draft and archived show slugs stay owner-only/);
+  assert.match(
+    guide,
+    /Draft\s+and archived slugs return the same not-found response/,
+  );
+  assert.match(ownerGuide, /Draft and archived links are private lifecycle records/);
 });
 
 test("the live page sits next to the public site and does not claim to be the only source of truth", async () => {

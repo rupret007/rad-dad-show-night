@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import LiveSetLists, { SharePageButton } from "./live-set-lists";
 import ShowFlyer from "./show-flyer";
 import SongBoard from "./song-board";
@@ -5,6 +6,7 @@ import styles from "./show-page.module.css";
 import { SET_DEFINITIONS } from "../lib/show-data";
 import { SHOW_FLYER_CANDIDATES } from "../lib/show-media";
 import { getShowPayload } from "../lib/show-store";
+import { isShowNotFoundError } from "../lib/show-visibility";
 import { PUBLIC_SITE_LABEL, PUBLIC_SITE_URL } from "../lib/surface-roles";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +19,11 @@ export default async function Home({
     | { show?: string; practice?: string };
 }) {
   const params = await Promise.resolve(searchParams ?? {});
-  const { songs, show, timeline } = await getShowPayload(params.show);
+  const payload = await getShowPayload(params.show, "public").catch((error) => {
+    if (isShowNotFoundError(error)) notFound();
+    throw error;
+  });
+  const { songs, show, timeline } = payload;
   const practiceMode = params.practice === "1" || params.practice === "true";
   const controlHref = `/show-control?show=${encodeURIComponent(show.slug)}`;
   const showHref = `/?show=${encodeURIComponent(show.slug)}`;
