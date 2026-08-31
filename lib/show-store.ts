@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { showBlocks, shows, songs } from "../db/schema";
 import {
@@ -12,6 +12,11 @@ import {
   type ShowSong,
 } from "./show-data";
 import { hydrateOfficialSongMedia } from "./song-resources";
+import {
+  isShowNotFoundError,
+  requireVisibleShow,
+  type ShowReadScope,
+} from "./show-visibility";
 
 const SEED_KEY = "show-control-seed-v1";
 
@@ -98,21 +103,34 @@ function mapShow(row: typeof shows.$inferSelect): ManagedShow {
   };
 }
 
-export async function getShowRecord(slug?: string | null): Promise<ManagedShow> {
+export async function getShowRecord(
+  slug?: string | null,
+  scope: ShowReadScope = "public",
+): Promise<ManagedShow> {
   const db = getDb();
   if (slug) {
     const [row] = await db.select().from(shows).where(eq(shows.slug, slug)).limit(1);
-    if (row) return mapShow(row);
+    return mapShow(requireVisibleShow(row, scope));
   }
 
   const [defaultShow] = await db
     .select()
     .from(shows)
-    .where(eq(shows.isDefault, true))
+    .where(
+      scope === "public"
+        ? and(eq(shows.isDefault, true), eq(shows.status, "published"))
+        : eq(shows.isDefault, true),
+    )
     .limit(1);
   if (defaultShow) return mapShow(defaultShow);
 
-  const [latest] = await db.select().from(shows).orderBy(desc(shows.showDate)).limit(1);
+  const latestQuery = db.select().from(shows);
+  const [latest] = await (scope === "public"
+    ? latestQuery.where(eq(shows.status, "published"))
+    : latestQuery
+  )
+    .orderBy(desc(shows.showDate))
+    .limit(1);
   return latest ? mapShow(latest) : (SHOW_DETAILS as ManagedShow);
 }
 
@@ -160,10 +178,13 @@ export async function getOfficialSongs(
   }
 }
 
-export async function getShowPayload(slug?: string | null) {
+export async function getShowPayload(
+  slug?: string | null,
+  scope: ShowReadScope = "public",
+) {
   try {
     await ensureShowSeeded();
-    const show = await getShowRecord(slug);
+    const show = await getShowRecord(slug, scope);
     const [officialSongs, blocks] = await Promise.all([
       getOfficialSongs(show.id),
       getDb()
@@ -191,7 +212,8 @@ export async function getShowPayload(slug?: string | null) {
       songs: officialSongs,
       updatedAt,
     };
-  } catch {
+  } catch (error) {
+    if (isShowNotFoundError(error)) throw error;
     const officialSongs = DEFAULT_SONGS.map(hydrateSong);
     return {
       show: SHOW_DETAILS,
@@ -202,4 +224,3 @@ export async function getShowPayload(slug?: string | null) {
     };
   }
 }
-

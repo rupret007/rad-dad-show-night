@@ -35,6 +35,10 @@ Every show has a unique share link using `?show=show-slug`. Mark a draft
 **Published** when it is ready for the band, and archive completed events to keep
 the picker organized without deleting their history.
 
+Draft and archived links are private lifecycle records, not public previews.
+Anonymous page and API reads return not found; the authenticated owner can still
+load either status inside Show Control.
+
 ## Set Coach
 
 Select **Review this set** to check estimated runtime, transitions, performance

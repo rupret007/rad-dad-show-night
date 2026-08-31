@@ -28,7 +28,7 @@ updates the public page without requiring a code change or GitHub commit.
 
 - Manages multiple shows from one owner dashboard.
 - Clones a complete show into a new private draft.
-- Gives every show its own shareable public link and lifecycle status.
+- Gives every published show its own shareable public link and lifecycle status.
 - Keeps the complete 7:00-10:00 PM run of show in one place.
 - Stores the official set lists in a shared production database.
 - Lets the owner reorder songs by dragging or using Move Up and Move Down.
@@ -43,6 +43,9 @@ updates the public page without requiring a code change or GitHub commit.
 - Keeps the established black, electric-blue, lime, and hot-pink Rad Dad brand.
 - Estimates set runtime from per-song durations.
 - Runs Set Coach for timing, transitions, guest load, and readiness checks.
+
+Draft and archived show slugs stay owner-only: anonymous page and API reads
+return not found until the owner marks the show **Published** in Show Control.
 
 Chord-sheet features are intentionally not included. Covers show YouTube and
 lyrics only when a saved direct URL exists on the official set; songs marked
