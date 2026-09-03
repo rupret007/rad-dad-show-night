@@ -5,7 +5,6 @@ import { showBlocks, shows, songs } from "../db/schema";
 import {
   DEFAULT_SONGS,
   RUN_OF_SHOW,
-  SET_DEFINITIONS,
   SHOW_DETAILS,
   type ManagedShow,
   type RunOfShowBlock,
@@ -18,7 +17,10 @@ import {
   type ShowReadScope,
 } from "./show-visibility";
 import {
+  buildShowSets,
   canUseConfirmedShowFallback,
+  isShowDataUnavailableError,
+  songsBelongToShow,
   ShowDataUnavailableError,
 } from "./show-read-integrity";
 
@@ -195,36 +197,46 @@ export async function getShowPayload(
         .where(eq(showBlocks.showId, show.id))
         .orderBy(asc(showBlocks.position)),
     ]);
-    const timeline = blocks.map((block) => ({
+    const mappedTimeline = blocks.map((block) => ({
       time: `${block.startTime}-${block.endTime}`,
       duration: block.duration,
       title: block.title,
       note: block.note,
       type: block.type as "performance" | "changeover",
       accent: block.accent as "blue" | "lime" | "pink",
+      setSlug: block.setSlug,
     })) as RunOfShowBlock[];
+    const timeline = mappedTimeline.length
+      ? mappedTimeline
+      : canUseConfirmedShowFallback(slug, resolvedShowSlug)
+        ? [...RUN_OF_SHOW]
+        : [];
+    if (!songsBelongToShow(officialSongs, show)) {
+      throw new ShowDataUnavailableError();
+    }
     const updatedAt = officialSongs.reduce(
       (latest, song) => (song.updatedAt > latest ? song.updatedAt : latest),
       "",
     );
     return {
       show,
-      timeline: timeline.length ? timeline : RUN_OF_SHOW,
-      sets: SET_DEFINITIONS,
+      timeline,
+      sets: buildShowSets(timeline),
       songs: officialSongs,
       updatedAt,
       dataSource: "database" as const,
     };
   } catch (error) {
     if (isShowNotFoundError(error)) throw error;
+    if (isShowDataUnavailableError(error)) throw error;
     if (!canUseConfirmedShowFallback(slug, resolvedShowSlug)) {
       throw new ShowDataUnavailableError({ cause: error });
     }
     const officialSongs = DEFAULT_SONGS.map(hydrateSong);
     return {
       show: SHOW_DETAILS,
-      timeline: RUN_OF_SHOW,
-      sets: SET_DEFINITIONS,
+      timeline: [...RUN_OF_SHOW],
+      sets: buildShowSets(RUN_OF_SHOW),
       songs: officialSongs,
       updatedAt: officialSongs[0]?.updatedAt ?? "",
       dataSource: "confirmed-fallback" as const,

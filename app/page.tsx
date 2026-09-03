@@ -1,17 +1,85 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import LiveSetLists, { SharePageButton } from "./live-set-lists";
 import ShowFlyer from "./show-flyer";
 import SongBoard from "./song-board";
 import styles from "./show-page.module.css";
-import { SET_DEFINITIONS } from "../lib/show-data";
 import { SHOW_FLYER_CANDIDATES } from "../lib/show-media";
 import { getShowPayload } from "../lib/show-store";
-import { isShowDataUnavailableError } from "../lib/show-read-integrity";
+import {
+  CONFIRMED_FALLBACK_SHOW_SLUG,
+  featuredGuestSet,
+  isCanonicalShowSlug,
+  isShowDataUnavailableError,
+} from "../lib/show-read-integrity";
 import { isShowNotFoundError } from "../lib/show-visibility";
 import { PUBLIC_SITE_LABEL, PUBLIC_SITE_URL } from "../lib/surface-roles";
 
 export const dynamic = "force-dynamic";
+
+const CANONICAL_TITLE =
+  "Rad Dad and Friends at Guitars & Growlers | September 19, 2026";
+const CANONICAL_DESCRIPTION =
+  "Free live show at Guitars & Growlers in Richardson on Saturday, September 19, 2026, from 7-10 PM.";
+
+function canonicalMetadata(): Metadata {
+  return {
+    title: CANONICAL_TITLE,
+    description: CANONICAL_DESCRIPTION,
+    openGraph: {
+      title: CANONICAL_TITLE,
+      description: CANONICAL_DESCRIPTION,
+      type: "website",
+      images: [
+        {
+          url: "/og.png",
+          width: 1200,
+          height: 630,
+          alt: "Rad Dad and Friends at Guitars & Growlers on September 19, 2026",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: CANONICAL_TITLE,
+      description: CANONICAL_DESCRIPTION,
+      images: ["/og.png"],
+    },
+  };
+}
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams?:
+    | Promise<{ show?: string; practice?: string }>
+    | { show?: string; practice?: string };
+}): Promise<Metadata> {
+  const params = await Promise.resolve(searchParams ?? {});
+  try {
+    const payload = await getShowPayload(params.show, "public");
+    if (isCanonicalShowSlug(payload.show.slug)) {
+      return canonicalMetadata();
+    }
+    const title = `${payload.show.title} at ${payload.show.venue} | ${payload.show.date}`;
+    const description = `Live set surface for ${payload.show.title} at ${payload.show.venue} on ${payload.show.date}, ${payload.show.hours}.`;
+    return {
+      title,
+      description,
+      openGraph: { title, description, type: "website" },
+      twitter: { title, description },
+    };
+  } catch {
+    if (!params.show || params.show === CONFIRMED_FALLBACK_SHOW_SLUG) {
+      return canonicalMetadata();
+    }
+    return {
+      title: "Rad Dad + Friends Show Night",
+      description: "Live set surface for Rad Dad + Friends.",
+    };
+  }
+}
 
 export default async function Home({
   searchParams,
@@ -31,8 +99,10 @@ export default async function Home({
     }
     throw error;
   }
-  const { dataSource, songs, show, timeline } = payload;
+  const { dataSource, songs, show, timeline, sets } = payload;
   const practiceMode = params.practice === "1" || params.practice === "true";
+  const canonicalShow = isCanonicalShowSlug(show.slug);
+  const featuredGuest = featuredGuestSet(timeline);
   const controlHref = `/show-control?show=${encodeURIComponent(show.slug)}`;
   const showHref = `/?show=${encodeURIComponent(show.slug)}`;
   const practiceHref = `${showHref}&practice=1#official-sets`;
@@ -101,7 +171,21 @@ export default async function Home({
         </header>
       ) : (
       <header className={styles.hero} id="top">
-        <ShowFlyer alt="Rad Dad and Friends at Guitars and Growlers on Saturday, September 19, 2026, from 7 to 10 PM" />
+        {canonicalShow ? (
+          <ShowFlyer alt="Rad Dad and Friends at Guitars and Growlers on Saturday, September 19, 2026, from 7 to 10 PM" />
+        ) : (
+          <div className={styles.heroPosterWrap}>
+            <div className={styles.posterFrame}>
+              <span className={styles.posterTape} aria-hidden="true" />
+              <div className={styles.showIdentityCard}>
+                <span>{show.date}</span>
+                <strong>{show.title}</strong>
+                <span>{show.venue}</span>
+                <small>{show.hours}</small>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className={styles.heroCopy}>
           <div className={styles.eyebrow}>
@@ -133,34 +217,70 @@ export default async function Home({
             </div>
           </div>
 
+          <section
+            className={styles.nextActions}
+            aria-label="Next step for this show"
+          >
+            <article className={styles.nextAction} data-role="fan">
+              <p className={styles.nextKicker}>Fan next step</p>
+              <h2>See this night, then suggest a song.</h2>
+              <p>
+                This page is the live set for this show, not the band homepage.
+              </p>
+              <div className={styles.nextActionLinks}>
+                <a className={styles.primaryAction} href="#official-sets">
+                  See the official sets
+                </a>
+                <a className={styles.secondaryAction} href="#suggestions">
+                  Suggest a song
+                </a>
+              </div>
+            </article>
+            <article className={styles.nextAction} data-role="band">
+              <p className={styles.nextKicker}>Band next step</p>
+              <h2>Practice this show&apos;s verified list.</h2>
+              <p>
+                Keys, handoffs, and your place stay on this event. Another
+                show&apos;s set cannot appear here.
+              </p>
+              <div className={styles.nextActionLinks}>
+                <a className={styles.primaryAction} href={practiceHref}>
+                  Practice this show
+                </a>
+              </div>
+            </article>
+          </section>
+
           <div
             className={`${styles.eventGrid} ${styles.officialSetGrid}`}
             aria-label="Official sets"
           >
-            {SET_DEFINITIONS.map((set) => (
+            {sets.map((set) => (
               <div className={styles.eventFact} key={set.slug}>
-                <span className={styles.factLabel}>{set.time}</span>
+                <span className={styles.factLabel}>{set.time || "This show"}</span>
                 <strong className={styles.factValue}>{set.title}</strong>
               </div>
             ))}
           </div>
 
           <div className={styles.heroActions}>
-            <a className={styles.primaryAction} href="#official-sets">
-              See the official sets
-            </a>
             <a className={styles.secondaryAction} href="#run-of-show">
               See the running order
             </a>
-            <a
-              className={styles.secondaryAction}
-              href={SHOW_FLYER_CANDIDATES[0]}
-              target="_blank"
-              rel="noreferrer"
-            >
-              View full flyer
-            </a>
-            <SharePageButton />
+            {canonicalShow ? (
+              <a
+                className={styles.secondaryAction}
+                href={SHOW_FLYER_CANDIDATES[0]}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View full flyer
+              </a>
+            ) : null}
+            <SharePageButton
+              title={`${show.title} Show Night`}
+              text={`Run of show and live set lists for ${show.date} at ${show.venue}.`}
+            />
           </div>
         </div>
       </header>
@@ -174,8 +294,9 @@ export default async function Home({
             <h2 className={styles.sectionTitle}>RUN OF SHOW</h2>
           </div>
           <p className={styles.sectionCopy}>
-            Keep changeovers tight, protect the dedicated Fault Lines setup,
-            and aim to land the night near 10:00 PM.
+            {canonicalShow
+              ? "Keep changeovers tight, protect the dedicated Fault Lines setup, and aim to land the night near 10:00 PM."
+              : `Keep changeovers tight and aim for ${show.expectedWrap || show.hours}.`}
           </p>
         </div>
 
@@ -208,18 +329,22 @@ export default async function Home({
       </section>
       ) : null}
 
-      {!practiceMode ? (
+      {!practiceMode && featuredGuest ? (
       <section className={styles.featureSet} aria-labelledby="fault-lines-title">
         <div className={styles.featureStripe} aria-hidden="true" />
         <div>
-          <p className={styles.featureKicker}>Featured set / 7:45-8:25 PM</p>
+          <p className={styles.featureKicker}>
+            Featured set / {featuredGuest.performance.time}
+            {/\b(AM|PM)\b/i.test(featuredGuest.performance.time) ? "" : " PM"}
+          </p>
           <h2 className={styles.featureTitle} id="fault-lines-title">
-            MASON / THE FAULT LINES
+            {featuredGuest.performance.title.toUpperCase()}
           </h2>
         </div>
         <p className={styles.featureCopy}>
-          Their 7:35-7:45 setup window is protected. Final song details stay
-          with the band; the master timeline above is the stage cue.
+          {featuredGuest.setup
+            ? `Their ${featuredGuest.setup.time} setup window is protected. Final song details stay with the band; the master timeline above is the stage cue.`
+            : "Final song details stay with the band; the master timeline above is the stage cue."}
         </p>
       </section>
       ) : null}
@@ -243,8 +368,10 @@ export default async function Home({
         </div>
         <LiveSetLists
           initialSongs={songs}
+          initialSets={sets}
           initialDataSource={dataSource}
           showSlug={show.slug}
+          showId={show.id}
           practiceMode={practiceMode}
         />
       </section>
@@ -264,7 +391,9 @@ export default async function Home({
             "Share the backline where practical.",
             "Protect the Mason / Fault Lines setup window.",
             "Confirm guest keys and endings before show day.",
-            "10:00 PM is the expected wrap, not a venue curfew.",
+            canonicalShow
+              ? "10:00 PM is the expected wrap, not a venue curfew."
+              : `${show.expectedWrap || show.hours} is the expected wrap, not a venue curfew.`,
           ].map((note, index) => (
             <div className={styles.noteCard} key={note}>
               <span className={styles.noteNumber}>0{index + 1}</span>

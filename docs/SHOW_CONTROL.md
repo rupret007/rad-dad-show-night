@@ -31,9 +31,11 @@ show** to copy the current timeline, sets, cues, song resources, original flags,
 and durations into a new private draft. Enter the new date, venue, and title,
 then create the draft.
 
-Every show has a unique share link using `?show=show-slug`. Mark a draft
-**Published** when it is ready for the band, and archive completed events to keep
-the picker organized without deleting their history.
+Every show has a unique share link using `?show=show-slug`. The clone keeps its
+own set rows. Later edits to the original show cannot change the draft, and the
+public page will not paint another event's songs or set times onto it. Mark a
+draft **Published** when it is ready for the band, and archive completed events
+to keep the picker organized without deleting their history.
 
 Draft and archived links are private lifecycle records, not public previews.
 Anonymous page and API reads return not found; the authenticated owner can still

@@ -9,6 +9,7 @@ import {
   type SetSlug,
   type ShowSong,
 } from "../../lib/show-data";
+import { showPayloadBelongsToShow } from "../../lib/show-read-integrity";
 import {
   buildSongResourceLinks,
   getYouTubeEmbedUrl,
@@ -89,6 +90,9 @@ export default function ShowControlClient({
     ])
       .then(([showData, showList, suggestionData]) => {
         if (!active) return;
+        if (!showPayloadBelongsToShow(showData, requestedShow)) {
+          throw new Error("That show's set could not be verified.");
+        }
         setSongsBySet(groupSongs(showData.songs));
         setShows(showList.shows ?? [showData.show]);
         setActiveShowSlug(showData.show.slug);
@@ -344,6 +348,9 @@ export default function ShowControlClient({
       });
       if (!response.ok) throw new Error("Could not load that show.");
       const data = (await response.json()) as { songs: ShowSong[]; show: ManagedShow };
+      if (!showPayloadBelongsToShow(data, slug)) {
+        throw new Error("That show's set could not be verified.");
+      }
       setSongsBySet(groupSongs(data.songs));
       setActiveShowSlug(data.show.slug);
       setDirtySets(new Set());
@@ -377,7 +384,9 @@ export default function ShowControlClient({
       setShows((current) => [result.show!, ...current]);
       setCloneOpen(false);
       await switchShow(result.show.slug);
-      setNotice("New draft created. Its sets, cues, and resources were copied.");
+      setNotice(
+        "New draft created. It has its own copy of the sets. The original show is unchanged.",
+      );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not clone the show.");
     } finally {

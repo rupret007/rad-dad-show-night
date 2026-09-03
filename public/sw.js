@@ -84,7 +84,8 @@ async function cacheShowResources(values) {
     const showResponse = await fetch(showApiUrl, { cache: "no-store" });
     if (
       !showResponse.ok ||
-      showResponse.headers.get("X-Rad-Dad-Data-Source") !== "database"
+      showResponse.headers.get("X-Rad-Dad-Data-Source") !== "database" ||
+      !(await showApiMatchesRequest(showApiUrl, showResponse))
     ) {
       return { ready: false, cached: 0 };
     }
@@ -127,7 +128,8 @@ async function networkFirst(request, timeoutMs, navigation) {
   const network = fetch(request).then(async (response) => {
     const verifiedShowApi =
       new URL(request.url).pathname !== "/api/show" ||
-      response.headers.get("X-Rad-Dad-Data-Source") === "database";
+      (response.headers.get("X-Rad-Dad-Data-Source") === "database" &&
+        (await showApiMatchesRequest(request.url, response)));
     // Navigations are cached only by CACHE_SHOW after the rendered page proves
     // it came from D1. A transient fallback must never replace that copy.
     if (response.ok && !navigation && verifiedShowApi) {
@@ -182,6 +184,27 @@ function withTimeout(promise, timeoutMs) {
       setTimeout(() => reject(new Error("Network timeout")), timeoutMs),
     ),
   ]);
+}
+
+async function showApiMatchesRequest(requestUrl, response) {
+  const requestedSlug = new URL(requestUrl, self.location.origin).searchParams.get(
+    "show",
+  );
+  try {
+    const payload = await response.clone().json();
+    if (!payload?.show?.slug) return false;
+    if (requestedSlug && payload.show.slug !== requestedSlug) return false;
+    if (
+      payload.show.id &&
+      Array.isArray(payload.songs) &&
+      payload.songs.some((song) => song.showId && song.showId !== payload.show.id)
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function markOfflineResponse(response) {

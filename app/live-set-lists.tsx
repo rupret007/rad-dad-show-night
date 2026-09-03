@@ -7,30 +7,41 @@ import {
   useState,
   type MouseEvent,
 } from "react";
-import { SET_DEFINITIONS, type ShowSong } from "../lib/show-data";
+import { type ShowSong } from "../lib/show-data";
 import {
   isSearchResourceUrl,
   publicSongResourceActions,
 } from "../lib/song-resources";
 import {
+  canAcceptVerifiedShowPayload,
   createStoredShowSnapshot,
   formatShowTimestamp,
   offlineReadyKey,
+  parseShowSets,
   parseStoredShowSnapshot,
-  shouldReplaceDisplayedSongs,
   showSnapshotKey,
+  songsBelongToShow,
   type ShowDataSource,
   type ShowDisplaySource,
+  type ShowSetDefinition,
 } from "../lib/show-read-integrity";
 import styles from "./show-page.module.css";
 
-export function SharePageButton({ label = "Share this page" }: { label?: string }) {
+export function SharePageButton({
+  label = "Share this page",
+  title = "Rad Dad + Friends Show Night",
+  text = "Run of show and live set lists for September 19, 2026.",
+}: {
+  label?: string;
+  title?: string;
+  text?: string;
+}) {
   const [status, setStatus] = useState("");
 
   async function sharePage() {
     const details = {
-      title: "Rad Dad + Friends Show Night",
-      text: "Run of show and live set lists for September 19, 2026.",
+      title,
+      text,
       url: window.location.href,
     };
     try {
@@ -56,16 +67,21 @@ export function SharePageButton({ label = "Share this page" }: { label?: string 
 
 export default function LiveSetLists({
   initialSongs,
+  initialSets,
   initialDataSource,
   showSlug,
+  showId,
   practiceMode = false,
 }: {
   initialSongs: ShowSong[];
+  initialSets: ShowSetDefinition[];
   initialDataSource: ShowDataSource;
   showSlug: string;
+  showId?: string;
   practiceMode?: boolean;
 }) {
   const [songs, setSongs] = useState(initialSongs);
+  const [sets, setSets] = useState(initialSets);
   const [currentSongId, setCurrentSongId] = useState<string | null>(null);
   const [wakeStatus, setWakeStatus] = useState<"off" | "on" | "unsupported">("off");
   const [isOnline, setIsOnline] = useState(true);
@@ -111,17 +127,17 @@ export default function LiveSetLists({
           songs?: ShowSong[];
           updatedAt?: string;
           dataSource?: ShowDataSource;
+          show?: { slug?: string; id?: string };
+          sets?: unknown;
         };
         if (!active) return;
 
         const servedOffline = response.headers.get("x-rad-dad-offline") === "1";
         setIsOnline(navigator.onLine && !servedOffline);
-        if (
-          data.songs &&
-          data.dataSource &&
-          shouldReplaceDisplayedSongs(data.dataSource)
-        ) {
+        if (data.songs && canAcceptVerifiedShowPayload(data, showSlug)) {
+          const nextSets = parseShowSets(data.sets);
           setSongs(data.songs);
+          if (nextSets) setSets(nextSets);
           setUpdatedAt(data.updatedAt ?? "");
           setLiveDataAvailable(!servedOffline);
           setDisplaySource(servedOffline ? "saved-snapshot" : "database");
@@ -175,7 +191,17 @@ export default function LiveSetLists({
         localStorage.getItem(showSnapshotKey(showSlug)),
         showSlug,
       );
-      if ((!online || initialDataSource === "confirmed-fallback") && snapshot) {
+      const snapshotBelongs = Boolean(
+        snapshot &&
+          songsBelongToShow(snapshot.songs, {
+            id: showId || snapshot.showId || "",
+          }),
+      );
+      if (
+        snapshotBelongs &&
+        snapshot &&
+        (!online || initialDataSource === "confirmed-fallback")
+      ) {
         setSongs(snapshot.songs);
         setUpdatedAt(snapshot.updatedAt);
         setDisplaySource("saved-snapshot");
@@ -211,37 +237,46 @@ export default function LiveSetLists({
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("rad-dad-offline-ready", onOfflineReady);
     };
-  }, [initialDataSource, showSlug]);
+  }, [initialDataSource, showId, showSlug]);
 
   useEffect(() => {
     if (!clientReady || !liveDataAvailable || displaySource !== "database") return;
+    if (showId && !songsBelongToShow(songs, { id: showId })) return;
     try {
       localStorage.setItem(
         showSnapshotKey(showSlug),
-        JSON.stringify(createStoredShowSnapshot(showSlug, songs, updatedAt)),
+        JSON.stringify(
+          createStoredShowSnapshot(
+            showSlug,
+            songs,
+            updatedAt,
+            new Date().toISOString(),
+            showId,
+          ),
+        ),
       );
     } catch {
       // Safari can evict storage under pressure; the service worker remains primary.
     }
-  }, [clientReady, displaySource, liveDataAvailable, showSlug, songs, updatedAt]);
+  }, [clientReady, displaySource, liveDataAvailable, showId, showSlug, songs, updatedAt]);
 
   const grouped = useMemo(
     () =>
       Object.fromEntries(
-        SET_DEFINITIONS.map((set) => [
+        sets.map((set) => [
           set.slug,
           songs
             .filter((song) => song.setSlug === set.slug)
             .sort((a, b) => a.position - b.position),
         ]),
       ) as Record<string, ShowSong[]>,
-    [songs],
+    [sets, songs],
   );
 
   const orderedSongs = useMemo(
     () =>
-      SET_DEFINITIONS.flatMap((set) => grouped[set.slug] ?? []),
-    [grouped],
+      sets.flatMap((set) => grouped[set.slug] ?? []),
+    [grouped, sets],
   );
   const currentSongIndex = orderedSongs.findIndex(
     (song) => String(song.id) === currentSongId,
@@ -320,7 +355,7 @@ export default function LiveSetLists({
       {practiceMode ? (
         <div className={styles.practiceToolbar} aria-label="Practice controls">
           <div className={styles.practiceSetNav} aria-label="Jump to a set">
-            {SET_DEFINITIONS.map((set) => (
+            {sets.map((set) => (
               <a href={`#set-${set.slug}`} key={set.slug}>
                 {set.title}
               </a>
@@ -414,7 +449,7 @@ export default function LiveSetLists({
         </p>
       ) : null}
 
-      {SET_DEFINITIONS.map((set) => {
+      {sets.map((set) => {
         const setSongs = grouped[set.slug] ?? [];
         return (
           <article

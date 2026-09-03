@@ -63,13 +63,20 @@ were media. Original songs display neither resource.
 If D1 is temporarily unavailable, the server may return the confirmed defaults
 in `lib/show-data.ts` only for the canonical September 19 event. An explicit
 slug for any cloned or future show returns an unavailable response instead of
-borrowing another event's songs.
+borrowing another event's songs. A cloned show also cannot inherit another
+event's timeline, set times, or flyer when its own rows are present but empty
+or mixed. Live refresh, device snapshots, and the offline cache accept a
+database payload only when `show.slug` and song `showId` values belong to the
+requested event.
 
 Every successful show payload identifies its source as `database` or
-`confirmed-fallback`. The client persists only database-backed payloads as a
-validated, show-scoped device snapshot. A fallback or failed refresh never
-replaces that snapshot. The UI labels a last verified set and a repository
-baseline differently so interrupted live updates cannot masquerade as current.
+`confirmed-fallback`. Official set cards use `buildShowSets` against that
+show's own timeline, not a hardcoded September schedule. The client persists
+only database-backed payloads as a validated, show-scoped device snapshot. A
+fallback, failed refresh, or another show's payload never replaces that
+snapshot. The UI labels a last verified set and a repository baseline
+differently so interrupted live updates cannot masquerade as current. The
+public hero names a fan next step and a band next step for this show.
 
 ### Show Control
 
