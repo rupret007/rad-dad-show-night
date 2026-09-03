@@ -16,6 +16,7 @@ import {
 const pageUrl = new URL("../app/page.tsx", import.meta.url);
 const liveListUrl = new URL("../app/live-set-lists.tsx", import.meta.url);
 const resumeUrl = new URL("../app/practice-resume.tsx", import.meta.url);
+const nextStepUrl = new URL("../lib/show-night-use.ts", import.meta.url);
 const showDataUrl = new URL("../lib/show-data.ts", import.meta.url);
 const showRouteUrl = new URL("../app/api/show/route.ts", import.meta.url);
 const readmeUrl = new URL("../README.md", import.meta.url);
@@ -94,14 +95,16 @@ test("practice resume only accepts a song that belongs to this show", () => {
 });
 
 test("the live page uses this show's next-step helper and honest empty sets", async () => {
-  const [page, liveList, resume, showData, showRoute, readme] = await Promise.all([
-    readFile(pageUrl, "utf8"),
-    readFile(liveListUrl, "utf8"),
-    readFile(resumeUrl, "utf8"),
-    readFile(showDataUrl, "utf8"),
-    readFile(showRouteUrl, "utf8"),
-    readFile(readmeUrl, "utf8"),
-  ]);
+  const [page, liveList, resume, nextStep, showData, showRoute, readme] =
+    await Promise.all([
+      readFile(pageUrl, "utf8"),
+      readFile(liveListUrl, "utf8"),
+      readFile(resumeUrl, "utf8"),
+      readFile(nextStepUrl, "utf8"),
+      readFile(showDataUrl, "utf8"),
+      readFile(showRouteUrl, "utf8"),
+      readFile(readmeUrl, "utf8"),
+    ]);
 
   assert.match(page, /buildShowNightUse/);
   assert.match(page, /fanNextStepCopy/);
@@ -111,11 +114,11 @@ test("the live page uses this show's next-step helper and honest empty sets", as
   assert.match(page, /See the official sets/);
   assert.match(page, /Suggest a song/);
   assert.match(page, /Practice this show/);
-  assert.match(page, /This show has no official set yet/);
-  assert.match(page, /This show has no verified list yet/);
   assert.match(page, /PracticeResume/);
   assert.match(page, /data-has-verified-list/);
   assert.doesNotMatch(page, /SET_DEFINITIONS\.map/);
+  assert.match(nextStep, /This show has no official set yet/);
+  assert.match(nextStep, /This show has no verified list yet/);
 
   assert.match(liveList, /practicePositionKey/);
   assert.match(liveList, /No verified songs on this set yet/);
