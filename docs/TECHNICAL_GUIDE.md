@@ -80,7 +80,9 @@ differently so interrupted live updates cannot masquerade as current. The
 public hero names a fan next step and a band next step from this show's
 verified list. Empty official sets say so instead of showing `0 songs ~0 min`.
 Practice names the next song and only resumes a place that belongs to this
-slug. An empty clone does not inherit another show's set.
+slug. An empty clone does not inherit another show's set. Public show reads
+strip owner rehearsal notes. The unscoped homepage only resolves the default
+published show; it never inherits the latest published clone.
 
 ### Show Control
 
@@ -93,8 +95,10 @@ The editor keeps changes in browser state until the owner saves the active set.
 returns the canonical saved rows.
 
 Show Control can switch between D1-backed show records and clone an existing
-show into a new draft. Cloning duplicates the timeline and show-specific songs,
-so the original event remains unchanged.
+show into a new draft. Cloning can copy the timeline and show-specific songs,
+or start an empty night that does not inherit another event's songs or set
+times. The original event remains unchanged. The editor shows this show's own
+set times from the loaded payload, not the September 19 defaults.
 
 ### Suggestions
 
@@ -163,9 +167,11 @@ YouTube search URL. The owner can choose and paste the correct version.
 
 Read-only and uncached. Returns show metadata, set definitions, songs, and the
 most recent update timestamp plus `dataSource`. Public reads return published
-shows only. Draft and archived slugs return the same not-found response as an
-unknown slug. An authenticated owner request from Show Control can read every
-lifecycle status. A non-default show whose rows cannot be verified returns
+shows only and omit owner rehearsal notes.
+Draft and archived slugs return the same not-found response as an unknown slug.
+An authenticated owner request from Show Control can read every lifecycle
+status, including rehearsal notes. A request with no slug resolves only the
+default published show. A non-default show whose rows cannot be verified returns
 `503` with `Retry-After`; it never falls back to the canonical event.
 
 ### `POST /api/show`
@@ -196,8 +202,9 @@ alter official set order, keys, or song rows.
 
 ### `GET/POST /api/shows`
 
-Owner-only. Lists shows, clones a source show into a draft, and updates draft,
-published, or archived status.
+Owner-only. Lists shows, clones a source show into a draft (optionally without
+copying songs or set times), and updates draft, published, or archived status.
+Status changes require an existing show slug.
 
 ### `POST /api/coach`
 
@@ -242,6 +249,16 @@ not attached.
 ```bash
 npm run build
 ```
+
+Hosted leftover-honesty / isolation:
+
+```bash
+npm run leftover:hosted
+```
+
+That boots a local show-night server and HTTP-proves the canonical night stays
+on its own set while an empty clone cannot inherit September 19 songs or times.
+It does not write live Sites or owner production data.
 
 The production build must include the worker entrypoint, static assets,
 `.openai/hosting.json`, and the D1 migration.

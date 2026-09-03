@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { showBlocks, shows, songs } from "../db/schema";
 import {
@@ -23,6 +23,7 @@ import {
   songsBelongToShow,
   ShowDataUnavailableError,
 } from "./show-read-integrity";
+import { toPublicShowSongs } from "./show-public";
 
 const SEED_KEY = "show-control-seed-v1";
 
@@ -122,22 +123,13 @@ export async function getShowRecord(
   const [defaultShow] = await db
     .select()
     .from(shows)
-    .where(
-      scope === "public"
-        ? and(eq(shows.isDefault, true), eq(shows.status, "published"))
-        : eq(shows.isDefault, true),
-    )
+    .where(eq(shows.isDefault, true))
     .limit(1);
-  if (defaultShow) return mapShow(defaultShow);
+  if (defaultShow) return mapShow(requireVisibleShow(defaultShow, scope));
 
-  const latestQuery = db.select().from(shows);
-  const [latest] = await (scope === "public"
-    ? latestQuery.where(eq(shows.status, "published"))
-    : latestQuery
-  )
-    .orderBy(desc(shows.showDate))
-    .limit(1);
-  return latest ? mapShow(latest) : (SHOW_DETAILS as ManagedShow);
+  const [anyShow] = await db.select({ id: shows.id }).from(shows).limit(1);
+  if (anyShow) throw new ShowNotFoundError();
+  return SHOW_DETAILS as ManagedShow;
 }
 
 export async function getManagedShows(): Promise<ManagedShow[]> {
@@ -218,11 +210,13 @@ export async function getShowPayload(
       (latest, song) => (song.updatedAt > latest ? song.updatedAt : latest),
       "",
     );
+    const songsForScope =
+      scope === "public" ? toPublicShowSongs(officialSongs) : officialSongs;
     return {
       show,
       timeline,
       sets: buildShowSets(timeline),
-      songs: officialSongs,
+      songs: songsForScope,
       updatedAt,
       dataSource: "database" as const,
     };
@@ -233,11 +227,13 @@ export async function getShowPayload(
       throw new ShowDataUnavailableError({ cause: error });
     }
     const officialSongs = DEFAULT_SONGS.map(hydrateSong);
+    const songsForScope =
+      scope === "public" ? toPublicShowSongs(officialSongs) : officialSongs;
     return {
       show: SHOW_DETAILS,
       timeline: [...RUN_OF_SHOW],
       sets: buildShowSets(RUN_OF_SHOW),
-      songs: officialSongs,
+      songs: songsForScope,
       updatedAt: officialSongs[0]?.updatedAt ?? "",
       dataSource: "confirmed-fallback" as const,
     };

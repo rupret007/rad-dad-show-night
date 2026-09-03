@@ -121,7 +121,15 @@ test("live refresh, snapshots, and Show Control reject another show's set", asyn
   assert.match(liveList, /if \(showId && !songsBelongToShow\(songs, \{ id: showId \}\)\) return;/);
   assert.match(store, /sets: buildShowSets\(timeline\)/);
   assert.match(store, /if \(!songsBelongToShow\(officialSongs, show\)\)/);
+  assert.match(store, /toPublicShowSongs\(officialSongs\)/);
   assert.doesNotMatch(store, /timeline\.length \? timeline : RUN_OF_SHOW/);
+  assert.doesNotMatch(
+    store.slice(
+      store.indexOf("export async function getShowRecord"),
+      store.indexOf("export async function getManagedShows"),
+    ),
+    /orderBy\(desc\(shows\.showDate\)\)/,
+  );
   assert.match(
     showsRoute,
     /INSERT INTO songs \([\s\S]*?SELECT \?, set_slug[\s\S]*?FROM songs WHERE show_id = \?/,

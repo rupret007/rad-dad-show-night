@@ -14,6 +14,14 @@ export function canReadShowStatus(
   return scope === "owner" || status === "published";
 }
 
+export function pickVisibleDefaultShow<
+  T extends { isDefault?: boolean; status: string },
+>(shows: T[], scope: ShowReadScope): T | undefined {
+  return shows.find(
+    (show) => show.isDefault === true && canReadShowStatus(show.status, scope),
+  );
+}
+
 export function requireVisibleShow<T extends { status: string }>(
   show: T | undefined,
   scope: ShowReadScope,

@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { getAdminUser } from "../../../lib/admin-access";
+import { shouldCopyCloneSongs } from "../../../lib/show-public";
 import { ensureShowSeeded, getManagedShows } from "../../../lib/show-store";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
       venue?: string;
       showDate?: string;
       status?: string;
+      copySongs?: boolean | string | number;
     };
 
     if (payload.action === "clone") {
@@ -58,7 +60,8 @@ export async function POST(request: Request) {
       const slug = await uniqueSlug(`${venue}-${showDate}`);
       const id = `show-${crypto.randomUUID()}`;
       const now = new Date().toISOString();
-      await env.DB.batch([
+      const copySongs = shouldCopyCloneSongs(payload.copySongs);
+      const statements = [
         env.DB.prepare(
           `INSERT INTO shows (
             id, slug, title, venue, show_date, start_time, end_time, status,
@@ -76,25 +79,30 @@ export async function POST(request: Request) {
           now,
           now,
         ),
-        env.DB.prepare(
-          `INSERT INTO show_blocks (
-            show_id, position, start_time, end_time, duration, title, note,
-            type, accent, set_slug
-          ) SELECT ?, position, start_time, end_time, duration, title, note,
-            type, accent, set_slug FROM show_blocks WHERE show_id = ?`,
-        ).bind(id, source.id),
-        env.DB.prepare(
-          `INSERT INTO songs (
-            show_id, set_slug, position, title, artist, transition, is_original,
-            duration_seconds, performance_note, song_key, tuning, youtube_url,
-            youtube_video_id, chords_url, lyrics_url, rehearsal_notes,
-            updated_by, created_at, updated_at
-          ) SELECT ?, set_slug, position, title, artist, transition, is_original,
-            duration_seconds, performance_note, song_key, tuning, youtube_url,
-            youtube_video_id, chords_url, lyrics_url, rehearsal_notes, ?, ?, ?
-          FROM songs WHERE show_id = ?`,
-        ).bind(id, user.email, now, now, source.id),
-      ]);
+      ];
+      if (copySongs) {
+        statements.push(
+          env.DB.prepare(
+            `INSERT INTO show_blocks (
+              show_id, position, start_time, end_time, duration, title, note,
+              type, accent, set_slug
+            ) SELECT ?, position, start_time, end_time, duration, title, note,
+              type, accent, set_slug FROM show_blocks WHERE show_id = ?`,
+          ).bind(id, source.id),
+          env.DB.prepare(
+            `INSERT INTO songs (
+              show_id, set_slug, position, title, artist, transition, is_original,
+              duration_seconds, performance_note, song_key, tuning, youtube_url,
+              youtube_video_id, chords_url, lyrics_url, rehearsal_notes,
+              updated_by, created_at, updated_at
+            ) SELECT ?, set_slug, position, title, artist, transition, is_original,
+              duration_seconds, performance_note, song_key, tuning, youtube_url,
+              youtube_video_id, chords_url, lyrics_url, rehearsal_notes, ?, ?, ?
+            FROM songs WHERE show_id = ?`,
+          ).bind(id, user.email, now, now, source.id),
+        );
+      }
+      await env.DB.batch(statements);
       const created = (await getManagedShows()).find((show) => show.slug === slug);
       return Response.json({ show: created }, { status: 201 });
     }
@@ -103,6 +111,16 @@ export async function POST(request: Request) {
       const status = payload.status;
       if (!status || !["draft", "published", "archived"].includes(status)) {
         return Response.json({ error: "Unknown show status." }, { status: 400 });
+      }
+      if (!payload.showSlug?.trim()) {
+        return Response.json({ error: "Choose a show." }, { status: 400 });
+      }
+      const existing = await env.DB
+        .prepare("SELECT slug FROM shows WHERE slug = ? LIMIT 1")
+        .bind(payload.showSlug)
+        .first();
+      if (!existing) {
+        return Response.json({ error: "Show not found." }, { status: 404 });
       }
       await env.DB
         .prepare("UPDATE shows SET status = ?, updated_at = ? WHERE slug = ?")

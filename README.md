@@ -103,7 +103,10 @@ The hero names the next step for this show from this show's verified list.
 Fans start with the first official set, then can suggest a song. Band members
 open practice mode for this event's songs, or continue from the last marked
 place on this slug. A show with no verified songs stays empty instead of
-inheriting another night. Owner edits stay in Show Control.
+inheriting another night. The public homepage stays on the default published
+show and will not silently open the latest clone. Public reads omit owner
+rehearsal notes. Those rehearsal notes stay in Show Control. Owner edits stay
+in Show Control.
 
 ## Local development
 
