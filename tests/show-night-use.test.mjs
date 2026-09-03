@@ -19,6 +19,7 @@ const resumeUrl = new URL("../app/practice-resume.tsx", import.meta.url);
 const nextStepUrl = new URL("../lib/show-night-use.ts", import.meta.url);
 const showDataUrl = new URL("../lib/show-data.ts", import.meta.url);
 const showRouteUrl = new URL("../app/api/show/route.ts", import.meta.url);
+const showPageStylesUrl = new URL("../app/show-page.module.css", import.meta.url);
 const readmeUrl = new URL("../README.md", import.meta.url);
 
 test("next steps and practice follow this show's verified list", () => {
@@ -95,7 +96,7 @@ test("practice resume only accepts a song that belongs to this show", () => {
 });
 
 test("the live page uses this show's next-step helper and honest empty sets", async () => {
-  const [page, liveList, resume, nextStep, showData, showRoute, readme] =
+  const [page, liveList, resume, nextStep, showData, showRoute, styles, readme] =
     await Promise.all([
       readFile(pageUrl, "utf8"),
       readFile(liveListUrl, "utf8"),
@@ -103,6 +104,7 @@ test("the live page uses this show's next-step helper and honest empty sets", as
       readFile(nextStepUrl, "utf8"),
       readFile(showDataUrl, "utf8"),
       readFile(showRouteUrl, "utf8"),
+      readFile(showPageStylesUrl, "utf8"),
       readFile(readmeUrl, "utf8"),
     ]);
 
@@ -116,6 +118,9 @@ test("the live page uses this show's next-step helper and honest empty sets", as
   assert.match(page, /Practice this show/);
   assert.match(page, /PracticeResume/);
   assert.match(page, /data-has-verified-list/);
+  assert.equal(page.match(/styles\.mobilePrimaryLink/g)?.length, 3);
+  assert.match(page, /styles\.practiceLink} \$\{styles\.mobileOptionalLink/);
+  assert.match(page, /className=\{styles\.controlLink\}/);
   assert.doesNotMatch(page, /SET_DEFINITIONS\.map/);
   assert.match(nextStep, /This show has no official set yet/);
   assert.match(nextStep, /This show has no verified list yet/);
@@ -133,5 +138,16 @@ test("the live page uses this show's next-step helper and honest empty sets", as
   assert.match(showData, /Heart-Shaped Box/);
   assert.match(showData, /Travis Story - guitar/);
   assert.match(showRoute, /export async function POST/);
+  assert.match(styles, /\.topLinks a \{ display: none; \}/);
+  assert.match(
+    styles,
+    /\.topLinks \.mobilePrimaryLink, \.topLinks \.practiceLink \{[^}]*display: inline-flex;/,
+  );
+  assert.match(styles, /\.topLinks \.mobileOptionalLink \{ display: none; \}/);
+  assert.doesNotMatch(
+    styles,
+    /\.topLinks \.controlLink \{[^}]*display: inline-flex;/,
+  );
+  assert.match(page, /className=\{styles\.footerControl\}/);
   assert.match(readme, /this show's verified list/);
 });

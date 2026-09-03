@@ -84,6 +84,12 @@ slug. An empty clone does not inherit another show's set. Public show reads
 strip owner rehearsal notes. The unscoped homepage only resolves the default
 published show; it never inherits the latest published clone.
 
+Responsive navigation preserves the public golden path: phones keep direct
+links to the official sets and suggestion board, while the owner editor stays
+in the footer. Practice mode keeps a direct set-list link and its exit action.
+This is CSS-only navigation prioritization; it does not change show data,
+publishing state, or authorization boundaries.
+
 ### Show Control
 
 `/show-control` uses the platform's Sign in with ChatGPT flow. The page and all
