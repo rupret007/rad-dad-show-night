@@ -43,8 +43,9 @@ updates the public page without requiring a code change or GitHub commit.
   show fails closed instead of displaying the wrong songs.
 - Keeps a cloned or future show on its own verified set. It cannot inherit
   another event's songs, set times, or flyer.
-- Tells a fan or band member the next action for this show: see the official
-  sets and suggest a song, or practice this show's verified list.
+- Tells a fan or band member the next action for this show from this show's
+  verified list: start with the first set and suggest a song, or practice
+  these songs. An empty clone stays empty instead of borrowing another night.
 - Collects public song ideas without allowing suggestions to alter the set.
 - Assumes suggestions are covers unless the submitter marks one original.
 - Protects all official-set changes behind owner authentication.
@@ -98,9 +99,11 @@ page reports that the show is temporarily unavailable instead. Live refresh,
 offline snapshots, and cached API responses also refuse another show's payload,
 so a clone cannot inherit another event's set after first paint.
 
-The hero names the next step for this show. Fans see the official sets, then
-can suggest a song. Band members open practice mode for this event's verified
-list. Owner edits stay in Show Control.
+The hero names the next step for this show from this show's verified list.
+Fans start with the first official set, then can suggest a song. Band members
+open practice mode for this event's songs, or continue from the last marked
+place on this slug. A show with no verified songs stays empty instead of
+inheriting another night. Owner edits stay in Show Control.
 
 ## Local development
 

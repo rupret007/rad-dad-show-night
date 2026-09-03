@@ -92,6 +92,9 @@ test("the live page names fan and band next steps for this show", async () => {
   assert.match(page, /See the official sets/);
   assert.match(page, /Suggest a song/);
   assert.match(page, /Practice this show/);
+  assert.match(page, /buildShowNightUse/);
+  assert.match(page, /This show has no official set yet/);
+  assert.match(page, /This show has no verified list yet/);
   assert.match(page, /sets\.map/);
   assert.match(page, /featuredGuestSet\(timeline\)/);
   assert.match(page, /isCanonicalShowSlug\(show\.slug\)/);

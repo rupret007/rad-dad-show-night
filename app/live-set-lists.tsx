@@ -25,6 +25,7 @@ import {
   type ShowDisplaySource,
   type ShowSetDefinition,
 } from "../lib/show-read-integrity";
+import { practicePositionKey } from "../lib/show-night-use";
 import styles from "./show-page.module.css";
 
 export function SharePageButton({
@@ -171,7 +172,7 @@ export default function LiveSetLists({
   }, [showSlug]);
 
   useEffect(() => {
-    const positionKey = `rad-dad-practice-position:${showSlug}`;
+    const positionKey = practicePositionKey(showSlug);
     const initializeClientState = () => {
       const online = navigator.onLine;
       setIsOnline(online);
@@ -282,6 +283,18 @@ export default function LiveSetLists({
     (song) => String(song.id) === currentSongId,
   );
   const currentSong = currentSongIndex >= 0 ? orderedSongs[currentSongIndex] : null;
+  const nextSong =
+    currentSongIndex >= 0 && currentSongIndex < orderedSongs.length - 1
+      ? orderedSongs[currentSongIndex + 1]
+      : null;
+  const hasVerifiedList = orderedSongs.length > 0;
+
+  useEffect(() => {
+    if (!currentSongId) return;
+    if (!orderedSongs.some((song) => String(song.id) === currentSongId)) {
+      setCurrentSongId(null);
+    }
+  }, [currentSongId, orderedSongs]);
 
   useEffect(() => {
     return () => {
@@ -292,7 +305,7 @@ export default function LiveSetLists({
   function selectSong(songId: string, scroll = false) {
     setCurrentSongId(songId);
     try {
-      localStorage.setItem(`rad-dad-practice-position:${showSlug}`, songId);
+      localStorage.setItem(practicePositionKey(showSlug), songId);
     } catch {
       // Remembering position is a convenience, not required for rehearsal.
     }
@@ -352,10 +365,12 @@ export default function LiveSetLists({
 
   return (
     <div className={`${styles.livePanel} ${practiceMode ? styles.practiceLivePanel : ""}`}>
-      {practiceMode ? (
+      {practiceMode && hasVerifiedList ? (
         <div className={styles.practiceToolbar} aria-label="Practice controls">
           <div className={styles.practiceSetNav} aria-label="Jump to a set">
-            {sets.map((set) => (
+            {sets
+              .filter((set) => (grouped[set.slug] ?? []).length > 0)
+              .map((set) => (
               <a href={`#set-${set.slug}`} key={set.slug}>
                 {set.title}
               </a>
@@ -363,12 +378,21 @@ export default function LiveSetLists({
           </div>
           <div className={styles.nowPlaying} aria-live="polite">
             <div className={styles.nowPlayingCopy}>
-              <span>{currentSong ? "Current song" : "Choose your place"}</span>
+              <span>
+                {currentSong
+                  ? `Song ${currentSongIndex + 1} of ${orderedSongs.length}`
+                  : "Choose your place"}
+              </span>
               <strong>
                 {currentSong
                   ? `${String(currentSong.position).padStart(2, "0")} / ${currentSong.title}`
                   : "Tap any song below"}
               </strong>
+              {nextSong ? (
+                <small className={styles.practiceNextLine}>
+                  Next / {nextSong.title}
+                </small>
+              ) : null}
             </div>
             <div className={styles.practiceControls}>
               <button
@@ -449,14 +473,25 @@ export default function LiveSetLists({
         </p>
       ) : null}
 
+      {!hasVerifiedList ? (
+        <p className={styles.emptyVerifiedList} role="status">
+          This show does not have a verified list yet. Another show&apos;s set
+          will not appear here.
+        </p>
+      ) : null}
+
       {sets.map((set) => {
         const setSongs = grouped[set.slug] ?? [];
+        const setMinutes = Math.round(
+          setSongs.reduce((total, song) => total + (song.durationSeconds || 180), 0) / 60,
+        );
         return (
           <article
             className={styles.setBlock}
             data-accent={set.accent}
             id={`set-${set.slug}`}
             key={set.slug}
+            data-empty={setSongs.length ? "false" : "true"}
           >
             <header className={styles.setHeader}>
               <div>
@@ -464,14 +499,28 @@ export default function LiveSetLists({
                 <h3 className={styles.setTitle}>{set.title}</h3>
               </div>
               <div className={styles.setMeta}>
-                <strong className={styles.setTime}>{set.time}</strong>
-                <span className={styles.songCount}>{setSongs.length} songs</span>
-                <span className={styles.songCount}>
-                  ~{Math.round(setSongs.reduce((total, song) => total + (song.durationSeconds || 180), 0) / 60)} min
-                </span>
+                <strong className={styles.setTime}>{set.time || "This show"}</strong>
+                {setSongs.length ? (
+                  <>
+                    <span className={styles.songCount}>
+                      {setSongs.length} song{setSongs.length === 1 ? "" : "s"}
+                    </span>
+                    <span className={styles.songCount}>~{setMinutes} min</span>
+                  </>
+                ) : (
+                  <span className={styles.songCount}>
+                    No verified songs on this set yet
+                  </span>
+                )}
               </div>
             </header>
 
+            {setSongs.length === 0 ? (
+              <p className={styles.emptySet}>
+                No verified songs on this set yet. This show will not borrow
+                another night&apos;s list.
+              </p>
+            ) : (
             <ol className={styles.songList}>
               {setSongs.map((song) => {
                 const resources = publicSongResourceActions(song);
@@ -568,6 +617,7 @@ export default function LiveSetLists({
                 );
               })}
             </ol>
+            )}
           </article>
         );
       })}
