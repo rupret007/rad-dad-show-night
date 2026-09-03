@@ -1,4 +1,3 @@
-import type { ShowSong } from "./show-data";
 import type { ShowSetDefinition } from "./show-read-integrity";
 
 export function toPublicShowSong<T extends { rehearsalNotes?: string }>(

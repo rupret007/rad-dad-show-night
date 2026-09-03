@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { setTimeout as delay } from "node:timers/promises";
 
 const PORT = process.env.LEFTOVER_HOSTED_PORT || "3011";
-const HOST = "127.0.0.1";
+const HOST = process.env.LEFTOVER_HOSTED_HOST || "localhost";
 const BASE = `http://${HOST}:${PORT}`;
 const CLONE_SLUG = "richardson-2026-10-31";
 const CANONICAL_SLUG = "guitars-growlers-2026-09-19";
@@ -33,6 +33,8 @@ async function seedLocalD1() {
         "d1",
         "execute",
         "site-creator-d1",
+        "--config",
+        "scripts/leftover-wrangler.toml",
         "--local",
         "--yes",
         "--file=scripts/leftover-honesty-seed.sql",
@@ -64,8 +66,8 @@ async function waitForServer(child) {
     try {
       const { response } = await readPath("/");
       if (response.status > 0) return;
-    } catch {
-      // Still booting.
+    } catch (error) {
+      logs += `wait ${attempt}: ${error instanceof Error ? error.message : error}\n`;
     }
     await delay(1000);
   }
@@ -168,6 +170,7 @@ const child = spawn("npx", ["vinext", "dev", "--host", HOST, "--port", PORT], {
     PORT,
   },
   stdio: ["ignore", "pipe", "pipe"],
+  detached: true,
 });
 
 let logs = "";
@@ -186,10 +189,18 @@ try {
   console.error(logs.slice(-4000));
   throw error;
 } finally {
-  child.kill("SIGTERM");
+  try {
+    process.kill(-child.pid, "SIGTERM");
+  } catch {
+    child.kill("SIGTERM");
+  }
   try {
     await Promise.race([once(child, "exit"), delay(3000)]);
   } catch {
-    child.kill("SIGKILL");
+    try {
+      process.kill(-child.pid, "SIGKILL");
+    } catch {
+      child.kill("SIGKILL");
+    }
   }
 }

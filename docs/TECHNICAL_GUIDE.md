@@ -167,12 +167,12 @@ YouTube search URL. The owner can choose and paste the correct version.
 
 Read-only and uncached. Returns show metadata, set definitions, songs, and the
 most recent update timestamp plus `dataSource`. Public reads return published
-shows only and omit owner rehearsal notes. Draft and archived slugs return the
-same not-found response as an unknown slug. An authenticated owner request from
-Show Control can read every lifecycle status, including rehearsal notes. A
-request with no slug resolves only the default published show. A non-default
-show whose rows cannot be verified returns `503` with `Retry-After`; it never
-falls back to the canonical event.
+shows only and omit owner rehearsal notes.
+Draft and archived slugs return the same not-found response as an unknown slug.
+An authenticated owner request from Show Control can read every lifecycle
+status, including rehearsal notes. A request with no slug resolves only the
+default published show. A non-default show whose rows cannot be verified returns
+`503` with `Retry-After`; it never falls back to the canonical event.
 
 ### `POST /api/show`
 
