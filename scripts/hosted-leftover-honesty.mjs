@@ -36,6 +36,8 @@ async function seedLocalD1() {
         "--config",
         "scripts/leftover-wrangler.toml",
         "--local",
+        "--persist-to",
+        ".wrangler/state",
         "--yes",
         "--file=scripts/leftover-honesty-seed.sql",
       ],
