@@ -11,6 +11,7 @@ import {
   getShowPayload,
   getShowRecord,
 } from "../../../lib/show-store";
+import { isShowDataUnavailableError } from "../../../lib/show-read-integrity";
 import { isShowNotFoundError } from "../../../lib/show-visibility";
 import {
   getYouTubeVideoId,
@@ -23,12 +24,25 @@ export async function GET(request: Request) {
   const slug = new URL(request.url).searchParams.get("show");
   const user = await getAdminUser();
   try {
-    return Response.json(await getShowPayload(slug, user ? "owner" : "public"), {
-      headers: { "Cache-Control": "no-store" },
+    const payload = await getShowPayload(slug, user ? "owner" : "public");
+    return Response.json(payload, {
+      headers: {
+        "Cache-Control": "no-store",
+        "X-Rad-Dad-Data-Source": payload.dataSource,
+      },
     });
   } catch (error) {
     if (isShowNotFoundError(error)) {
       return Response.json({ error: "Show not found." }, { status: 404 });
+    }
+    if (isShowDataUnavailableError(error)) {
+      return Response.json(
+        { error: "This show's verified set data is temporarily unavailable." },
+        {
+          status: 503,
+          headers: { "Cache-Control": "no-store", "Retry-After": "30" },
+        },
+      );
     }
     return Response.json({ error: "Could not load the show." }, { status: 500 });
   }

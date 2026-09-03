@@ -12,6 +12,16 @@ import {
   isSearchResourceUrl,
   publicSongResourceActions,
 } from "../lib/song-resources";
+import {
+  createStoredShowSnapshot,
+  formatShowTimestamp,
+  offlineReadyKey,
+  parseStoredShowSnapshot,
+  shouldReplaceDisplayedSongs,
+  showSnapshotKey,
+  type ShowDataSource,
+  type ShowDisplaySource,
+} from "../lib/show-read-integrity";
 import styles from "./show-page.module.css";
 
 export function SharePageButton({ label = "Share this page" }: { label?: string }) {
@@ -46,10 +56,12 @@ export function SharePageButton({ label = "Share this page" }: { label?: string 
 
 export default function LiveSetLists({
   initialSongs,
+  initialDataSource,
   showSlug,
   practiceMode = false,
 }: {
   initialSongs: ShowSong[];
+  initialDataSource: ShowDataSource;
   showSlug: string;
   practiceMode?: boolean;
 }) {
@@ -58,6 +70,12 @@ export default function LiveSetLists({
   const [wakeStatus, setWakeStatus] = useState<"off" | "on" | "unsupported">("off");
   const [isOnline, setIsOnline] = useState(true);
   const [offlineReady, setOfflineReady] = useState(false);
+  const [clientReady, setClientReady] = useState(false);
+  const [liveDataAvailable, setLiveDataAvailable] = useState(
+    initialDataSource === "database",
+  );
+  const [displaySource, setDisplaySource] =
+    useState<ShowDisplaySource>(initialDataSource);
   const [resourceNotice, setResourceNotice] = useState("");
   const [showInstallHint, setShowInstallHint] = useState(false);
   const wakeLockRef = useRef<WakeLockHandle | null>(null);
@@ -70,78 +88,116 @@ export default function LiveSetLists({
 
   useEffect(() => {
     let active = true;
+
+    function markLiveDataUnavailable() {
+      if (!active) return;
+      setLiveDataAvailable(false);
+      setDisplaySource((current) =>
+        current === "confirmed-fallback" ? current : "saved-snapshot",
+      );
+    }
+
     async function refresh() {
       try {
         const response = await fetch(
           `/api/show?show=${encodeURIComponent(showSlug)}`,
           { cache: "no-store" },
         );
-        if (!response.ok) return;
+        if (!response.ok) {
+          markLiveDataUnavailable();
+          return;
+        }
         const data = (await response.json()) as {
           songs?: ShowSong[];
           updatedAt?: string;
+          dataSource?: ShowDataSource;
         };
-        if (active && data.songs) {
+        if (!active) return;
+
+        const servedOffline = response.headers.get("x-rad-dad-offline") === "1";
+        setIsOnline(navigator.onLine && !servedOffline);
+        if (
+          data.songs &&
+          data.dataSource &&
+          shouldReplaceDisplayedSongs(data.dataSource)
+        ) {
           setSongs(data.songs);
           setUpdatedAt(data.updatedAt ?? "");
-          setIsOnline(
-            navigator.onLine && response.headers.get("x-rad-dad-offline") !== "1",
-          );
+          setLiveDataAvailable(!servedOffline);
+          setDisplaySource(servedOffline ? "saved-snapshot" : "database");
+        } else {
+          markLiveDataUnavailable();
         }
       } catch {
-        // Keep the last good set visible if the refresh is interrupted.
-        if (active && !navigator.onLine) setIsOnline(false);
+        // Keep the last verified set visible if a refresh is interrupted.
+        if (active) {
+          setIsOnline(navigator.onLine);
+          markLiveDataUnavailable();
+        }
       }
     }
 
+    const firstRefresh = window.setTimeout(() => void refresh(), 0);
     const interval = window.setInterval(refresh, 30000);
     const onVisibility = () => {
       if (document.visibilityState === "visible") void refresh();
     };
+    const onOnline = () => void refresh();
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("online", onOnline);
     return () => {
       active = false;
+      window.clearTimeout(firstRefresh);
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("online", onOnline);
     };
   }, [showSlug]);
 
   useEffect(() => {
-    const snapshotKey = `rad-dad-show-snapshot:${showSlug}`;
     const positionKey = `rad-dad-practice-position:${showSlug}`;
-    setIsOnline(navigator.onLine);
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-    setShowInstallHint(
-      /iPhone|iPad|iPod/i.test(navigator.userAgent) && !standalone,
-    );
-    setOfflineReady(
-      Boolean(localStorage.getItem(`rad-dad-offline-ready:${showSlug}`)),
-    );
-    const savedPosition = localStorage.getItem(positionKey);
-    if (savedPosition) setCurrentSongId(savedPosition);
+    const initializeClientState = () => {
+      const online = navigator.onLine;
+      setIsOnline(online);
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+      setShowInstallHint(
+        /iPhone|iPad|iPod/i.test(navigator.userAgent) && !standalone,
+      );
+      setOfflineReady(
+        Boolean(localStorage.getItem(offlineReadyKey(showSlug))),
+      );
+      const savedPosition = localStorage.getItem(positionKey);
+      if (savedPosition) setCurrentSongId(savedPosition);
 
-    if (!navigator.onLine) {
-      try {
-        const snapshot = JSON.parse(localStorage.getItem(snapshotKey) ?? "null") as {
-          songs?: ShowSong[];
-          updatedAt?: string;
-        } | null;
-        if (snapshot?.songs?.length) {
-          setSongs(snapshot.songs);
-          setUpdatedAt(snapshot.updatedAt ?? "");
-        }
-      } catch {
-        // Keep the server-rendered cached set if the local snapshot is invalid.
+      const snapshot = parseStoredShowSnapshot(
+        localStorage.getItem(showSnapshotKey(showSlug)),
+        showSlug,
+      );
+      if ((!online || initialDataSource === "confirmed-fallback") && snapshot) {
+        setSongs(snapshot.songs);
+        setUpdatedAt(snapshot.updatedAt);
+        setDisplaySource("saved-snapshot");
+        setLiveDataAvailable(false);
+      } else if (!online) {
+        setLiveDataAvailable(false);
       }
-    }
+      setClientReady(true);
+    };
+    const initialize = window.setTimeout(initializeClientState, 0);
 
     const onOnline = () => {
       setIsOnline(true);
       setResourceNotice("");
     };
-    const onOffline = () => setIsOnline(false);
+    const onOffline = () => {
+      setIsOnline(false);
+      setLiveDataAvailable(false);
+      setDisplaySource((current) =>
+        current === "confirmed-fallback" ? current : "saved-snapshot",
+      );
+    };
     const onOfflineReady = (event: Event) => {
       const detail = (event as CustomEvent<{ showSlug?: string }>).detail;
       if (detail?.showSlug === showSlug) setOfflineReady(true);
@@ -150,22 +206,24 @@ export default function LiveSetLists({
     window.addEventListener("offline", onOffline);
     window.addEventListener("rad-dad-offline-ready", onOfflineReady);
     return () => {
+      window.clearTimeout(initialize);
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("rad-dad-offline-ready", onOfflineReady);
     };
-  }, [showSlug]);
+  }, [initialDataSource, showSlug]);
 
   useEffect(() => {
+    if (!clientReady || !liveDataAvailable || displaySource !== "database") return;
     try {
       localStorage.setItem(
-        `rad-dad-show-snapshot:${showSlug}`,
-        JSON.stringify({ songs, updatedAt, savedAt: new Date().toISOString() }),
+        showSnapshotKey(showSlug),
+        JSON.stringify(createStoredShowSnapshot(showSlug, songs, updatedAt)),
       );
     } catch {
       // Safari can evict storage under pressure; the service worker remains primary.
     }
-  }, [showSlug, songs, updatedAt]);
+  }, [clientReady, displaySource, liveDataAvailable, showSlug, songs, updatedAt]);
 
   const grouped = useMemo(
     () =>
@@ -312,14 +370,28 @@ export default function LiveSetLists({
 
       <div
         className={styles.offlineStatus}
-        data-state={!isOnline ? "offline" : offlineReady ? "ready" : "preparing"}
+        data-state={
+          !isOnline
+            ? "offline"
+            : !liveDataAvailable
+              ? "degraded"
+              : offlineReady
+                ? "ready"
+                : "preparing"
+        }
         role="status"
         aria-live="polite"
       >
         <span className={styles.offlineDot} aria-hidden="true" />
         <strong>
           {!isOnline
-            ? "Offline / showing saved set"
+            ? displaySource === "confirmed-fallback"
+              ? "Offline / showing confirmed baseline"
+              : "Offline / showing last verified set"
+            : !liveDataAvailable
+              ? displaySource === "confirmed-fallback"
+                ? "Live updates paused / confirmed baseline"
+                : "Live updates paused / last verified set"
             : offlineReady
               ? "Offline copy ready on this device"
               : "Preparing this device for offline use"}
@@ -327,6 +399,10 @@ export default function LiveSetLists({
         <span>
           {!isOnline
             ? "Set order, details, and your current-song marker remain available."
+            : !liveDataAvailable
+              ? displaySource === "confirmed-fallback"
+                ? "This reviewed baseline belongs to this event, but it is not a live database response."
+                : "The last verified official set stays visible and will not be replaced by fallback data."
             : showInstallHint
               ? "For best iPhone reliability: tap Share, then Add to Home Screen."
               : "Open this page once before practice and it can reload without service."}
@@ -462,7 +538,12 @@ export default function LiveSetLists({
       })}
 
       <p className={styles.updatedLine}>
-        Live list{updatedAt ? ` / updated ${formatUpdated(updatedAt)}` : ""}
+        {displaySource === "database"
+          ? "Verified live list"
+          : displaySource === "saved-snapshot"
+            ? "Last verified live list"
+            : "Confirmed code baseline"}
+        {updatedAt ? ` / updated ${formatShowTimestamp(updatedAt)}` : ""}
       </p>
 
     </div>
@@ -479,14 +560,3 @@ type WakeLockNavigator = Navigator & {
     request: (type: "screen") => Promise<WakeLockHandle>;
   };
 };
-
-function formatUpdated(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import LiveSetLists, { SharePageButton } from "./live-set-lists";
 import ShowFlyer from "./show-flyer";
 import SongBoard from "./song-board";
@@ -6,6 +7,7 @@ import styles from "./show-page.module.css";
 import { SET_DEFINITIONS } from "../lib/show-data";
 import { SHOW_FLYER_CANDIDATES } from "../lib/show-media";
 import { getShowPayload } from "../lib/show-store";
+import { isShowDataUnavailableError } from "../lib/show-read-integrity";
 import { isShowNotFoundError } from "../lib/show-visibility";
 import { PUBLIC_SITE_LABEL, PUBLIC_SITE_URL } from "../lib/surface-roles";
 
@@ -19,11 +21,17 @@ export default async function Home({
     | { show?: string; practice?: string };
 }) {
   const params = await Promise.resolve(searchParams ?? {});
-  const payload = await getShowPayload(params.show, "public").catch((error) => {
+  let payload;
+  try {
+    payload = await getShowPayload(params.show, "public");
+  } catch (error) {
     if (isShowNotFoundError(error)) notFound();
+    if (isShowDataUnavailableError(error)) {
+      return <ShowUnavailable showSlug={params.show} />;
+    }
     throw error;
-  });
-  const { songs, show, timeline } = payload;
+  }
+  const { dataSource, songs, show, timeline } = payload;
   const practiceMode = params.practice === "1" || params.practice === "true";
   const controlHref = `/show-control?show=${encodeURIComponent(show.slug)}`;
   const showHref = `/?show=${encodeURIComponent(show.slug)}`;
@@ -33,6 +41,7 @@ export default async function Home({
     <main
       className={`${styles.page} ${practiceMode ? styles.practicePage : ""}`}
       data-show-slug={show.slug}
+      data-show-source={dataSource}
     >
       <div className={styles.atmosphere} aria-hidden="true" />
 
@@ -234,6 +243,7 @@ export default async function Home({
         </div>
         <LiveSetLists
           initialSongs={songs}
+          initialDataSource={dataSource}
           showSlug={show.slug}
           practiceMode={practiceMode}
         />
@@ -289,6 +299,29 @@ export default async function Home({
           {practiceMode ? "Return to full show page" : "Owner: open Show Control"}
         </a>
       </footer>
+    </main>
+  );
+}
+
+function ShowUnavailable({ showSlug }: { showSlug?: string }) {
+  const retryHref = showSlug
+    ? `/?show=${encodeURIComponent(showSlug)}`
+    : "/";
+  return (
+    <main className={`${styles.page} ${styles.unavailablePage}`}>
+      <section className={styles.unavailableCard} role="alert">
+        <span className={styles.unavailableBadge}>Live data paused</span>
+        <h1>THIS SHOW IS TEMPORARILY UNAVAILABLE.</h1>
+        <p>
+          We could not verify this show&apos;s own set data, so we did not
+          substitute another event&apos;s songs. Try again when the live show
+          database reconnects.
+        </p>
+        <div className={styles.unavailableActions}>
+          <Link href={retryHref}>Try this show again</Link>
+          <Link href="/">Open the default show</Link>
+        </div>
+      </section>
     </main>
   );
 }

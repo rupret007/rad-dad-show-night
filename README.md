@@ -37,6 +37,10 @@ updates the public page without requiring a code change or GitHub commit.
 - Shows YouTube and lyrics for covers only when the official set has a saved
   direct URL; originals hide both.
 - Refreshes the public set lists automatically while the page is open.
+- Keeps the last verified live set on the device when the database or network
+  drops, without replacing it with an older fallback.
+- Uses the reviewed September 19 baseline only for that exact event; another
+  show fails closed instead of displaying the wrong songs.
 - Collects public song ideas without allowing suggestions to alter the set.
 - Assumes suggestions are covers unless the submitter marks one original.
 - Protects all official-set changes behind owner authentication.
@@ -73,6 +77,20 @@ Unsaved changes remain private in the browser. Public suggestions also remain
 separate until the owner deliberately adds one to a draft and saves it.
 The inline board has one application write path, `/api/suggestions`; its backup
 link opens the connected Google Form directly rather than a second API route.
+
+## Show-night data status
+
+The status above the official sets distinguishes three states:
+
+- **Verified live list** — the set came from the show database.
+- **Last verified live list** — live reads are interrupted, so the app keeps
+  the exact set previously verified and saved on this device.
+- **Confirmed code baseline** — the default September 19 event is using its
+  reviewed repository baseline because no verified device copy is available.
+
+Fallback data is scoped to that one event. A cloned or future show never
+borrows the September set when its own database rows cannot be verified; the
+page reports that the show is temporarily unavailable instead.
 
 ## Local development
 

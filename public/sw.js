@@ -1,4 +1,4 @@
-const CACHE_NAME = "rad-dad-show-offline-v1";
+const CACHE_NAME = "rad-dad-show-offline-v2";
 const APP_SHELL = [
   "/offline.html",
   "/manifest.webmanifest",
@@ -75,21 +75,64 @@ async function cacheShowResources(values) {
       return false;
     }
   });
-  const results = await Promise.allSettled(
-    urls.map(async (url) => {
-      const response = await fetch(url, { cache: "no-store" });
-      if (!response.ok) throw new Error(`Unable to cache ${url}`);
-      await cache.put(url, response.clone());
+  const showApiUrl = urls.find(
+    (value) => new URL(value, self.location.origin).pathname === "/api/show",
+  );
+  if (!showApiUrl) return { ready: false, cached: 0 };
+
+  try {
+    const showResponse = await fetch(showApiUrl, { cache: "no-store" });
+    if (
+      !showResponse.ok ||
+      showResponse.headers.get("X-Rad-Dad-Data-Source") !== "database"
+    ) {
+      return { ready: false, cached: 0 };
+    }
+    await cache.put(showApiUrl, showResponse.clone());
+  } catch {
+    return { ready: false, cached: 0 };
+  }
+
+  const cachedUrls = new Set([showApiUrl]);
+  const results = await Promise.all(
+    urls.filter((url) => url !== showApiUrl).map(async (url) => {
+      try {
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) return null;
+        await cache.put(url, response.clone());
+        return url;
+      } catch {
+        return null;
+      }
     }),
   );
-  const cached = results.filter((result) => result.status === "fulfilled").length;
-  return { ready: cached >= Math.min(3, urls.length), cached };
+  for (const url of results) {
+    if (url) cachedUrls.add(url);
+  }
+
+  const requiredUrls = urls.filter((value) => {
+    const url = new URL(value, self.location.origin);
+    return url.pathname === "/" || url.pathname === "/api/show";
+  });
+  return {
+    ready:
+      requiredUrls.length >= 3 &&
+      requiredUrls.every((url) => cachedUrls.has(url)),
+    cached: cachedUrls.size,
+  };
 }
 
 async function networkFirst(request, timeoutMs, navigation) {
   const cache = await caches.open(CACHE_NAME);
   const network = fetch(request).then(async (response) => {
-    if (response.ok) await cache.put(request, response.clone());
+    const verifiedShowApi =
+      new URL(request.url).pathname !== "/api/show" ||
+      response.headers.get("X-Rad-Dad-Data-Source") === "database";
+    // Navigations are cached only by CACHE_SHOW after the rendered page proves
+    // it came from D1. A transient fallback must never replace that copy.
+    if (response.ok && !navigation && verifiedShowApi) {
+      await cache.put(request, response.clone());
+    }
     return response;
   });
   try {

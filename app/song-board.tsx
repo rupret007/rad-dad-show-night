@@ -106,16 +106,26 @@ export default function SongBoard() {
             <textarea name="notes" maxLength={500} rows={3} placeholder="Singer, version, key, or why it would crush." />
           </label>
           <label className={styles.originalChoice}>
-            <input name="isOriginal" type="checkbox" value="true" />
+            <input
+              aria-label="This is an original or unreleased song"
+              name="isOriginal"
+              type="checkbox"
+              value="true"
+            />
             <span>
               <strong>This is an original / unreleased song</strong>
               <small>Skip automatic YouTube and lyrics lookup.</small>
             </span>
           </label>
-          <label className={styles.honeypot} aria-hidden="true">
-            Website
-            <input name="website" tabIndex={-1} autoComplete="off" />
-          </label>
+          <div className={styles.honeypot} aria-hidden="true">
+            <input
+              aria-label="Website"
+              id="suggestion-website"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </div>
           <button className={styles.submitButton} type="submit" disabled={submitting}>
             {submitting ? "Adding..." : "Add suggestion"}
           </button>
