@@ -9,7 +9,7 @@ import {
   type SetSlug,
   type ShowSong,
 } from "../../lib/show-data";
-import { showPayloadBelongsToShow } from "../../lib/show-read-integrity";
+import { showPayloadBelongsToShow, type ShowSetDefinition } from "../../lib/show-read-integrity";
 import {
   buildSongResourceLinks,
   getYouTubeEmbedUrl,
@@ -64,6 +64,7 @@ export default function ShowControlClient({
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
   const [shows, setShows] = useState<ManagedShow[]>([]);
   const [activeShowSlug, setActiveShowSlug] = useState<string>(SHOW_DETAILS.slug);
+  const [showSets, setShowSets] = useState<ShowSetDefinition[]>([...SET_DEFINITIONS]);
   const [cloneOpen, setCloneOpen] = useState(false);
   const [cloning, setCloning] = useState(false);
   const [coach, setCoach] = useState<CoachResult | null>(null);
@@ -79,7 +80,11 @@ export default function ShowControlClient({
     Promise.all([
       fetch(`/api/show?show=${encodeURIComponent(requestedShow)}`, { cache: "no-store" }).then((response) => {
         if (!response.ok) throw new Error("Could not load the official sets.");
-        return response.json() as Promise<{ songs: ShowSong[]; show: ManagedShow }>;
+        return response.json() as Promise<{
+          songs: ShowSong[];
+          show: ManagedShow;
+          sets?: ShowSetDefinition[];
+        }>;
       }),
       fetch("/api/shows", { cache: "no-store" }).then((response) =>
         response.json() as Promise<{ shows?: ManagedShow[] }>,
@@ -96,6 +101,7 @@ export default function ShowControlClient({
         setSongsBySet(groupSongs(showData.songs));
         setShows(showList.shows ?? [showData.show]);
         setActiveShowSlug(showData.show.slug);
+        if (showData.sets?.length) setShowSets(showData.sets);
         setSuggestions(suggestionData.suggestions ?? []);
       })
       .catch((error) => {
@@ -131,6 +137,8 @@ export default function ShowControlClient({
   }, [preview]);
 
   const activeDefinition = SET_DEFINITIONS.find((set) => set.slug === activeSet)!;
+  const activeSetTime =
+    showSets.find((set) => set.slug === activeSet)?.time?.trim() || "This show";
   const activeShow =
     shows.find((show) => show.slug === activeShowSlug) ??
     (SHOW_DETAILS as ManagedShow);
@@ -347,12 +355,17 @@ export default function ShowControlClient({
         cache: "no-store",
       });
       if (!response.ok) throw new Error("Could not load that show.");
-      const data = (await response.json()) as { songs: ShowSong[]; show: ManagedShow };
+      const data = (await response.json()) as {
+        songs: ShowSong[];
+        show: ManagedShow;
+        sets?: ShowSetDefinition[];
+      };
       if (!showPayloadBelongsToShow(data, slug)) {
         throw new Error("That show's set could not be verified.");
       }
       setSongsBySet(groupSongs(data.songs));
       setActiveShowSlug(data.show.slug);
+      setShowSets(data.sets?.length ? data.sets : [...SET_DEFINITIONS]);
       setDirtySets(new Set());
       window.history.replaceState(null, "", `/show-control?show=${encodeURIComponent(data.show.slug)}`);
     } catch (error) {
@@ -377,6 +390,7 @@ export default function ShowControlClient({
           title: data.title,
           venue: data.venue,
           showDate: data.showDate,
+          copySongs: data.copySongs === "on",
         }),
       });
       const result = (await response.json()) as { show?: ManagedShow; error?: string };
@@ -385,7 +399,9 @@ export default function ShowControlClient({
       setCloneOpen(false);
       await switchShow(result.show.slug);
       setNotice(
-        "New draft created. It has its own copy of the sets. The original show is unchanged.",
+        data.copySongs === "on"
+          ? "New draft created. It has its own copy of the sets. The original show is unchanged."
+          : "New empty draft created. It does not inherit another show's songs or set times.",
       );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not clone the show.");
@@ -515,17 +531,23 @@ export default function ShowControlClient({
           <form className={styles.clonePanel} onSubmit={cloneShow}>
             <div>
               <strong>Clone this show</strong>
-              <span>Copies the timeline, sets, cues, originals, and resource links into a private draft.</span>
+              <span>The original show is unchanged. Uncheck the box to start an empty night that does not inherit songs or set times.</span>
             </div>
             <input name="title" defaultValue={activeShow.title} aria-label="New show title" required />
             <input name="venue" defaultValue={activeShow.venue} aria-label="New show venue" required />
             <input name="showDate" type="date" aria-label="New show date" required />
             <button type="submit" disabled={cloning}>{cloning ? "Cloning..." : "Create draft"}</button>
+            <label className={styles.cloneCopyChoice}>
+              <input name="copySongs" type="checkbox" defaultChecked />
+              <span>Copy official songs and set times into the draft</span>
+            </label>
           </form>
         ) : null}
 
         <nav className={styles.setTabs} aria-label="Choose a set to edit">
-          {SET_DEFINITIONS.map((set) => (
+          {SET_DEFINITIONS.map((set) => {
+            const liveTime = showSets.find((item) => item.slug === set.slug)?.time;
+            return (
             <button
               className={activeSet === set.slug ? styles.activeTab : ""}
               data-accent={set.accent}
@@ -541,17 +563,19 @@ export default function ShowControlClient({
               <strong>{set.title}</strong>
               <small>
                 {songsBySet[set.slug].length} songs
+                {liveTime ? ` / ${liveTime}` : ""}
                 {dirtySets.has(set.slug) ? " / unsaved" : ""}
               </small>
             </button>
-          ))}
+            );
+          })}
         </nav>
 
         <div className={styles.controlGrid}>
           <section className={styles.editorPanel}>
             <header className={styles.editorHeader}>
               <div>
-                <span>{activeDefinition.time}</span>
+                <span>{activeSetTime}</span>
                 <h2>{activeDefinition.title}</h2>
               </div>
               <span className={styles.liveState}>

@@ -26,6 +26,7 @@ import {
   type ShowSetDefinition,
 } from "../lib/show-read-integrity";
 import { practicePositionKey } from "../lib/show-night-use";
+import { visibleOfficialSets } from "../lib/show-public";
 import styles from "./show-page.module.css";
 
 export function SharePageButton({
@@ -288,6 +289,7 @@ export default function LiveSetLists({
       ? orderedSongs[currentSongIndex + 1]
       : null;
   const hasVerifiedList = orderedSongs.length > 0;
+  const listedSets = visibleOfficialSets(sets, songs);
 
   useEffect(() => {
     return () => {
@@ -473,7 +475,7 @@ export default function LiveSetLists({
         </p>
       ) : null}
 
-      {sets.map((set) => {
+      {listedSets.map((set) => {
         const setSongs = grouped[set.slug] ?? [];
         const setMinutes = Math.round(
           setSongs.reduce((total, song) => total + (song.durationSeconds || 180), 0) / 60,

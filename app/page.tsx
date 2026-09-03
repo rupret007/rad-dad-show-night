@@ -20,6 +20,7 @@ import {
   buildShowNightUse,
   fanNextStepCopy,
 } from "../lib/show-night-use";
+import { visibleOfficialSets } from "../lib/show-public";
 import PracticeResume from "./practice-resume";
 
 export const dynamic = "force-dynamic";
@@ -115,9 +116,7 @@ export default async function Home({
   const controlHref = `/show-control?show=${encodeURIComponent(show.slug)}`;
   const showHref = `/?show=${encodeURIComponent(show.slug)}`;
   const practiceHref = `${showHref}&practice=1#official-sets`;
-  const listedSets = nightUse.sets.filter(
-    (set) => set.time || set.songCount > 0,
-  );
+  const listedSets = visibleOfficialSets(sets, songs);
 
   return (
     <main

@@ -33,9 +33,13 @@ then create the draft.
 
 Every show has a unique share link using `?show=show-slug`. The clone keeps its
 own set rows. Later edits to the original show cannot change the draft, and the
-public page will not paint another event's songs or set times onto it. Mark a
-draft **Published** when it is ready for the band, and archive completed events
-to keep the picker organized without deleting their history.
+public page will not paint another event's songs or set times onto it. Uncheck
+**Copy official songs and set times** to start an empty night; that draft will
+not inherit another show's set. Mark a draft **Published** when it is ready for
+the band, and archive completed events to keep the picker organized without
+deleting their history. The editor times come from this show's own verified
+payload, not the September 19 defaults. Rehearsal notes stay in Show Control
+and are not sent on public show reads.
 
 Draft and archived links are private lifecycle records, not public previews.
 Anonymous page and API reads return not found; the authenticated owner can still

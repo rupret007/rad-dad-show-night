@@ -339,7 +339,7 @@ function normalizeSnapshotSong(value: unknown): ShowSong | null {
     youtubeVideoId: safeVideoId(song.youtubeVideoId),
     chordsUrl: safeHttpUrl(song.chordsUrl),
     lyricsUrl: safeHttpUrl(song.lyricsUrl),
-    rehearsalNotes: safeText(song.rehearsalNotes, 2500),
+    rehearsalNotes: "",
     updatedAt: safeText(song.updatedAt, 80),
   };
 }
