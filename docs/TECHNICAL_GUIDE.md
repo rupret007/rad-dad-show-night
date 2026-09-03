@@ -31,6 +31,7 @@ media fails closed. The public band site stays at
 | `app/api/suggestions/route.ts` | Canonical public suggestion GET and POST route |
 | `lib/show-data.ts` | Event constants and initial confirmed songs |
 | `lib/show-store.ts` | Database seeding, reads, and song hydration |
+| `lib/show-read-integrity.ts` | Exact-show fallback policy and validated device snapshots |
 | `lib/admin-access.ts` | Owner email authorization |
 | `lib/surface-roles.ts` | Live-set / catalog / public-site / band-OS roles |
 | `lib/song-resources.ts` | YouTube URL parsing and fail-closed public media |
@@ -46,15 +47,29 @@ media fails closed. The public band site stays at
 
 The server renders the current set from D1. `LiveSetLists` then requests
 `GET /api/show` every 30 seconds and after the tab returns to the foreground.
-This lets an already-open page receive changes made in Show Control.
+This lets an already-open page receive changes made in Show Control. The
+service worker caches `/api/show` only when its response carries the verified
+database source header. Navigation responses are cached by the explicit
+offline-preparation flow only after the rendered page identifies a database
+source; ordinary network-first fallback responses cannot overwrite the saved
+show page. The ready indicator is versioned with the cache and turns on only
+after the full show page, practice page, and verified show API are all stored.
 
 The public list renders YouTube and lyrics actions for songs not marked
 original only when the official set has a saved direct URL. A local covers
 table is not official-set media. Search fallbacks are not shown as if they
 were media. Original songs display neither resource.
 
-If D1 is temporarily unavailable, the server returns the confirmed defaults in
-`lib/show-data.ts` so the show plan does not disappear.
+If D1 is temporarily unavailable, the server may return the confirmed defaults
+in `lib/show-data.ts` only for the canonical September 19 event. An explicit
+slug for any cloned or future show returns an unavailable response instead of
+borrowing another event's songs.
+
+Every successful show payload identifies its source as `database` or
+`confirmed-fallback`. The client persists only database-backed payloads as a
+validated, show-scoped device snapshot. A fallback or failed refresh never
+replaces that snapshot. The UI labels a last verified set and a repository
+baseline differently so interrupted live updates cannot masquerade as current.
 
 ### Show Control
 
@@ -136,9 +151,11 @@ YouTube search URL. The owner can choose and paste the correct version.
 ### `GET /api/show`
 
 Read-only and uncached. Returns show metadata, set definitions, songs, and the
-most recent update timestamp. Public reads return published shows only. Draft
-and archived slugs return the same not-found response as an unknown slug. An
-authenticated owner request from Show Control can read every lifecycle status.
+most recent update timestamp plus `dataSource`. Public reads return published
+shows only. Draft and archived slugs return the same not-found response as an
+unknown slug. An authenticated owner request from Show Control can read every
+lifecycle status. A non-default show whose rows cannot be verified returns
+`503` with `Retry-After`; it never falls back to the canonical event.
 
 ### `POST /api/show`
 
@@ -188,6 +205,8 @@ a short set-coaching review. It never mutates show data.
 - OpenAI credentials, if added, must be stored as a Sites secret.
 - Public suggestion input is length-limited and includes a honeypot field.
 - User-supplied resource links are limited to HTTP and HTTPS URLs.
+- Local show snapshots are versioned, bounded, structurally validated, and
+  keyed to the exact show slug before they can render.
 
 ## Local development
 

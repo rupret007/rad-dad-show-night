@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   SET_DEFINITIONS,
   SHOW_DETAILS,
@@ -61,12 +62,14 @@ export default function ShowControlClient({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
   const [shows, setShows] = useState<ManagedShow[]>([]);
-  const [activeShowSlug, setActiveShowSlug] = useState(SHOW_DETAILS.slug);
+  const [activeShowSlug, setActiveShowSlug] = useState<string>(SHOW_DETAILS.slug);
   const [cloneOpen, setCloneOpen] = useState(false);
   const [cloning, setCloning] = useState(false);
   const [coach, setCoach] = useState<CoachResult | null>(null);
   const [coaching, setCoaching] = useState(false);
   const dragIndex = useRef<number | null>(null);
+  const draftIdPrefix = useId().replace(/[^a-z0-9-]/gi, "");
+  const draftIdCounter = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -179,8 +182,10 @@ export default function ShowControlClient({
   ) {
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
+    draftIdCounter.current += 1;
     const song: ShowSong = {
-      id: `draft-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      id: `draft-${draftIdPrefix}-${draftIdCounter.current}`,
+      showId: activeShow.id,
       setSlug: activeSet,
       position: activeSongs.length + 1,
       title: cleanTitle,
@@ -432,14 +437,14 @@ export default function ShowControlClient({
   return (
     <main className={styles.controlShell}>
       <header className={styles.controlTopbar}>
-        <a className={styles.controlBrand} href="/">
+        <Link className={styles.controlBrand} href="/">
           <span>RD</span>
           <div><strong>SHOW CONTROL</strong><small>RAD DAD + FRIENDS</small></div>
-        </a>
+        </Link>
         <div className={styles.ownerStrip}>
           <span className={styles.privateBadge}>Owner only</span>
           <span className={styles.ownerName}>{userName}</span>
-          <a href={`/?show=${encodeURIComponent(activeShowSlug)}`} target="_blank">Open public show</a>
+          <a href={`/?show=${encodeURIComponent(activeShowSlug)}`} target="_blank" rel="noreferrer">Open public show</a>
           <a href={signOutHref}>Sign out</a>
         </div>
       </header>

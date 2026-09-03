@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { offlineReadyKey } from "../lib/show-read-integrity";
 
 const READY_EVENT = "rad-dad-offline-ready";
 
@@ -15,10 +16,13 @@ export default function OfflineSupport() {
         const registration = await navigator.serviceWorker.ready;
         if (!active || !registration.active) return;
 
+        const showRoot =
+          document.querySelector<HTMLElement>("[data-show-slug]");
         const showSlug =
-          document.querySelector<HTMLElement>("[data-show-slug]")?.dataset
-            .showSlug ?? new URL(window.location.href).searchParams.get("show");
+          showRoot?.dataset.showSlug ??
+          new URL(window.location.href).searchParams.get("show");
         if (!showSlug) return;
+        if (showRoot?.dataset.showSource !== "database") return;
 
         const showQuery = encodeURIComponent(showSlug);
         const resources = performance
@@ -48,7 +52,7 @@ export default function OfflineSupport() {
         const result = await sendCacheMessage(registration.active, urls);
         if (!active || !result.ready) return;
         const cachedAt = new Date().toISOString();
-        localStorage.setItem(`rad-dad-offline-ready:${showSlug}`, cachedAt);
+        localStorage.setItem(offlineReadyKey(showSlug), cachedAt);
         window.dispatchEvent(
           new CustomEvent(READY_EVENT, { detail: { showSlug, cachedAt } }),
         );

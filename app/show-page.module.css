@@ -194,6 +194,8 @@
 .offlineStatus[data-state="ready"] .offlineDot { background: var(--lime); box-shadow: 0 0 0 5px rgba(184, 245, 39, 0.1); }
 .offlineStatus[data-state="offline"] { border-color: rgba(24, 170, 245, 0.38); background: rgba(24, 170, 245, 0.07); }
 .offlineStatus[data-state="offline"] .offlineDot { background: var(--blue); box-shadow: 0 0 0 5px rgba(24, 170, 245, 0.12); }
+.offlineStatus[data-state="degraded"] { border-color: rgba(255, 61, 135, 0.48); background: rgba(255, 61, 135, 0.075); }
+.offlineStatus[data-state="degraded"] .offlineDot { background: var(--pink); box-shadow: 0 0 0 5px rgba(255, 61, 135, 0.12); }
 .offlineNotice { margin: -12px 0 0; padding: 11px 14px; color: var(--black); background: var(--pink); font-size: 0.82rem; font-weight: 800; letter-spacing: 0.04em; }
 .practiceToolbar { position: sticky; top: 72px; z-index: 15; margin-bottom: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(5, 5, 6, 0.96); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55); backdrop-filter: blur(18px); }
 .practiceSetNav { padding: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
@@ -267,6 +269,15 @@
 .footerSurfaces a { color: var(--lime); text-decoration: none; }
 .footerSurfaces a:hover { color: white; }
 .footerControl { padding: 11px 14px; color: var(--black); background: var(--pink); font-size: 0.75rem; font-weight: 900; letter-spacing: 0.08em; text-decoration: none; text-transform: uppercase; }
+
+.unavailablePage { display: grid; place-items: center; padding: 28px; }
+.unavailableCard { width: min(760px, 100%); padding: clamp(34px, 7vw, 72px); border: 1px solid rgba(255, 61, 135, 0.6); background: rgba(10, 10, 12, 0.94); box-shadow: 14px 14px 0 rgba(24, 170, 245, 0.2); }
+.unavailableBadge { color: var(--pink); font-size: 0.78rem; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; }
+.unavailableCard h1 { max-width: 680px; margin: 18px 0 24px; font-family: Impact, "Arial Black", sans-serif; font-size: clamp(3.2rem, 9vw, 6.8rem); line-height: 0.88; }
+.unavailableCard p { max-width: 620px; margin: 0; color: var(--muted); font-size: 1.18rem; line-height: 1.5; }
+.unavailableActions { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 10px; }
+.unavailableActions a { min-height: 46px; padding: 0 18px; display: inline-flex; align-items: center; color: var(--black); background: var(--lime); font-size: 0.78rem; font-weight: 900; letter-spacing: 0.08em; text-decoration: none; text-transform: uppercase; }
+.unavailableActions a + a { color: var(--paper); border: 1px solid rgba(255, 255, 255, 0.24); background: transparent; }
 
 .modalBackdrop { position: fixed; inset: 0; z-index: 100; padding: 24px; display: grid; place-items: center; background: rgba(0, 0, 0, 0.88); backdrop-filter: blur(10px); }
 .modal { width: min(920px, 100%); overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.25); background: #08080a; box-shadow: 14px 14px 0 var(--blue); }

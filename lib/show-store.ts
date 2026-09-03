@@ -17,6 +17,10 @@ import {
   requireVisibleShow,
   type ShowReadScope,
 } from "./show-visibility";
+import {
+  canUseConfirmedShowFallback,
+  ShowDataUnavailableError,
+} from "./show-read-integrity";
 
 const SEED_KEY = "show-control-seed-v1";
 
@@ -141,50 +145,48 @@ export async function getManagedShows(): Promise<ManagedShow[]> {
 }
 
 export async function getOfficialSongs(
-  showId = SHOW_DETAILS.id,
+  showId: string = SHOW_DETAILS.id,
 ): Promise<ShowSong[]> {
-  try {
-    await ensureShowSeeded();
-    const rows = await getDb()
-      .select()
-      .from(songs)
-      .where(eq(songs.showId, showId))
-      .orderBy(asc(songs.setSlug), asc(songs.position), asc(songs.id));
+  await ensureShowSeeded();
+  const rows = await getDb()
+    .select()
+    .from(songs)
+    .where(eq(songs.showId, showId))
+    .orderBy(asc(songs.setSlug), asc(songs.position), asc(songs.id));
 
-    return rows.map((row) =>
-      hydrateSong({
-        id: row.id,
-        showId: row.showId,
-        setSlug: row.setSlug as ShowSong["setSlug"],
-        position: row.position,
-        title: row.title,
-        artist: row.artist,
-        transition: row.transition,
-        isOriginal: row.isOriginal,
-        durationSeconds: row.durationSeconds,
-        performanceNote: row.performanceNote,
-        songKey: row.songKey,
-        tuning: row.tuning,
-        youtubeUrl: row.youtubeUrl,
-        youtubeVideoId: row.youtubeVideoId,
-        chordsUrl: row.chordsUrl,
-        lyricsUrl: row.lyricsUrl,
-        rehearsalNotes: row.rehearsalNotes,
-        updatedAt: row.updatedAt,
-      }),
-    );
-  } catch {
-    return DEFAULT_SONGS.map(hydrateSong);
-  }
+  return rows.map((row) =>
+    hydrateSong({
+      id: row.id,
+      showId: row.showId,
+      setSlug: row.setSlug as ShowSong["setSlug"],
+      position: row.position,
+      title: row.title,
+      artist: row.artist,
+      transition: row.transition,
+      isOriginal: row.isOriginal,
+      durationSeconds: row.durationSeconds,
+      performanceNote: row.performanceNote,
+      songKey: row.songKey,
+      tuning: row.tuning,
+      youtubeUrl: row.youtubeUrl,
+      youtubeVideoId: row.youtubeVideoId,
+      chordsUrl: row.chordsUrl,
+      lyricsUrl: row.lyricsUrl,
+      rehearsalNotes: row.rehearsalNotes,
+      updatedAt: row.updatedAt,
+    }),
+  );
 }
 
 export async function getShowPayload(
   slug?: string | null,
   scope: ShowReadScope = "public",
 ) {
+  let resolvedShowSlug: string | null = null;
   try {
     await ensureShowSeeded();
     const show = await getShowRecord(slug, scope);
+    resolvedShowSlug = show.slug;
     const [officialSongs, blocks] = await Promise.all([
       getOfficialSongs(show.id),
       getDb()
@@ -211,9 +213,13 @@ export async function getShowPayload(
       sets: SET_DEFINITIONS,
       songs: officialSongs,
       updatedAt,
+      dataSource: "database" as const,
     };
   } catch (error) {
     if (isShowNotFoundError(error)) throw error;
+    if (!canUseConfirmedShowFallback(slug, resolvedShowSlug)) {
+      throw new ShowDataUnavailableError({ cause: error });
+    }
     const officialSongs = DEFAULT_SONGS.map(hydrateSong);
     return {
       show: SHOW_DETAILS,
@@ -221,6 +227,7 @@ export async function getShowPayload(
       sets: SET_DEFINITIONS,
       songs: officialSongs,
       updatedAt: officialSongs[0]?.updatedAt ?? "",
+      dataSource: "confirmed-fallback" as const,
     };
   }
 }

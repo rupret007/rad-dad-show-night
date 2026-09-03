@@ -10,14 +10,14 @@
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "npm run build && npm run test:isolation",
-    "test:isolation": "node --experimental-strip-types --test tests/suggestion-cannot-mutate-set.test.mjs tests/live-set-surface.test.mjs tests/official-set-resource-honesty.test.mjs tests/official-set-first-paint.test.mjs tests/official-set-missing-media.test.mjs",
+    "test:isolation": "node --experimental-strip-types --test tests/suggestion-cannot-mutate-set.test.mjs tests/live-set-surface.test.mjs tests/official-set-resource-honesty.test.mjs tests/official-set-first-paint.test.mjs tests/official-set-missing-media.test.mjs tests/show-read-integrity.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
-    "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
@@ -35,7 +35,7 @@
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "16.4.0",
-    "react-server-dom-webpack": "19.2.6",
+    "react-server-dom-webpack": "19.2.8",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.59.3",
