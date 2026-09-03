@@ -217,18 +217,6 @@ export default async function Home({
             </div>
           </div>
 
-          <div
-            className={`${styles.eventGrid} ${styles.officialSetGrid}`}
-            aria-label="Official sets"
-          >
-            {sets.map((set) => (
-              <div className={styles.eventFact} key={set.slug}>
-                <span className={styles.factLabel}>{set.time || "This show"}</span>
-                <strong className={styles.factValue}>{set.title}</strong>
-              </div>
-            ))}
-          </div>
-
           <section
             className={styles.nextActions}
             aria-label="Next step for this show"
@@ -262,6 +250,18 @@ export default async function Home({
               </div>
             </article>
           </section>
+
+          <div
+            className={`${styles.eventGrid} ${styles.officialSetGrid}`}
+            aria-label="Official sets"
+          >
+            {sets.map((set) => (
+              <div className={styles.eventFact} key={set.slug}>
+                <span className={styles.factLabel}>{set.time || "This show"}</span>
+                <strong className={styles.factValue}>{set.title}</strong>
+              </div>
+            ))}
+          </div>
 
           <div className={styles.heroActions}>
             <a className={styles.secondaryAction} href="#run-of-show">
