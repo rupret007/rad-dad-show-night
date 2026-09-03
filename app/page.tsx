@@ -23,6 +23,32 @@ const CANONICAL_TITLE =
 const CANONICAL_DESCRIPTION =
   "Free live show at Guitars & Growlers in Richardson on Saturday, September 19, 2026, from 7-10 PM.";
 
+function canonicalMetadata(): Metadata {
+  return {
+    title: CANONICAL_TITLE,
+    description: CANONICAL_DESCRIPTION,
+    openGraph: {
+      title: CANONICAL_TITLE,
+      description: CANONICAL_DESCRIPTION,
+      type: "website",
+      images: [
+        {
+          url: "/og.png",
+          width: 1200,
+          height: 630,
+          alt: "Rad Dad and Friends at Guitars & Growlers on September 19, 2026",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: CANONICAL_TITLE,
+      description: CANONICAL_DESCRIPTION,
+      images: ["/og.png"],
+    },
+  };
+}
+
 export async function generateMetadata({
   searchParams,
 }: {
@@ -34,22 +60,19 @@ export async function generateMetadata({
   try {
     const payload = await getShowPayload(params.show, "public");
     if (isCanonicalShowSlug(payload.show.slug)) {
-      return {
-        title: CANONICAL_TITLE,
-        description: CANONICAL_DESCRIPTION,
-      };
+      return canonicalMetadata();
     }
     const title = `${payload.show.title} at ${payload.show.venue} | ${payload.show.date}`;
     const description = `Live set surface for ${payload.show.title} at ${payload.show.venue} on ${payload.show.date}, ${payload.show.hours}.`;
     return {
       title,
       description,
-      openGraph: { title, description },
+      openGraph: { title, description, type: "website" },
       twitter: { title, description },
     };
   } catch {
     if (!params.show || params.show === CONFIRMED_FALLBACK_SHOW_SLUG) {
-      return { title: CANONICAL_TITLE, description: CANONICAL_DESCRIPTION };
+      return canonicalMetadata();
     }
     return {
       title: "Rad Dad + Friends Show Night",

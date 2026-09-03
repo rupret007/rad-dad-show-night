@@ -18,6 +18,7 @@ const {
 } = await import("../lib/show-read-integrity.ts");
 
 const pageUrl = new URL("../app/page.tsx", import.meta.url);
+const layoutUrl = new URL("../app/layout.tsx", import.meta.url);
 const liveListUrl = new URL("../app/live-set-lists.tsx", import.meta.url);
 const showStoreUrl = new URL("../lib/show-store.ts", import.meta.url);
 const showsRouteUrl = new URL("../app/api/shows/route.ts", import.meta.url);
@@ -81,7 +82,10 @@ test("a clone cannot inherit the canonical set times or verified songs", () => {
 });
 
 test("the live page names fan and band next steps for this show", async () => {
-  const page = await readFile(pageUrl, "utf8");
+  const [page, layout] = await Promise.all([
+    readFile(pageUrl, "utf8"),
+    readFile(layoutUrl, "utf8"),
+  ]);
   assert.match(page, /aria-label="Next step for this show"/);
   assert.match(page, /Fan next step/);
   assert.match(page, /Band next step/);
@@ -92,6 +96,9 @@ test("the live page names fan and band next steps for this show", async () => {
   assert.match(page, /featuredGuestSet\(timeline\)/);
   assert.match(page, /isCanonicalShowSlug\(show\.slug\)/);
   assert.doesNotMatch(page, /SET_DEFINITIONS\.map/);
+  assert.match(page, /function canonicalMetadata/);
+  assert.doesNotMatch(layout, /September 19, 2026/);
+  assert.doesNotMatch(layout, /Guitars & Growlers/);
 });
 
 test("live refresh, snapshots, and Show Control reject another show's set", async () => {
