@@ -4,7 +4,7 @@ import { setTimeout as delay } from "node:timers/promises";
 
 const PORT = process.env.LEFTOVER_HOSTED_PORT || "3011";
 const HOST = process.env.LEFTOVER_HOSTED_HOST || "localhost";
-const BASE = `http://${HOST}:${PORT}`;
+let BASE = `http://${HOST}:${PORT}`;
 const CLONE_SLUG = "richardson-2026-10-31";
 const CANONICAL_SLUG = "guitars-growlers-2026-09-19";
 
@@ -22,6 +22,18 @@ async function readPath(pathname) {
   const response = await fetch(`${BASE}${pathname}`, { cache: "no-store" });
   const text = await response.text();
   return { response, text };
+}
+
+async function findExistingServer() {
+  for (const base of [BASE, "http://localhost:3000", "http://localhost:3001"]) {
+    try {
+      const response = await fetch(base, { cache: "no-store" });
+      if (response.status > 0) return base;
+    } catch {
+      // Try the next local leftover host.
+    }
+  }
+  return null;
 }
 
 async function seedLocalD1() {
@@ -162,6 +174,14 @@ if (seed.ok) {
 } else {
   console.log("hosted leftover-honesty: local D1 seed skipped");
   if (seed.output.trim()) console.log(seed.output.trim().slice(0, 800));
+}
+
+const existing = await findExistingServer();
+if (existing) {
+  BASE = existing;
+  const mode = await proveIsolation();
+  console.log(`hosted leftover-honesty / isolation passed (${mode}) on ${BASE}`);
+  process.exit(0);
 }
 
 const child = spawn("npx", ["vinext", "dev", "--host", HOST, "--port", PORT], {
