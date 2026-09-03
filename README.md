@@ -46,6 +46,9 @@ updates the public page without requiring a code change or GitHub commit.
 - Tells a fan or band member the next action for this show from this show's
   verified list: start with the first set and suggest a song, or practice
   these songs. An empty clone stays empty instead of borrowing another night.
+- Keeps **Set lists** and **Suggest a song** in the phone header while moving
+  the owner editor to the footer, so public visitors get the two useful public
+  actions without another menu.
 - Collects public song ideas without allowing suggestions to alter the set.
 - Assumes suggestions are covers unless the submitter marks one original.
 - Protects all official-set changes behind owner authentication.
@@ -106,7 +109,9 @@ place on this slug. A show with no verified songs stays empty instead of
 inheriting another night. The public homepage stays on the default published
 show and will not silently open the latest clone. Public reads omit owner
 rehearsal notes. Those rehearsal notes stay in Show Control. Owner edits stay
-in Show Control.
+in Show Control. On narrow screens, the header prioritizes **Set lists** and
+**Suggest a song**; the owner-only Show Control action remains available in the
+footer instead of competing with public navigation.
 
 ## Local development
 

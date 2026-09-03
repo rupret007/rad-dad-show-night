@@ -309,7 +309,9 @@
 .videoFrame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
 @media (max-width: 960px) {
-  .topLinks a:not(.controlLink):not(.practiceLink) { display: none; }
+  .topLinks { gap: 12px; }
+  .topLinks a { display: none; }
+  .topLinks .mobilePrimaryLink, .topLinks .practiceLink { min-height: 40px; display: inline-flex; align-items: center; }
   .hero { min-height: auto; grid-template-columns: 300px 1fr; gap: 48px; }
   .heroTitle { font-size: clamp(4.6rem, 10vw, 7rem); }
   .nextActions { grid-template-columns: 1fr; }
@@ -322,8 +324,10 @@
   .topBarInner { width: min(100% - 24px, 1180px); }
   .identity > span:last-child { display: none; }
   .identity small { display: none; }
-  .topLinks .controlLink { padding: 9px 10px; font-size: 0.68rem; }
+  .topLinks { gap: 8px; }
+  .topLinks .mobilePrimaryLink { padding: 9px 2px; font-size: 0.68rem; }
   .topLinks .practiceLink { padding: 9px 10px; font-size: 0.68rem; }
+  .topLinks .mobileOptionalLink { display: none; }
   .hero { width: min(100% - 28px, 1180px); padding: 58px 0 70px; grid-template-columns: 1fr; gap: 56px; }
   .heroPosterWrap { justify-self: center; width: min(82vw, 330px); }
   .heroCopy { text-align: left; }

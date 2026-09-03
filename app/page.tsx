@@ -144,7 +144,9 @@ export default async function Home({
           <div className={styles.topLinks}>
             {practiceMode ? (
               <>
-                <a href="#official-sets">Set lists</a>
+                <a className={styles.mobilePrimaryLink} href="#official-sets">
+                  Set lists
+                </a>
                 <a className={styles.practiceLink} href={showHref}>
                   Exit practice mode
                 </a>
@@ -152,10 +154,17 @@ export default async function Home({
             ) : (
               <>
                 <a href="#run-of-show">Run of show</a>
-                <a href="#official-sets">Set lists</a>
-                <a href="#suggestions">Suggest a song</a>
+                <a className={styles.mobilePrimaryLink} href="#official-sets">
+                  Set lists
+                </a>
+                <a className={styles.mobilePrimaryLink} href="#suggestions">
+                  Suggest a song
+                </a>
                 {nightUse.hasVerifiedList ? (
-                  <a className={styles.practiceLink} href={practiceHref}>
+                  <a
+                    className={`${styles.practiceLink} ${styles.mobileOptionalLink}`}
+                    href={practiceHref}
+                  >
                     Practice mode
                   </a>
                 ) : null}
