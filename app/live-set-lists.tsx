@@ -290,13 +290,6 @@ export default function LiveSetLists({
   const hasVerifiedList = orderedSongs.length > 0;
 
   useEffect(() => {
-    if (!currentSongId) return;
-    if (!orderedSongs.some((song) => String(song.id) === currentSongId)) {
-      setCurrentSongId(null);
-    }
-  }, [currentSongId, orderedSongs]);
-
-  useEffect(() => {
     return () => {
       void wakeLockRef.current?.release();
     };
