@@ -29,6 +29,8 @@ updates the public page without requiring a code change or GitHub commit.
 - Manages multiple shows from one owner dashboard.
 - Clones a complete show into a new private draft.
 - Gives every published show its own shareable public link and lifecycle status.
+- Keeps the default public show published so the main show link cannot be
+  archived without a future replacement-default workflow.
 - Keeps the complete 7:00-10:00 PM run of show in one place.
 - Stores the official set lists in a shared production database.
 - Lets the owner reorder songs by dragging or using Move Up and Move Down.
@@ -83,6 +85,9 @@ covers table is not the set.
 
 Unsaved changes remain private in the browser. Public suggestions also remain
 separate until the owner deliberately adds one to a draft and saves it.
+Show Control blocks publish and archive actions while any set has unsaved
+changes, and states whether an allowed lifecycle action opens or closes the
+public share link before it runs.
 The inline board has one application write path, `/api/suggestions`; its backup
 link opens the connected Google Form directly rather than a second API route.
 
