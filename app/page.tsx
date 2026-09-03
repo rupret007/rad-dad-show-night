@@ -15,6 +15,12 @@ import {
 } from "../lib/show-read-integrity";
 import { isShowNotFoundError } from "../lib/show-visibility";
 import { PUBLIC_SITE_LABEL, PUBLIC_SITE_URL } from "../lib/surface-roles";
+import {
+  bandNextStepCopy,
+  buildShowNightUse,
+  fanNextStepCopy,
+} from "../lib/show-night-use";
+import PracticeResume from "./practice-resume";
 
 export const dynamic = "force-dynamic";
 
@@ -103,15 +109,23 @@ export default async function Home({
   const practiceMode = params.practice === "1" || params.practice === "true";
   const canonicalShow = isCanonicalShowSlug(show.slug);
   const featuredGuest = featuredGuestSet(timeline);
+  const nightUse = buildShowNightUse(songs, sets);
+  const fanNext = fanNextStepCopy(nightUse);
+  const bandNext = bandNextStepCopy(nightUse);
   const controlHref = `/show-control?show=${encodeURIComponent(show.slug)}`;
   const showHref = `/?show=${encodeURIComponent(show.slug)}`;
   const practiceHref = `${showHref}&practice=1#official-sets`;
+  const listedSets = nightUse.sets.filter(
+    (set) => set.time || set.songCount > 0,
+  );
 
   return (
     <main
       className={`${styles.page} ${practiceMode ? styles.practicePage : ""}`}
       data-show-slug={show.slug}
       data-show-source={dataSource}
+      data-has-verified-list={nightUse.hasVerifiedList ? "true" : "false"}
+      data-song-count={String(nightUse.songCount)}
     >
       <div className={styles.atmosphere} aria-hidden="true" />
 
@@ -141,9 +155,11 @@ export default async function Home({
                 <a href="#run-of-show">Run of show</a>
                 <a href="#official-sets">Set lists</a>
                 <a href="#suggestions">Suggest a song</a>
-                <a className={styles.practiceLink} href={practiceHref}>
-                  Practice mode
-                </a>
+                {nightUse.hasVerifiedList ? (
+                  <a className={styles.practiceLink} href={practiceHref}>
+                    Practice mode
+                  </a>
+                ) : null}
                 <a className={styles.controlLink} href={controlHref}>
                   Owner: edit set
                 </a>
@@ -159,14 +175,20 @@ export default async function Home({
             <p className={styles.practiceEyebrow}>Rehearsal reference / live list</p>
             <h1 className={styles.practiceTitle}>PRACTICE MODE</h1>
             <p className={styles.practiceDek}>
-              Tap a song to mark your place. Saved lyrics and YouTube open in a
-              new tab when a song has them.
+              {nightUse.hasVerifiedList
+                ? "Tap a song to mark your place. Saved lyrics and YouTube open in a new tab when a song has them."
+                : "This show has no verified songs to practice yet. Another show's set will not appear here."}
             </p>
           </div>
           <div className={styles.practiceShowMeta}>
             <strong>{show.title}</strong>
             <span>{show.date}</span>
             <span>{show.venue}</span>
+            <span>
+              {nightUse.hasVerifiedList
+                ? `${nightUse.songCount} verified songs`
+                : "No verified list yet"}
+            </span>
           </div>
         </header>
       ) : (
@@ -220,48 +242,91 @@ export default async function Home({
           <section
             className={styles.nextActions}
             aria-label="Next step for this show"
+            data-next-step={nightUse.hasVerifiedList ? "ready" : "empty"}
           >
             <article className={styles.nextAction} data-role="fan">
               <p className={styles.nextKicker}>Fan next step</p>
-              <h2>See this night, then suggest a song.</h2>
-              <p>
-                This page is the live set for this show, not the band homepage.
-              </p>
+              <h2>{fanNext.title}</h2>
+              <p>{fanNext.copy}</p>
+              {nightUse.hasVerifiedList ? (
+                <div className={styles.nextSetJumps} aria-label="Jump to a set">
+                  {nightUse.sets
+                    .filter((set) => set.songCount > 0)
+                    .map((set) => (
+                      <a href={`#set-${set.slug}`} key={set.slug}>
+                        {set.title}
+                        <span>
+                          {set.songCount} song{set.songCount === 1 ? "" : "s"}
+                          {set.time ? ` · ${set.time}` : ""}
+                        </span>
+                      </a>
+                    ))}
+                </div>
+              ) : null}
               <div className={styles.nextActionLinks}>
-                <a className={styles.primaryAction} href="#official-sets">
-                  See the official sets
-                </a>
-                <a className={styles.secondaryAction} href="#suggestions">
+                {nightUse.hasVerifiedList ? (
+                  <a
+                    className={styles.primaryAction}
+                    href={
+                      nightUse.firstSet
+                        ? `#set-${nightUse.firstSet.slug}`
+                        : "#official-sets"
+                    }
+                  >
+                    See the official sets
+                  </a>
+                ) : null}
+                <a
+                  className={
+                    nightUse.hasVerifiedList
+                      ? styles.secondaryAction
+                      : styles.primaryAction
+                  }
+                  href="#suggestions"
+                >
                   Suggest a song
                 </a>
               </div>
             </article>
             <article className={styles.nextAction} data-role="band">
               <p className={styles.nextKicker}>Band next step</p>
-              <h2>Practice this show&apos;s verified list.</h2>
-              <p>
-                Keys, handoffs, and your place stay on this event. Another
-                show&apos;s set cannot appear here.
-              </p>
+              <h2>{bandNext.title}</h2>
+              <p>{bandNext.copy}</p>
               <div className={styles.nextActionLinks}>
-                <a className={styles.primaryAction} href={practiceHref}>
-                  Practice this show
-                </a>
+                {nightUse.hasVerifiedList ? (
+                  <>
+                    <a className={styles.primaryAction} href={practiceHref}>
+                      Practice this show
+                    </a>
+                    <PracticeResume
+                      showSlug={show.slug}
+                      songs={songs.map((song) => ({
+                        id: song.id,
+                        title: song.title,
+                      }))}
+                      practiceHref={practiceHref}
+                    />
+                  </>
+                ) : null}
               </div>
             </article>
           </section>
 
+          {listedSets.length ? (
           <div
             className={`${styles.eventGrid} ${styles.officialSetGrid}`}
             aria-label="Official sets"
           >
-            {sets.map((set) => (
+            {sets.map((set) =>
+              listedSets.some((item) => item.slug === set.slug) ? (
               <div className={styles.eventFact} key={set.slug}>
                 <span className={styles.factLabel}>{set.time || "This show"}</span>
                 <strong className={styles.factValue}>{set.title}</strong>
               </div>
-            ))}
+              ) : null,
+            )}
           </div>
+          ) : null}
 
           <div className={styles.heroActions}>
             <a className={styles.secondaryAction} href="#run-of-show">
@@ -362,8 +427,12 @@ export default async function Home({
           </div>
           <p className={styles.sectionCopy}>
             {practiceMode
-              ? "This is the official live order. Tap any song to mark it current. Saved lyrics and YouTube stay on that song when they exist."
-              : "These lists update from Show Control. Flow arrows are intentional transitions. Covers can show YouTube and lyrics when saved; originals hide both."}
+              ? nightUse.hasVerifiedList
+                ? "This is the official live order. Tap any song to mark it current. Saved lyrics and YouTube stay on that song when they exist."
+                : "This show does not have a verified list yet. Another show's set will not appear here."
+              : nightUse.hasVerifiedList
+                ? "These lists update from Show Control. Flow arrows are intentional transitions. Covers can show YouTube and lyrics when saved; originals hide both."
+                : "This show does not have a verified list yet. Another show's set will not appear here."}
           </p>
         </div>
         <LiveSetLists

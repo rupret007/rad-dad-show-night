@@ -25,6 +25,7 @@ const showsRouteUrl = new URL("../app/api/shows/route.ts", import.meta.url);
 const showControlUrl = new URL("../app/show-control/show-control.tsx", import.meta.url);
 const serviceWorkerUrl = new URL("../public/sw.js", import.meta.url);
 const showDataUrl = new URL("../lib/show-data.ts", import.meta.url);
+const nextStepUrl = new URL("../lib/show-night-use.ts", import.meta.url);
 const readmeUrl = new URL("../README.md", import.meta.url);
 const technicalGuideUrl = new URL("../docs/TECHNICAL_GUIDE.md", import.meta.url);
 
@@ -82,9 +83,10 @@ test("a clone cannot inherit the canonical set times or verified songs", () => {
 });
 
 test("the live page names fan and band next steps for this show", async () => {
-  const [page, layout] = await Promise.all([
+  const [page, layout, nextStep] = await Promise.all([
     readFile(pageUrl, "utf8"),
     readFile(layoutUrl, "utf8"),
+    readFile(nextStepUrl, "utf8"),
   ]);
   assert.match(page, /aria-label="Next step for this show"/);
   assert.match(page, /Fan next step/);
@@ -92,6 +94,9 @@ test("the live page names fan and band next steps for this show", async () => {
   assert.match(page, /See the official sets/);
   assert.match(page, /Suggest a song/);
   assert.match(page, /Practice this show/);
+  assert.match(page, /buildShowNightUse/);
+  assert.match(nextStep, /This show has no official set yet/);
+  assert.match(nextStep, /This show has no verified list yet/);
   assert.match(page, /sets\.map/);
   assert.match(page, /featuredGuestSet\(timeline\)/);
   assert.match(page, /isCanonicalShowSlug\(show\.slug\)/);
