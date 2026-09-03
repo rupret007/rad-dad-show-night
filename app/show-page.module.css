@@ -139,6 +139,18 @@
 .eventFact + .eventFact { padding-left: 17px; border-left: 1px solid rgba(255, 255, 255, 0.13); }
 .factLabel { display: block; margin-bottom: 5px; color: var(--lime); font-size: 0.69rem; font-weight: 800; letter-spacing: 0.17em; text-transform: uppercase; }
 .factValue { display: block; font-size: 1rem; line-height: 1.18; text-transform: uppercase; }
+.nextActions { margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.nextAction { padding: 16px 18px; border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.03); }
+.nextKicker { margin: 0; color: var(--lime); font-size: 0.69rem; font-weight: 800; letter-spacing: 0.17em; text-transform: uppercase; }
+.nextAction[data-role="band"] .nextKicker { color: var(--blue); }
+.nextAction h2 { margin: 6px 0 8px; font-size: 1.12rem; letter-spacing: 0.03em; text-transform: uppercase; }
+.nextAction p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
+.nextActionLinks { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+.nextActionLinks .primaryAction, .nextActionLinks .secondaryAction { min-height: 42px; padding: 0 16px; }
+.showIdentityCard { min-height: 280px; padding: 36px 28px 32px; display: grid; align-content: end; gap: 8px; background: linear-gradient(160deg, rgba(24, 170, 245, 0.18), rgba(5, 5, 6, 0.94)); }
+.showIdentityCard span, .showIdentityCard small { color: var(--lime); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.showIdentityCard strong { font-family: Impact, "Arial Black", sans-serif; font-size: clamp(2.1rem, 4vw, 3.1rem); line-height: 0.9; text-transform: uppercase; }
+.showIdentityCard small { color: var(--muted); }
 .heroActions { display: flex; align-items: center; gap: 12px; margin-top: 28px; }
 .primaryAction, .secondaryAction { min-height: 46px; padding: 0 20px; display: inline-flex; align-items: center; justify-content: center; border: 0; cursor: pointer; font: inherit; font-size: 0.88rem; font-weight: 800; letter-spacing: 0.08em; text-decoration: none; text-transform: uppercase; }
 .primaryAction { color: var(--black); background: var(--lime); box-shadow: 5px 5px 0 var(--blue); }
@@ -293,6 +305,7 @@
   .topLinks a:not(.controlLink):not(.practiceLink) { display: none; }
   .hero { min-height: auto; grid-template-columns: 300px 1fr; gap: 48px; }
   .heroTitle { font-size: clamp(4.6rem, 10vw, 7rem); }
+  .nextActions { grid-template-columns: 1fr; }
   .eventGrid { grid-template-columns: 1fr; }
   .eventFact + .eventFact { padding-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.13); border-left: 0; }
   .notesGrid { grid-template-columns: repeat(2, 1fr); }
@@ -361,7 +374,7 @@
 
 @media print {
   .page { color: black; background: white; }
-  .atmosphere, .topBar, .heroPosterWrap, .heroActions, .resourceBar, .suggestionsSection, .footer { display: none; }
+  .atmosphere, .topBar, .heroPosterWrap, .heroActions, .nextActions, .resourceBar, .suggestionsSection, .footer { display: none; }
   .hero { min-height: auto; padding: 30px 0; grid-template-columns: 1fr; }
   .heroTitle { color: black; font-size: 60pt; text-shadow: none; }
   .heroDek, .sectionCopy, .songArtist, .scheduleNote { color: #333; }

@@ -3,19 +3,26 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { DEFAULT_SONGS, SHOW_DETAILS } from "../lib/show-data.ts";
+import { RUN_OF_SHOW, SET_DEFINITIONS } from "../lib/show-data.ts";
 import {
   MAX_SNAPSHOT_SONGS,
   OFFLINE_CACHE_VERSION,
   SHOW_SNAPSHOT_VERSION,
   CONFIRMED_FALLBACK_SHOW_SLUG,
+  buildShowSets,
+  canAcceptVerifiedShowPayload,
   canUseConfirmedShowFallback,
   createStoredShowSnapshot,
+  featuredGuestSet,
   formatShowTimestamp,
   offlineReadyKey,
   isShowDataUnavailableError,
+  parseShowSets,
   parseStoredShowSnapshot,
   shouldReplaceDisplayedSongs,
+  showPayloadBelongsToShow,
   showSnapshotKey,
+  songsBelongToShow,
   ShowDataUnavailableError,
 } from "../lib/show-read-integrity.ts";
 
@@ -93,6 +100,127 @@ test("a verified device snapshot round-trips only for its exact show", () => {
   );
 });
 
+test("a verified payload cannot replace this show with another show's set", () => {
+  const show = { slug: SHOW_DETAILS.slug, id: SHOW_DETAILS.id };
+  const songs = DEFAULT_SONGS.slice(0, 2);
+
+  assert.equal(songsBelongToShow(songs, show), true);
+  assert.equal(
+    songsBelongToShow([{ ...songs[0], showId: "show-somebody-else" }], show),
+    false,
+  );
+  assert.equal(
+    songsBelongToShow(
+      [songs[0], { ...songs[1], showId: "show-somebody-else" }],
+      show,
+    ),
+    false,
+  );
+  assert.equal(showPayloadBelongsToShow({ show, songs }, SHOW_DETAILS.slug), true);
+  assert.equal(
+    showPayloadBelongsToShow({ show, songs }, "another-show-2026-10-10"),
+    false,
+  );
+  assert.equal(
+    canAcceptVerifiedShowPayload(
+      { dataSource: "database", show, songs },
+      SHOW_DETAILS.slug,
+    ),
+    true,
+  );
+  assert.equal(
+    canAcceptVerifiedShowPayload(
+      { dataSource: "confirmed-fallback", show, songs },
+      SHOW_DETAILS.slug,
+    ),
+    false,
+  );
+  assert.equal(
+    canAcceptVerifiedShowPayload(
+      {
+        dataSource: "database",
+        show: { slug: "another-show-2026-10-10", id: "show-somebody-else" },
+        songs,
+      },
+      SHOW_DETAILS.slug,
+    ),
+    false,
+  );
+});
+
+test("set times come from this show's timeline, not another event's defaults", () => {
+  const cloneTimeline = [
+    {
+      time: "6:00-6:30",
+      title: "Jeff Story & Friends",
+      type: "performance",
+      setSlug: "jeff-story-friends",
+    },
+    {
+      time: "6:30-6:50",
+      title: "Stalemate",
+      type: "performance",
+      setSlug: "stalemate",
+    },
+    {
+      time: "7:00-8:00",
+      title: "Rad Dad",
+      type: "performance",
+      setSlug: "rad-dad",
+    },
+  ];
+  const cloneSets = buildShowSets(cloneTimeline);
+  const canonicalSets = buildShowSets(RUN_OF_SHOW);
+  const emptySets = buildShowSets([]);
+  const featured = featuredGuestSet([
+    {
+      time: "6:40-7:20",
+      duration: "40 min",
+      title: "Mason / The Fault Lines",
+      note: "Featured set",
+      type: "performance",
+      accent: "lime",
+    },
+  ]);
+
+  assert.deepEqual(
+    canonicalSets.map((set) => ({
+      slug: set.slug,
+      title: set.title,
+      time: set.time,
+      kicker: set.kicker,
+      accent: set.accent,
+    })),
+    SET_DEFINITIONS.map((set) => ({
+      slug: set.slug,
+      title: set.title,
+      time: set.time,
+      kicker: set.kicker,
+      accent: set.accent,
+    })),
+  );
+  assert.deepEqual(
+    cloneSets.map((set) => set.time),
+    ["6:00-6:30 PM", "6:30-6:50 PM", "7:00-8:00 PM"],
+  );
+  assert.deepEqual(
+    emptySets.map((set) => set.time),
+    ["", "", ""],
+  );
+  assert.notDeepEqual(
+    cloneSets.map((set) => set.time),
+    SET_DEFINITIONS.map((set) => set.time),
+  );
+  assert.equal(featured?.performance.time, "6:40-7:20");
+  assert.equal(featuredGuestSet(cloneTimeline), null);
+  assert.deepEqual(parseShowSets(cloneSets)?.map((set) => set.slug), [
+    "jeff-story-friends",
+    "stalemate",
+    "rad-dad",
+  ]);
+  assert.equal(parseShowSets([{ slug: "somebody-elses-set" }]), null);
+});
+
 test("corrupt, stale-schema, oversized, and structurally invalid snapshots fail closed", () => {
   const valid = createStoredShowSnapshot(
     SHOW_DETAILS.slug,
@@ -112,8 +240,16 @@ test("corrupt, stale-schema, oversized, and structurally invalid snapshots fail 
 
   assert.equal(parseStoredShowSnapshot("not-json", SHOW_DETAILS.slug), null);
   assert.equal(parseStoredShowSnapshot(JSON.stringify(wrongVersion), SHOW_DETAILS.slug), null);
+  const mixedShow = {
+    ...valid,
+    songs: [
+      valid.songs[0],
+      { ...valid.songs[0], id: "other-row", showId: "show-somebody-else" },
+    ],
+  };
   assert.equal(parseStoredShowSnapshot(JSON.stringify(invalidSet), SHOW_DETAILS.slug), null);
   assert.equal(parseStoredShowSnapshot(JSON.stringify(oversized), SHOW_DETAILS.slug), null);
+  assert.equal(parseStoredShowSnapshot(JSON.stringify(mixedShow), SHOW_DETAILS.slug), null);
 });
 
 test("snapshot resources cannot revive non-http links", () => {
@@ -160,8 +296,15 @@ test("server, client, and offline cache preserve the same verification boundary"
   assert.doesNotMatch(officialRead, /catch/);
   assert.match(store, /canUseConfirmedShowFallback\(slug, resolvedShowSlug\)/);
   assert.match(store, /throw new ShowDataUnavailableError/);
+  assert.match(store, /if \(!songsBelongToShow\(officialSongs, show\)\)/);
+  assert.match(store, /sets: buildShowSets\(timeline\)/);
   assert.match(store, /dataSource: "database"/);
   assert.match(store, /dataSource: "confirmed-fallback"/);
+  assert.match(store, /isShowDataUnavailableError\(error\)\) throw error/);
+  assert.doesNotMatch(
+    store.slice(store.indexOf("const timeline = mappedTimeline.length")),
+    /timeline\.length \? timeline : RUN_OF_SHOW/,
+  );
 
   assert.match(route, /"X-Rad-Dad-Data-Source": payload\.dataSource/);
   assert.match(route, /isShowDataUnavailableError/);
@@ -170,12 +313,15 @@ test("server, client, and offline cache preserve the same verification boundary"
   assert.match(page, /initialDataSource=\{dataSource\}/);
   assert.match(page, /did not\s+substitute another event/);
 
-  assert.match(liveList, /shouldReplaceDisplayedSongs\(data\.dataSource\)/);
+  assert.match(liveList, /canAcceptVerifiedShowPayload\(data, showSlug\)/);
   assert.match(liveList, /parseStoredShowSnapshot/);
+  assert.match(liveList, /songsBelongToShow\(snapshot\.songs/);
   assert.match(liveList, /last verified official set stays visible/i);
   assert.match(offlineSupport, /dataset\.showSource !== "database"/);
   assert.match(serviceWorker, /rad-dad-show-offline-v2/);
   assert.match(serviceWorker, /X-Rad-Dad-Data-Source/);
+  assert.match(serviceWorker, /showApiMatchesRequest/);
+  assert.match(serviceWorker, /payload\.show\.slug !== requestedSlug/);
   assert.match(serviceWorker, /!navigation && verifiedShowApi/);
   assert.match(serviceWorker, /requiredUrls\.every\(\(url\) => cachedUrls\.has\(url\)\)/);
 });

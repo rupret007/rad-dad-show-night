@@ -41,6 +41,10 @@ updates the public page without requiring a code change or GitHub commit.
   drops, without replacing it with an older fallback.
 - Uses the reviewed September 19 baseline only for that exact event; another
   show fails closed instead of displaying the wrong songs.
+- Keeps a cloned or future show on its own verified set. It cannot inherit
+  another event's songs, set times, or flyer.
+- Tells a fan or band member the next action for this show: see the official
+  sets and suggest a song, or practice this show's verified list.
 - Collects public song ideas without allowing suggestions to alter the set.
 - Assumes suggestions are covers unless the submitter marks one original.
 - Protects all official-set changes behind owner authentication.
@@ -90,7 +94,13 @@ The status above the official sets distinguishes three states:
 
 Fallback data is scoped to that one event. A cloned or future show never
 borrows the September set when its own database rows cannot be verified; the
-page reports that the show is temporarily unavailable instead.
+page reports that the show is temporarily unavailable instead. Live refresh,
+offline snapshots, and cached API responses also refuse another show's payload,
+so a clone cannot inherit another event's set after first paint.
+
+The hero names the next step for this show. Fans see the official sets, then
+can suggest a song. Band members open practice mode for this event's verified
+list. Owner edits stay in Show Control.
 
 ## Local development
 

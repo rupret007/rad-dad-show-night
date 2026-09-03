@@ -13,6 +13,8 @@ export const OFFICIAL_SET_MEDIA_IS_SAVED_ONLY = true;
 export const COVERS_WALL_IS_NOT_THE_SET = true;
 export const NEVER_AUTO_POST = true;
 export const TRAVIS_BOOKS = true;
+export const CLONES_CANNOT_INHERIT_ANOTHER_SHOW_SET = true;
+export const FAN_AND_BAND_KNOW_NEXT_ACTION = true;
 
 export const PUBLIC_SUGGESTION_WRITER = "POST /api/suggestions";
 export const OFFICIAL_SET_WRITER = "POST /api/show";

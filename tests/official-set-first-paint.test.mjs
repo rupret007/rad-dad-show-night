@@ -46,9 +46,10 @@ test("first paint names the official live sets and does not dump site or Vault r
   assert.match(page, /aria-label="Official sets"/);
   assert.match(page, /See the official sets/);
   assert.match(page, /#official-sets/);
-  assert.match(page, /SET_DEFINITIONS\.map/);
-  assert.match(page, /\{set\.time\}/);
+  assert.match(page, /sets\.map/);
+  assert.match(page, /\{set\.time \|\| "This show"\}/);
   assert.match(page, /\{set\.title\}/);
+  assert.doesNotMatch(page, /SET_DEFINITIONS\.map/);
   assert.match(page, /ShowFlyer/);
   assert.match(page, /SHOW_FLYER_CANDIDATES/);
   assert.doesNotMatch(page, /SHOW NIGHT HQ/);

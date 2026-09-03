@@ -6,6 +6,8 @@ import test from "node:test";
 
 const {
   LIVE_SET_SLUGS,
+  CLONES_CANNOT_INHERIT_ANOTHER_SHOW_SET,
+  FAN_AND_BAND_KNOW_NEXT_ACTION,
   NEVER_AUTO_POST,
   OFFICIAL_SET_WRITER,
   PUBLIC_SITE_LABEL,
@@ -107,6 +109,8 @@ test("surface roles name Show Night as the live set, not the catalog or public s
   assert.equal(SHOW_NIGHT_DOES_NOT_EXPAND_VAULT, true);
   assert.equal(NEVER_AUTO_POST, true);
   assert.equal(TRAVIS_BOOKS, true);
+  assert.equal(CLONES_CANNOT_INHERIT_ANOTHER_SHOW_SET, true);
+  assert.equal(FAN_AND_BAND_KNOW_NEXT_ACTION, true);
   assert.equal(PUBLIC_SUGGESTION_WRITER, "POST /api/suggestions");
   assert.equal(OFFICIAL_SET_WRITER, "POST /api/show");
   assert.deepEqual([...LIVE_SET_SLUGS], [
