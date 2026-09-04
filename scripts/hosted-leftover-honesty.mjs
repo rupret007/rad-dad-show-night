@@ -112,8 +112,8 @@ async function proveIsolation() {
     "canonical page is missing public-share honesty",
   );
   assert(
-    !/NO PUBLISHED SHOW AT THIS LINK/.test(home.text),
-    "canonical page used the closed-link copy",
+    /data-public-share="open"/.test(home.text),
+    "canonical page is missing an open public-share marker",
   );
 
   const api = await readPath("/api/show");
