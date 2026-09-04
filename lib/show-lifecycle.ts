@@ -45,3 +45,126 @@ export function showStatusChangeConfirmation(
   }
   return `Move “${title}” back to draft? Its public share link will stop working.`;
 }
+
+export function isPublicShareOpen(status: ShowLifecycleStatus): boolean {
+  return status === "published";
+}
+
+export function showStatusBadge(status: ShowLifecycleStatus, isDefault = false): string {
+  const role = isDefault ? " · default" : "";
+  if (status === "published") return `Published · public${role}`;
+  if (status === "archived") return `Archived · closed${role}`;
+  return `Draft · not public${role}`;
+}
+
+export function showShareLinkLabel(status: ShowLifecycleStatus): string {
+  return isPublicShareOpen(status) ? "Open public share link" : "See closed public link";
+}
+
+export function showOwnerLifecycleHint({
+  currentStatus,
+  isDefault,
+  dirtySetCount = 0,
+}: {
+  currentStatus: ShowLifecycleStatus;
+  isDefault: boolean;
+  dirtySetCount?: number;
+}): string {
+  const publishBlock = showStatusChangeBlockReason({
+    currentStatus,
+    targetStatus: "published",
+    isDefault,
+    dirtySetCount,
+  });
+  const archiveBlock = showStatusChangeBlockReason({
+    currentStatus,
+    targetStatus: "archived",
+    isDefault,
+    dirtySetCount,
+  });
+  if (dirtySetCount) return archiveBlock ?? publishBlock ?? "";
+  if (isDefault && archiveBlock) return archiveBlock;
+  if (currentStatus === "published") {
+    return "This public share link is open. Saving a set updates it. Archive closes it.";
+  }
+  if (currentStatus === "archived") {
+    return "This show is archived. The public share link is closed. Publish to open it again.";
+  }
+  return "This draft is private. Saving a set does not open the public share link. Publish when the saved show should be public.";
+}
+
+export function showEditorLiveState({
+  status,
+  setDirty,
+}: {
+  status: ShowLifecycleStatus;
+  setDirty: boolean;
+}): string {
+  if (status === "published") {
+    return setDirty ? "Unsaved — not on the public page yet" : "Matches public page";
+  }
+  if (status === "archived") {
+    return setDirty ? "Unsaved archived show" : "Archived — public link closed";
+  }
+  return setDirty ? "Unsaved private draft" : "Private draft — not public";
+}
+
+export function showOwnerDirtyNotice(status: ShowLifecycleStatus): string {
+  if (status === "published") {
+    return "Unsaved changes. Save this set to update the public share link.";
+  }
+  return "Unsaved changes. Saving updates this private show. It stays off the public share link until you publish.";
+}
+
+export function showOwnerReadyNotice(status: ShowLifecycleStatus): string {
+  if (status === "published") {
+    return "Ready. This published set matches the public share link.";
+  }
+  if (status === "archived") {
+    return "Ready. This show is archived. The public share link is closed.";
+  }
+  return "Ready. This draft is private. The public share link is closed.";
+}
+
+export function showOwnerSavingNotice(
+  setTitle: string,
+  status: ShowLifecycleStatus,
+): string {
+  const title = setTitle.trim() || "this set";
+  if (status === "published") {
+    return `Saving ${title} to the public share link...`;
+  }
+  return `Saving ${title} on this private show...`;
+}
+
+export function showOwnerSavedNotice(
+  setTitle: string,
+  status: ShowLifecycleStatus,
+): string {
+  const title = setTitle.trim() || "this set";
+  if (status === "published") {
+    return `${title} is live on the public share link.`;
+  }
+  if (status === "archived") {
+    return `${title} is saved. The public share link stays closed until this show is published again.`;
+  }
+  return `${title} is saved on this private draft. The public share link stays closed until you publish.`;
+}
+
+export function publishedPublicShareCopy(hasVerifiedList: boolean): string {
+  return hasVerifiedList
+    ? "This public share link is live."
+    : "This public share link is live, and this night has no official set yet.";
+}
+
+export function unpublishedPublicCopy(): {
+  badge: string;
+  title: string;
+  body: string;
+} {
+  return {
+    badge: "Share link closed",
+    title: "NO PUBLISHED SHOW AT THIS LINK.",
+    body: "No published show was found at this link. Draft and archived nights stay in Show Control. Another event's set will not open here.",
+  };
+}

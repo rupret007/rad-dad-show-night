@@ -21,6 +21,7 @@ import {
   fanNextStepCopy,
 } from "../lib/show-night-use";
 import { visibleOfficialSets } from "../lib/show-public";
+import { publishedPublicShareCopy } from "../lib/show-lifecycle";
 import PracticeResume from "./practice-resume";
 
 export const dynamic = "force-dynamic";
@@ -124,6 +125,7 @@ export default async function Home({
       data-show-slug={show.slug}
       data-show-source={dataSource}
       data-has-verified-list={nightUse.hasVerifiedList ? "true" : "false"}
+      data-public-share="open"
       data-song-count={String(nightUse.songCount)}
     >
       <div className={styles.atmosphere} aria-hidden="true" />
@@ -221,6 +223,9 @@ export default async function Home({
           <div className={styles.eyebrow}>
             <span className={styles.liveDot} /> Live show plan
           </div>
+          <p className={styles.publicShareLine} data-public-share="open">
+            {publishedPublicShareCopy(nightUse.hasVerifiedList)}
+          </p>
           <h1 className={styles.heroTitle}>
             RAD DAD <span className={styles.heroPlus}>+</span>
             <br />

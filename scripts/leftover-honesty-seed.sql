@@ -83,5 +83,20 @@ INSERT OR IGNORE INTO shows (
   'Expected wrap near 11:00 PM',
   0
 );
+INSERT OR IGNORE INTO shows (
+  id, slug, title, venue, show_date, start_time, end_time, status,
+  expected_wrap, is_default
+) VALUES (
+  'show-closed-draft-2026-11-01',
+  'closed-draft-2026-11-01',
+  'Closed Draft Night',
+  'Private Rehearsal Room',
+  '2026-11-01',
+  '7:00 PM',
+  '10:00 PM',
+  'draft',
+  'Expected wrap near 10:00 PM',
+  0
+);
 INSERT OR IGNORE INTO site_settings (key, value, updated_at)
 VALUES ('leftover-honesty-empty-clone', 'published', '2026-09-03T13:10:00.000Z');

@@ -21,6 +21,7 @@ media fails closed. The public band site stays at
 | Path | Responsibility |
 | --- | --- |
 | `app/page.tsx` | Public event page and master run of show |
+| `app/not-found.tsx` | Shared closed-link page for unknown, draft, and archived slugs |
 | `app/live-set-lists.tsx` | Live set rendering and 30-second refresh |
 | `app/show-control/` | Owner-only song editor |
 | `app/song-board.tsx` | Public suggestion form and feed |
@@ -113,6 +114,13 @@ replacement-default workflow. Show Control also blocks lifecycle requests while
 any set has unsaved browser edits and confirms the public-link consequence before
 an allowed publish or archive request. The API repeats the default-show guard;
 the disabled owner button is not the security or integrity boundary.
+
+Owner copy in `lib/show-lifecycle.ts` keeps Save and Publish distinct: saving a
+set never claims a draft is live. The public page names an open public share link.
+Unknown, draft, and archived slugs share `app/not-found.tsx` and the same
+"no published show was found" copy, so a closed link cannot leak private title
+or inherit another event. Phone Show Control only restyles the existing picker,
+status, share action, and hint; it does not add a route or write path.
 
 ### Suggestions
 

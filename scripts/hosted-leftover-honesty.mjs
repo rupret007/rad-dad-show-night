@@ -7,6 +7,7 @@ const HOST = process.env.LEFTOVER_HOSTED_HOST || "localhost";
 let BASE = `http://${HOST}:${PORT}`;
 const CLONE_SLUG = "richardson-2026-10-31";
 const CANONICAL_SLUG = "guitars-growlers-2026-09-19";
+const CLOSED_SLUG = "closed-draft-2026-11-01";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -105,6 +106,15 @@ async function proveIsolation() {
   );
   assert(!/The Granada/.test(home.text), "homepage inherited the clone venue");
   assert(!/Richardson Halloween/.test(home.text), "homepage inherited the clone title");
+  assert(!/Closed Draft Night/.test(home.text), "homepage inherited the closed draft");
+  assert(
+    /This public share link is live/.test(home.text),
+    "canonical page is missing public-share honesty",
+  );
+  assert(
+    /data-public-share="open"/.test(home.text),
+    "canonical page is missing an open public-share marker",
+  );
 
   const api = await readPath("/api/show");
   assert(api.response.ok, `canonical API returned ${api.response.status}`);
@@ -124,8 +134,24 @@ async function proveIsolation() {
 
   const clonePage = await readPath(`/?show=${CLONE_SLUG}`);
   const cloneApi = await readPath(`/api/show?show=${CLONE_SLUG}`);
+  const closedPage = await readPath(`/?show=${CLOSED_SLUG}`);
+  const closedApi = await readPath(`/api/show?show=${CLOSED_SLUG}`);
   denyInheritedSet(clonePage.text, "clone page");
   denyInheritedSet(cloneApi.text, "clone API");
+  denyInheritedSet(closedPage.text, "closed draft page");
+  denyInheritedSet(closedApi.text, "closed draft API");
+  assert(
+    !/Closed Draft Night/.test(closedPage.text),
+    "closed draft page leaked its private title",
+  );
+  assert(
+    [404, 503].includes(closedApi.response.status),
+    `closed draft API returned ${closedApi.response.status}`,
+  );
+  assert(
+    /not found|no published show/i.test(`${closedPage.text} ${closedApi.text}`),
+    "closed draft was not leftover-honest",
+  );
 
   if (cloneApi.response.status === 200) {
     const clonePayload = JSON.parse(cloneApi.text);
@@ -146,6 +172,10 @@ async function proveIsolation() {
         clonePage.text,
       ),
       "empty clone page is missing honest empty copy",
+    );
+    assert(
+      /This public share link is live/.test(clonePage.text),
+      "empty clone page is missing public-share honesty",
     );
     console.log("hosted leftover-honesty: D1-present empty clone stayed empty");
     return "database-empty-clone";

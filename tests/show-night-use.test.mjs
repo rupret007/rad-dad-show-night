@@ -118,6 +118,8 @@ test("the live page uses this show's next-step helper and honest empty sets", as
   assert.match(page, /Practice this show/);
   assert.match(page, /PracticeResume/);
   assert.match(page, /data-has-verified-list/);
+  assert.match(page, /publishedPublicShareCopy/);
+  assert.match(page, /data-public-share="open"/);
   assert.equal(page.match(/styles\.mobilePrimaryLink/g)?.length, 3);
   assert.match(page, /styles\.practiceLink} \$\{styles\.mobileOptionalLink/);
   assert.match(page, /className=\{styles\.controlLink\}/);

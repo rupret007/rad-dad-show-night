@@ -17,6 +17,14 @@ import {
   savedOfficialMediaUrl,
 } from "../../lib/song-resources";
 import {
+  showEditorLiveState,
+  showOwnerDirtyNotice,
+  showOwnerLifecycleHint,
+  showOwnerReadyNotice,
+  showOwnerSavedNotice,
+  showOwnerSavingNotice,
+  showShareLinkLabel,
+  showStatusBadge,
   showStatusChangeBlockReason,
   showStatusChangeConfirmation,
   type ShowLifecycleStatus,
@@ -156,7 +164,7 @@ export default function ShowControlClient({
 
   function markDirty(setSlug = activeSet) {
     setDirtySets((current) => new Set(current).add(setSlug));
-    setNotice("Unsaved changes. Save when this set is ready to go live.");
+    setNotice(showOwnerDirtyNotice(activeShow.status));
   }
 
   function replaceSet(setSlug: SetSlug, nextSongs: ShowSong[]) {
@@ -303,7 +311,7 @@ export default function ShowControlClient({
 
   async function saveActiveSet() {
     setSaving(true);
-    setNotice(`Publishing ${activeDefinition.title}...`);
+    setNotice(showOwnerSavingNotice(activeDefinition.title, activeShow.status));
     try {
       const response = await fetch("/api/show", {
         method: "POST",
@@ -325,7 +333,7 @@ export default function ShowControlClient({
         return next;
       });
       setDeleted(null);
-      setNotice(`${activeDefinition.title} is live on the public show page.`);
+      setNotice(showOwnerSavedNotice(activeDefinition.title, activeShow.status));
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "The set could not be saved.");
     } finally {
@@ -406,8 +414,8 @@ export default function ShowControlClient({
       await switchShow(result.show.slug);
       setNotice(
         data.copySongs === "on"
-          ? "New draft created. It has its own copy of the sets. The original show is unchanged."
-          : "New empty draft created. It does not inherit another show's songs or set times.",
+          ? "New draft created. It has its own copy of the sets. The original show is unchanged. The public share link stays closed until you publish."
+          : "New empty draft created. It does not inherit another show's songs or set times. The public share link stays closed until you publish.",
       );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not clone the show.");
@@ -500,11 +508,13 @@ export default function ShowControlClient({
     isDefault: activeShow.isDefault,
     dirtySetCount: dirtySets.size,
   });
-  const lifecycleHint = dirtySets.size
-    ? archiveBlock ?? publishBlock
-    : activeShow.isDefault
-      ? archiveBlock
-      : "Publishing opens the saved share link. Archiving closes it.";
+  const lifecycleHint = showOwnerLifecycleHint({
+    currentStatus: activeShow.status,
+    isDefault: activeShow.isDefault,
+    dirtySetCount: dirtySets.size,
+  });
+  const shareHref = `/?show=${encodeURIComponent(activeShowSlug)}`;
+  const shareLabel = showShareLinkLabel(activeShow.status);
 
   return (
     <main className={styles.controlShell}>
@@ -516,7 +526,7 @@ export default function ShowControlClient({
         <div className={styles.ownerStrip}>
           <span className={styles.privateBadge}>Owner only</span>
           <span className={styles.ownerName}>{userName}</span>
-          <a href={`/?show=${encodeURIComponent(activeShowSlug)}`} target="_blank" rel="noreferrer">Open public show</a>
+          <a href={shareHref} target="_blank" rel="noreferrer">{shareLabel}</a>
           <a href={signOutHref}>Sign out</a>
         </div>
       </header>
@@ -530,8 +540,9 @@ export default function ShowControlClient({
             <h1>BUILD THE NIGHT.</h1>
             <p>
               Reorder by dragging or using Move. Open Details for keys, cues,
-              a YouTube link, and rehearsal notes. Nothing changes in
-              public until you press Save.
+              a YouTube link, and rehearsal notes. Saving a set writes this
+              show&apos;s official list. Publishing is what opens the public
+              share link.
             </p>
           </div>
           <div className={styles.controlStats}>
@@ -551,17 +562,22 @@ export default function ShowControlClient({
             >
               {shows.map((show) => (
                 <option value={show.slug} key={show.id}>
-                  {show.showDate} - {show.venue} ({show.status})
+                  {show.showDate} - {show.venue} ({showStatusBadge(show.status, show.isDefault)})
                 </option>
               ))}
             </select>
           </div>
           <span className={styles.showStatus} data-status={activeShow.status}>
-            {activeShow.status}
+            {showStatusBadge(activeShow.status, activeShow.isDefault)}
           </span>
           <div className={styles.showActions}>
-            <a href={`/?show=${encodeURIComponent(activeShowSlug)}`} target="_blank" rel="noreferrer">
-              Open share link
+            <a
+              href={shareHref}
+              target="_blank"
+              rel="noreferrer"
+              data-share-open={activeShow.status === "published" ? "true" : "false"}
+            >
+              {shareLabel}
             </a>
             <button
               type="button"
@@ -602,7 +618,7 @@ export default function ShowControlClient({
           <form className={styles.clonePanel} onSubmit={cloneShow}>
             <div>
               <strong>Clone this show</strong>
-              <span>The original show is unchanged. Uncheck the box to start an empty night that does not inherit songs or set times.</span>
+              <span>The original show is unchanged. The new draft stays private until you publish. Uncheck the box to start an empty night that does not inherit songs or set times.</span>
             </div>
             <input name="title" defaultValue={activeShow.title} aria-label="New show title" required />
             <input name="venue" defaultValue={activeShow.venue} aria-label="New show venue" required />
@@ -649,8 +665,11 @@ export default function ShowControlClient({
                 <span>{activeSetTime}</span>
                 <h2>{activeDefinition.title}</h2>
               </div>
-              <span className={styles.liveState}>
-                {dirtySets.has(activeSet) ? "Draft changes" : "Matches public page"}
+              <span className={styles.liveState} data-status={activeShow.status}>
+                {showEditorLiveState({
+                  status: activeShow.status,
+                  setDirty: dirtySets.has(activeSet),
+                })}
               </span>
             </header>
 
@@ -860,7 +879,7 @@ export default function ShowControlClient({
       <div className={styles.saveDock}>
         <div>
           <span className={dirtySets.has(activeSet) ? styles.unsavedDot : styles.savedDot} />
-          <p>{notice || "Ready. Public set is unchanged."}</p>
+          <p>{notice || showOwnerReadyNotice(activeShow.status)}</p>
         </div>
         <div className={styles.saveActions}>
           {deleted ? <button type="button" onClick={undoDelete}>Undo remove</button> : null}
