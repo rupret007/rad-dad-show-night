@@ -82,21 +82,26 @@ test("a clone cannot inherit the canonical set times or verified songs", () => {
   assert.notEqual(RUN_OF_SHOW[0].time, cloneSets[0].time);
 });
 
-test("the live page names fan and band next steps for this show", async () => {
+test("the live page names one first-open next step for this show", async () => {
   const [page, layout, nextStep] = await Promise.all([
     readFile(pageUrl, "utf8"),
     readFile(layoutUrl, "utf8"),
     readFile(nextStepUrl, "utf8"),
   ]);
-  assert.match(page, /aria-label="Next step for this show"/);
-  assert.match(page, /Fan next step/);
-  assert.match(page, /Band next step/);
-  assert.match(page, /See the official sets/);
+  assert.match(page, /aria-label="One next step for this show"/);
+  assert.match(page, /One next step/);
+  assert.doesNotMatch(page, /Fan next step/);
+  assert.doesNotMatch(page, /Band next step/);
+  assert.match(page, /data-next-action-count="1"/);
+  assert.match(page, /firstOpenAction/);
+  assert.match(nextStep, /See the official sets/);
+  assert.match(page, /openAction\.label/);
   assert.match(page, /Suggest a song/);
   assert.match(page, /Practice this show/);
   assert.match(page, /buildShowNightUse/);
   assert.match(nextStep, /This show has no official set yet/);
-  assert.match(nextStep, /This show has no verified list yet/);
+  assert.match(nextStep, /See the official sets/);
+  assert.match(nextStep, /will not show another night/);
   assert.match(page, /sets\.map/);
   assert.match(page, /featuredGuestSet\(timeline\)/);
   assert.match(page, /isCanonicalShowSlug\(show\.slug\)/);
@@ -148,7 +153,7 @@ test("docs keep clone isolation and do not rewrite Jeff's official set", async (
     readFile(showDataUrl, "utf8"),
   ]);
 
-  assert.match(readme, /Fan next step|fan or band member/i);
+  assert.match(readme, /one next action on first open|one next step/i);
   assert.match(readme, /cannot inherit another/i);
   assert.match(guide, /cannot inherit another/i);
   assert.match(showData, /Heart-Shaped Box/);

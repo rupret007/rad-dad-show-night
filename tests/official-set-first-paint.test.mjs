@@ -16,6 +16,7 @@ const {
 const pageUrl = new URL("../app/page.tsx", import.meta.url);
 const flyerUrl = new URL("../app/show-flyer.tsx", import.meta.url);
 const showDataUrl = new URL("../lib/show-data.ts", import.meta.url);
+const nextStepUrl = new URL("../lib/show-night-use.ts", import.meta.url);
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 
 const siteOrVaultAreNotOfficialSet = [
@@ -38,13 +39,15 @@ test("first paint names the official live sets and does not dump site or Vault r
     [...LIVE_SET_SLUGS],
   );
 
-  const [page, flyer] = await Promise.all([
+  const [page, flyer, nextStep] = await Promise.all([
     readFile(pageUrl, "utf8"),
     readFile(flyerUrl, "utf8"),
+    readFile(nextStepUrl, "utf8"),
   ]);
 
   assert.match(page, /aria-label="Official sets"/);
-  assert.match(page, /See the official sets/);
+  assert.match(page, /firstOpenAction/);
+  assert.match(nextStep, /See the official sets/);
   assert.match(page, /#official-sets/);
   assert.match(page, /sets\.map/);
   assert.match(page, /\{set\.time \|\| "This show"\}/);

@@ -16,6 +16,20 @@ export type PracticeSongRef = {
   title: string;
 };
 
+export type ShowFirstOpenAction = {
+  kind: "start-set" | "suggest-song";
+  title: string;
+  copy: string;
+  label: string;
+  href: string;
+  setSlug?: string;
+};
+
+export type PublicLeftoverAction = {
+  kind: "suggest-song" | "practice-show";
+  label: string;
+};
+
 export function practicePositionKey(showSlug: string): string {
   return `rad-dad-practice-position:${showSlug}`;
 }
@@ -45,37 +59,70 @@ export function resumeSongFromSavedPosition(
   return songs.find((song) => String(song.id) === savedId) ?? null;
 }
 
-export function fanNextStepCopy(use: ShowNightUse): {
-  title: string;
-  copy: string;
-} {
+export function firstOpenAction(use: ShowNightUse): ShowFirstOpenAction {
   if (!use.hasVerifiedList) {
     return {
+      kind: "suggest-song",
       title: "This show has no official set yet.",
       copy: "We will not show another night's songs. Suggest a song for this event.",
+      label: "Suggest a song",
+      href: "#suggestions",
     };
   }
   const when = use.firstSet?.time ? ` at ${use.firstSet.time}` : "";
   return {
+    kind: "start-set",
     title: use.firstSet
       ? `Start with ${use.firstSet.title}${when}.`
-      : "See this night, then suggest a song.",
-    copy: `${use.songCount} verified song${use.songCount === 1 ? "" : "s"} on this show. Then suggest a song if you have one.`,
+      : "See this night's official set.",
+    copy: `${use.songCount} verified song${use.songCount === 1 ? "" : "s"} on this show.`,
+    label: "See the official sets",
+    href: use.firstSet ? `#set-${use.firstSet.slug}` : "#official-sets",
+    setSlug: use.firstSet?.slug,
   };
 }
 
-export function bandNextStepCopy(use: ShowNightUse): {
-  title: string;
-  copy: string;
-} {
-  if (!use.hasVerifiedList) {
-    return {
-      title: "This show has no verified list yet.",
-      copy: "Practice stays empty rather than borrowing another show.",
-    };
+export function leftoverPublicActions(
+  use: ShowNightUse,
+  next: ShowFirstOpenAction,
+): PublicLeftoverAction[] {
+  if (next.kind === "suggest-song") return [];
+  const leftovers: PublicLeftoverAction[] = [
+    { kind: "suggest-song", label: "Suggest a song" },
+  ];
+  if (use.hasVerifiedList) {
+    leftovers.push({ kind: "practice-show", label: "Practice this show" });
   }
-  return {
-    title: "Practice this show's verified list.",
-    copy: `${use.songCount} songs on this event. Keys and handoffs stay here.`,
-  };
+  return leftovers;
+}
+
+export function publicProductionNotes({
+  canonicalShow,
+  featuredGuestTitle,
+  expectedWrap,
+}: {
+  canonicalShow: boolean;
+  featuredGuestTitle?: string | null;
+  expectedWrap: string;
+}): string[] {
+  const notes = ["Share the backline where practical."];
+  const guest = featuredGuestTitle?.trim() ?? "";
+  if (guest) {
+    notes.push(
+      /fault lines/i.test(guest)
+        ? "Protect the Mason / Fault Lines setup window."
+        : `Protect the ${guest} setup window.`,
+    );
+  }
+  notes.push("Confirm guest keys and endings before show day.");
+  notes.push(
+    canonicalShow
+      ? "10:00 PM is the expected wrap, not a venue curfew."
+      : `${expectedWrap || "The planned wrap"} is the expected wrap, not a venue curfew.`,
+  );
+  return notes;
+}
+
+export function showHasRunOfShow(timeline: unknown): boolean {
+  return Array.isArray(timeline) && timeline.length > 0;
 }

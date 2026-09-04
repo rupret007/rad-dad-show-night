@@ -140,18 +140,20 @@
 .eventFact + .eventFact { padding-left: 17px; border-left: 1px solid rgba(255, 255, 255, 0.13); }
 .factLabel { display: block; margin-bottom: 5px; color: var(--lime); font-size: 0.69rem; font-weight: 800; letter-spacing: 0.17em; text-transform: uppercase; }
 .factValue { display: block; font-size: 1rem; line-height: 1.18; text-transform: uppercase; }
-.nextActions { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.nextAction { padding: 13px 15px 14px; border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.03); }
+.nextActions { margin: 22px 0 0; display: grid; grid-template-columns: 1fr; }
+.nextAction { padding: 16px 18px 17px; border: 1px solid rgba(184, 245, 39, 0.38); background: rgba(184, 245, 39, 0.075); }
+.nextAction[data-kind="suggest-song"] { border-color: rgba(255, 61, 135, 0.42); background: rgba(255, 61, 135, 0.08); }
 .nextKicker { margin: 0; color: var(--lime); font-size: 0.67rem; font-weight: 800; letter-spacing: 0.17em; text-transform: uppercase; }
-.nextAction[data-role="band"] .nextKicker { color: var(--blue); }
-.nextAction h2 { margin: 5px 0 6px; font-size: 1.02rem; letter-spacing: 0.03em; text-transform: uppercase; }
-.nextAction p { margin: 0; color: var(--muted); font-size: 0.86rem; line-height: 1.35; }
-.nextActionLinks { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
-.nextActionLinks .primaryAction, .nextActionLinks .secondaryAction { min-height: 38px; padding: 0 14px; }
-.nextSetJumps { margin-top: 10px; display: grid; gap: 6px; }
-.nextSetJumps a { min-height: 34px; padding: 7px 10px; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; color: var(--paper); border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.03); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-decoration: none; text-transform: uppercase; }
-.nextSetJumps a:hover { border-color: var(--lime); color: var(--lime); }
-.nextSetJumps span { color: var(--muted); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; }
+.nextAction[data-kind="suggest-song"] .nextKicker { color: var(--pink); }
+.nextAction h2 { margin: 6px 0 7px; font-size: 1.18rem; letter-spacing: 0.03em; text-transform: uppercase; }
+.nextActionCopy { margin: 0; color: #c4c8c7; font-size: 0.92rem; line-height: 1.4; }
+.nextActionLinks { margin-top: 14px; display: flex; }
+.nextActionLinks .primaryAction { width: 100%; min-height: 48px; padding: 0 16px; }
+.leftoverPublic { margin-top: 16px; padding-top: 14px; border-top: 1px dashed rgba(184, 245, 39, 0.35); }
+.nextAction[data-kind="suggest-song"] .leftoverPublic { border-top-color: rgba(255, 61, 135, 0.35); }
+.leftoverPublicKicker { margin: 0; color: var(--blue); font-size: 0.64rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.leftoverPublicLinks { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+.leftoverPublicLinks .secondaryAction { min-height: 38px; padding: 0 14px; }
 .emptyVerifiedList { margin: 0; padding: 16px 18px; border: 1px solid rgba(255, 61, 135, 0.35); color: var(--paper); background: rgba(255, 61, 135, 0.08); font-size: 0.92rem; font-weight: 700; line-height: 1.4; }
 .emptySet { margin: 0; padding: 22px 24px 26px; color: var(--muted); font-size: 0.92rem; line-height: 1.45; }
 .practiceNextLine { display: block; margin-top: 4px; overflow: hidden; color: var(--lime); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
@@ -316,6 +318,7 @@
   .hero { min-height: auto; grid-template-columns: 300px 1fr; gap: 48px; }
   .heroTitle { font-size: clamp(4.6rem, 10vw, 7rem); }
   .nextActions { grid-template-columns: 1fr; }
+  .nextActionLinks .primaryAction { min-height: 50px; }
   .eventGrid { grid-template-columns: 1fr; }
   .eventFact + .eventFact { padding-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.13); border-left: 0; }
   .notesGrid { grid-template-columns: repeat(2, 1fr); }
