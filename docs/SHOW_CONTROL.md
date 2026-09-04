@@ -79,6 +79,27 @@ The highlighted **One next step** follows a fixed order instead of guessing:
 If the set definitions do not verify, the card offers no action. An empty show
 stays empty and never borrows another night's songs or set times.
 
+## Leftover on this show
+
+Under the one next step, leftover work on this verified night stays listed and
+tappable. Leftover items reuse existing owner actions. They do not invent a
+booking, outreach, or send path.
+
+Leftover order is fixed:
+
+1. Leftover unsaved sets after the first leftover save. Each leftover save
+   writes that leftover set through the existing authenticated save path.
+2. Leftover empty sets on this show. Each leftover start focuses that leftover
+   set's Add Song field. The leftover set stays empty until the owner adds a
+   song here.
+3. Leftover share-link proof: **See closed public link** on a draft or archive,
+   **See last saved public list** when leftover unsaved work is still private
+   on a published show, or **See live empty public list** when this leftover
+   public night is open and empty.
+
+A leftover empty clone does not inherit another night's songs or set times.
+Leftover owner copy stays in Show Control and does not appear on public pages.
+
 If the initial owner show payload itself cannot be verified, Show Control stops
 before rendering the editor and offers **Retry verified load**. Add, Save,
 Publish, and Archive are unavailable until that exact show loads successfully.

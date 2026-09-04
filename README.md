@@ -30,7 +30,10 @@ commit. A save updates the public page only when that show is already published.
 - Manages multiple shows from one owner dashboard.
 - Puts the public-link state, official set posture, and booking boundary in one
   phone-friendly status deck. It derives one next step: save unsaved work, start
-  an empty list, publish a saved private show, or open band run mode.
+  an empty list, publish a saved private show, or open band run mode. Leftover
+  work on this verified show stays listed and tappable: leftover unsaved sets,
+  leftover empty sets, and leftover share-link proof. Another night is never
+  borrowed.
 - Stops at a retry screen when the owner show payload cannot be verified. Add,
   Save, Publish, and Archive never appear from fallback editor state.
 - Clones a complete show into a new private draft.
@@ -110,14 +113,18 @@ Jeff can tap this on a phone without mixing Save and Publish:
    and sign in. The September 19 default public show stays **Published · public**.
    Archive stays blocked because the main show link would stop working. The
    status deck names the public link, official set plan, and that Travis owns
-   booking, then presents one next step.
+   booking, then presents one next step. Leftover work on this show sits under
+   that step.
 3. Choose **Clone show**, uncheck **Copy official songs and set times**, and
    create an empty draft. That night stays empty. The public share link stays
-   closed until you publish.
+   closed until you publish. **Leftover on this show** lists leftover empty
+   Stalemate and Rad Dad plus leftover **See closed public link**. Tap a leftover
+   empty set to start it here. It still does not inherit September 19 songs.
 4. Save a set on the draft if you want. Saving writes this private show. It
    does not open the public link. The editor says **Private draft — not public**.
-5. Tap **See closed public link**. The public page says no published show was
-   found and does not open September 19 songs.
+   Leftover unsaved other sets stay listed as leftover saves.
+5. Tap leftover **See closed public link**. The public page says no published
+   show was found and does not open September 19 songs.
 6. Publish the empty draft. The share link opens on an empty night. It still
    does not inherit another show's set.
 7. Archive that non-default show. The share link closes again.

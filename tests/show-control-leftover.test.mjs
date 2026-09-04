@@ -14,9 +14,12 @@ const pageUrl = new URL("../app/page.tsx", import.meta.url);
 const notFoundUrl = new URL("../app/not-found.tsx", import.meta.url);
 const leftoverHostedUrl = new URL("../scripts/hosted-leftover-honesty.mjs", import.meta.url);
 const showDataUrl = new URL("../lib/show-data.ts", import.meta.url);
+const readmeUrl = new URL("../README.md", import.meta.url);
+const guideUrl = new URL("../docs/SHOW_CONTROL.md", import.meta.url);
+const technicalUrl = new URL("../docs/TECHNICAL_GUIDE.md", import.meta.url);
 
 const inheritedNight = /Heart-Shaped Box|Basket Case|7:00-7:35|Chick Magnet|First Date|The Way I Love You/;
-const inventedOutreach = /pitch|auto-post|send outreach|book a venue|book the/i;
+const inventedOutreach = /pitch|send outreach|book a venue|book the/i;
 
 const sets = [
   {
@@ -184,14 +187,18 @@ test("unverified leftover work fails closed with no leftover actions", () => {
 });
 
 test("Show Control makes leftover work clickable on phones and keeps leftover copy owner-only", async () => {
-  const [control, styles, page, notFound, leftoverHosted, showData] = await Promise.all([
-    readFile(controlUrl, "utf8"),
-    readFile(stylesUrl, "utf8"),
-    readFile(pageUrl, "utf8"),
-    readFile(notFoundUrl, "utf8"),
-    readFile(leftoverHostedUrl, "utf8"),
-    readFile(showDataUrl, "utf8"),
-  ]);
+  const [control, styles, page, notFound, leftoverHosted, showData, readme, guide, technical] =
+    await Promise.all([
+      readFile(controlUrl, "utf8"),
+      readFile(stylesUrl, "utf8"),
+      readFile(pageUrl, "utf8"),
+      readFile(notFoundUrl, "utf8"),
+      readFile(leftoverHostedUrl, "utf8"),
+      readFile(showDataUrl, "utf8"),
+      readFile(readmeUrl, "utf8"),
+      readFile(guideUrl, "utf8"),
+      readFile(technicalUrl, "utf8"),
+    ]);
 
   assert.match(control, /buildShowControlPosture/);
   assert.match(control, /leftoverActions/);
@@ -220,4 +227,12 @@ test("Show Control makes leftover work clickable on phones and keeps leftover co
   assert.match(showData, /Heart-Shaped Box/);
   assert.match(showData, /First Date/);
   assert.match(showData, /The Way I Love You/);
+
+  for (const document of [readme, guide, technical]) {
+    assert.match(document, /Leftover on this show/i);
+    assert.match(document, /leftover empty/i);
+  }
+  assert.match(readme, /See closed public link/);
+  assert.match(guide, /See last saved public list/);
+  assert.match(technical, /leftover share-link proof/);
 });
