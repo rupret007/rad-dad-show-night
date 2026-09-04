@@ -6,11 +6,13 @@ import { DEFAULT_SONGS, SHOW_DETAILS } from "../lib/show-data.ts";
 import { RUN_OF_SHOW } from "../lib/show-data.ts";
 import { buildShowSets } from "../lib/show-read-integrity.ts";
 import {
-  bandNextStepCopy,
   buildShowNightUse,
-  fanNextStepCopy,
+  firstOpenAction,
+  leftoverPublicActions,
   practicePositionKey,
+  publicProductionNotes,
   resumeSongFromSavedPosition,
+  showHasRunOfShow,
 } from "../lib/show-night-use.ts";
 
 const pageUrl = new URL("../app/page.tsx", import.meta.url);
@@ -22,7 +24,7 @@ const showRouteUrl = new URL("../app/api/show/route.ts", import.meta.url);
 const showPageStylesUrl = new URL("../app/show-page.module.css", import.meta.url);
 const readmeUrl = new URL("../README.md", import.meta.url);
 
-test("next steps and practice follow this show's verified list", () => {
+test("first open names one next action from this show's verified list", () => {
   const sets = buildShowSets(RUN_OF_SHOW);
   const ready = buildShowNightUse(DEFAULT_SONGS, sets);
   assert.equal(ready.hasVerifiedList, true);
@@ -33,14 +35,21 @@ test("next steps and practice follow this show's verified list", () => {
   assert.equal(ready.sets[1].songCount, 6);
   assert.equal(ready.sets[2].songCount, 19);
 
-  const fan = fanNextStepCopy(ready);
-  assert.match(fan.title, /Jeff Story & Friends/);
-  assert.match(fan.title, /7:00-7:35 PM/);
-  assert.match(fan.copy, /32 verified songs/);
+  const next = firstOpenAction(ready);
+  assert.equal(next.kind, "start-set");
+  assert.match(next.title, /Jeff Story & Friends/);
+  assert.match(next.title, /7:00-7:35 PM/);
+  assert.match(next.copy, /32 verified songs/);
+  assert.equal(next.label, "See the official sets");
+  assert.equal(next.href, "#set-jeff-story-friends");
+  assert.doesNotMatch(next.copy, /suggest a song|practice/i);
 
-  const band = bandNextStepCopy(ready);
-  assert.match(band.title, /Practice this show/);
-  assert.match(band.copy, /32 songs on this event/);
+  const leftovers = leftoverPublicActions(ready, next);
+  assert.deepEqual(
+    leftovers.map((action) => action.kind),
+    ["suggest-song", "practice-show"],
+  );
+  assert.equal(leftovers.filter((action) => action.kind === "suggest-song").length, 1);
 });
 
 test("an empty clone stays empty instead of inheriting another show's set", () => {
@@ -57,16 +66,41 @@ test("an empty clone stays empty instead of inheriting another show's set", () =
     [0, 0, 0],
   );
 
-  const fan = fanNextStepCopy(empty);
-  assert.match(fan.title, /no official set yet/);
-  assert.doesNotMatch(fan.title, /7:00-7:35/);
-  assert.doesNotMatch(fan.copy, /Heart-Shaped Box|Basket Case/);
-  assert.match(fan.copy, /will not show another night/);
+  const next = firstOpenAction(empty);
+  assert.equal(next.kind, "suggest-song");
+  assert.match(next.title, /no official set yet/);
+  assert.doesNotMatch(next.title, /7:00-7:35|Jeff Story|Heart-Shaped Box|Basket Case/);
+  assert.doesNotMatch(next.copy, /Heart-Shaped Box|Basket Case|7:00-7:35/);
+  assert.match(next.copy, /will not show another night/);
+  assert.equal(next.label, "Suggest a song");
+  assert.equal(next.href, "#suggestions");
+  assert.deepEqual(leftoverPublicActions(empty, next), []);
+  assert.equal(showHasRunOfShow([]), false);
+  assert.equal(showHasRunOfShow(RUN_OF_SHOW), true);
 
-  const band = bandNextStepCopy(empty);
-  assert.match(band.title, /no verified list yet/);
-  assert.match(band.copy, /rather than borrowing another show/);
-  assert.doesNotMatch(band.copy, /32 songs/);
+  const emptyNotes = publicProductionNotes({
+    canonicalShow: false,
+    featuredGuestTitle: "",
+    expectedWrap: "8:00-11:00 PM",
+  });
+  assert.doesNotMatch(emptyNotes.join(" "), /Mason|Fault Lines|7:00-7:35|Heart-Shaped Box/);
+  assert.equal(emptyNotes.includes("Share the backline where practical."), true);
+});
+
+test("canonical production notes stay on this night and empty clones drop guest windows", () => {
+  const canonical = publicProductionNotes({
+    canonicalShow: true,
+    featuredGuestTitle: "Mason / The Fault Lines",
+    expectedWrap: "10:00 PM",
+  });
+  assert.equal(
+    canonical.includes("Protect the Mason / Fault Lines setup window."),
+    true,
+  );
+  assert.equal(
+    canonical.includes("10:00 PM is the expected wrap, not a venue curfew."),
+    true,
+  );
 });
 
 test("practice resume only accepts a song that belongs to this show", () => {
@@ -95,7 +129,7 @@ test("practice resume only accepts a song that belongs to this show", () => {
   assert.equal(resumeSongFromSavedPosition(null, thisShowSongs), null);
 });
 
-test("the live page uses this show's next-step helper and honest empty sets", async () => {
+test("the live page uses one first-open next step and honest empty sets", async () => {
   const [page, liveList, resume, nextStep, showData, showRoute, styles, readme] =
     await Promise.all([
       readFile(pageUrl, "utf8"),
@@ -109,23 +143,35 @@ test("the live page uses this show's next-step helper and honest empty sets", as
     ]);
 
   assert.match(page, /buildShowNightUse/);
-  assert.match(page, /fanNextStepCopy/);
-  assert.match(page, /bandNextStepCopy/);
-  assert.match(page, /Fan next step/);
-  assert.match(page, /Band next step/);
-  assert.match(page, /See the official sets/);
+  assert.match(page, /firstOpenAction/);
+  assert.match(page, /leftoverPublicActions/);
+  assert.match(page, /publicProductionNotes/);
+  assert.match(page, /One next step/);
+  assert.doesNotMatch(page, /Fan next step/);
+  assert.doesNotMatch(page, /Band next step/);
+  assert.doesNotMatch(page, /nextSetJumps/);
+  assert.match(page, /data-next-action-count="1"/);
+  assert.match(page, /data-first-open-action/);
+  assert.match(page, /styles\.firstOpenLead/);
+  assert.match(page, /styles\.heroRest/);
+  assert.match(styles, /\.nextActions \{ order: 2;/);
+  assert.match(styles, /\.heroPosterWrap \{ order: 3;/);
+  assert.match(nextStep, /See the official sets/);
+  assert.match(page, /openAction\.label/);
   assert.match(page, /Suggest a song/);
-  assert.match(page, /Practice this show/);
+  assert.match(nextStep, /Practice this show/);
   assert.match(page, /PracticeResume/);
   assert.match(page, /data-has-verified-list/);
   assert.match(page, /publishedPublicShareCopy/);
   assert.match(page, /data-public-share="open"/);
+  assert.match(page, /hasRunOfShow/);
   assert.equal(page.match(/styles\.mobilePrimaryLink/g)?.length, 3);
   assert.match(page, /styles\.practiceLink} \$\{styles\.mobileOptionalLink/);
   assert.match(page, /className=\{styles\.controlLink\}/);
   assert.doesNotMatch(page, /SET_DEFINITIONS\.map/);
   assert.match(nextStep, /This show has no official set yet/);
-  assert.match(nextStep, /This show has no verified list yet/);
+  assert.match(nextStep, /See the official sets/);
+  assert.match(nextStep, /will not show another night/);
 
   assert.match(liveList, /practicePositionKey/);
   assert.match(liveList, /No verified songs on this set yet/);
@@ -150,6 +196,7 @@ test("the live page uses this show's next-step helper and honest empty sets", as
     styles,
     /\.topLinks \.controlLink \{[^}]*display: inline-flex;/,
   );
+  assert.match(styles, /\.nextActions \{[^}]*grid-template-columns: 1fr;/);
   assert.match(page, /className=\{styles\.footerControl\}/);
-  assert.match(readme, /this show's verified list/);
+  assert.match(readme, /one next action on first open|one next step/i);
 });

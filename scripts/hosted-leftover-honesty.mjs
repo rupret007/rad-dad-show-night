@@ -115,6 +115,15 @@ async function proveIsolation() {
     /data-public-share="open"/.test(home.text),
     "canonical page is missing an open public-share marker",
   );
+  assert(
+    /data-next-action-count="1"/.test(home.text),
+    "canonical page is missing a single first-open next action",
+  );
+  assert(
+    /data-first-open-action="start-set"/.test(home.text),
+    "canonical page did not start with this night's first official set",
+  );
+  assert(!/Fan next step|Band next step/.test(home.text), "canonical page still asks for a fan/band decision");
 
   const api = await readPath("/api/show");
   assert(api.response.ok, `canonical API returned ${api.response.status}`);
@@ -188,6 +197,18 @@ async function proveIsolation() {
     assert(
       /This public share link is live/.test(clonePage.text),
       "empty clone page is missing public-share honesty",
+    );
+    assert(
+      /data-first-open-action="suggest-song"/.test(clonePage.text),
+      "empty clone first-open action was not suggest-a-song",
+    );
+    assert(
+      /data-next-action-count="1"/.test(clonePage.text),
+      "empty clone page is missing a single first-open next action",
+    );
+    assert(
+      !/Fan next step|Band next step|Protect the Mason|7:00-7:35/.test(clonePage.text),
+      "empty clone inherited another night's first-open set or notes",
     );
     console.log("hosted leftover-honesty: D1-present empty clone stayed empty");
     return "database-empty-clone";

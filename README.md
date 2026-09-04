@@ -54,9 +54,10 @@ commit. A save updates the public page only when that show is already published.
   show fails closed instead of displaying the wrong songs.
 - Keeps a cloned or future show on its own verified set. It cannot inherit
   another event's songs, set times, or flyer.
-- Tells a fan or band member the next action for this show from this show's
-  verified list: start with the first set and suggest a song, or practice
-  these songs. An empty clone stays empty instead of borrowing another night.
+- Names one next action on first open from this show's verified list: start
+  with the first official set, or suggest a song when this night is empty.
+  Practice and leftover suggest stay after that step. An empty clone stays
+  empty instead of borrowing another night.
 - Keeps **Set lists** and **Suggest a song** in the phone header while moving
   the owner editor to the footer, so public visitors get the two useful public
   actions without another menu.
@@ -108,7 +109,8 @@ Jeff can tap this on a phone without mixing Save and Publish:
 
 1. Open the [public show page](https://rad-dad-show-night.jeffstory007.chatgpt.site).
    The header keeps **Set lists** and **Suggest a song**. The page says this
-   public share link is live.
+   public share link is live and names one next step: start with the first
+   official set. It does not ask a visitor to choose fan vs band first.
 2. Open [Show Control](https://rad-dad-show-night.jeffstory007.chatgpt.site/show-control)
    and sign in. The September 19 default public show stays **Published · public**.
    Archive stays blocked because the main show link would stop working. The
@@ -148,10 +150,9 @@ page reports that the show is temporarily unavailable instead. Live refresh,
 offline snapshots, and cached API responses also refuse another show's payload,
 so a clone cannot inherit another event's set after first paint.
 
-The hero names the next step for this show from this show's verified list.
-Fans start with the first official set, then can suggest a song. Band members
-open practice mode for this event's songs, or continue from the last marked
-place on this slug. A show with no verified songs stays empty instead of
+The hero names one next step for this show from this show's verified list.
+First open starts with the first official set. Leftover suggest and practice
+stay after that step. A show with no verified songs stays empty instead of
 inheriting another night. The public homepage stays on the default published
 show and will not silently open the latest clone. Public reads omit owner
 rehearsal notes. Those rehearsal notes stay in Show Control. Owner edits stay

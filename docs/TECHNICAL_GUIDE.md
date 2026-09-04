@@ -33,7 +33,7 @@ media fails closed. The public band site stays at
 | `lib/show-data.ts` | Event constants and initial confirmed songs |
 | `lib/show-store.ts` | Database seeding, reads, and song hydration |
 | `lib/show-read-integrity.ts` | Exact-show fallback policy and validated device snapshots |
-| `lib/show-night-use.ts` | This-show next steps, set counts, and practice resume |
+| `lib/show-night-use.ts` | First-open next action, leftover public actions, and practice resume |
 | `lib/show-lifecycle.ts` | Shared owner/UI and API lifecycle guards and confirmation copy |
 | `lib/show-control-posture.ts` | Owner status deck, one-next-step priority, and leftover owner work |
 | `lib/admin-access.ts` | Owner email authorization |
@@ -80,8 +80,11 @@ only database-backed payloads as a validated, show-scoped device snapshot. A
 fallback, failed refresh, or another show's payload never replaces that
 snapshot. The UI labels a last verified set and a repository baseline
 differently so interrupted live updates cannot masquerade as current. The
-public hero names a fan next step and a band next step from this show's
-verified list. Empty official sets say so instead of showing `0 songs ~0 min`.
+public hero names one next step from this show's verified list: start with
+the first official set, or suggest a song when the night is empty. Leftover
+suggest and practice stay after that step. Empty official sets say so instead
+of showing `0 songs ~0 min`. Empty clones also omit another night's run of
+show and featured-guest production notes.
 Practice names the next song and only resumes a place that belongs to this
 slug. An empty clone does not inherit another show's set. Public show reads
 strip owner rehearsal notes. The unscoped homepage only resolves the default

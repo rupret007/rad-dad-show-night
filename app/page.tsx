@@ -16,9 +16,11 @@ import {
 import { isShowNotFoundError } from "../lib/show-visibility";
 import { PUBLIC_SITE_LABEL, PUBLIC_SITE_URL } from "../lib/surface-roles";
 import {
-  bandNextStepCopy,
   buildShowNightUse,
-  fanNextStepCopy,
+  firstOpenAction,
+  leftoverPublicActions,
+  publicProductionNotes,
+  showHasRunOfShow,
 } from "../lib/show-night-use";
 import { visibleOfficialSets } from "../lib/show-public";
 import { publishedPublicShareCopy } from "../lib/show-lifecycle";
@@ -112,8 +114,14 @@ export default async function Home({
   const canonicalShow = isCanonicalShowSlug(show.slug);
   const featuredGuest = featuredGuestSet(timeline);
   const nightUse = buildShowNightUse(songs, sets);
-  const fanNext = fanNextStepCopy(nightUse);
-  const bandNext = bandNextStepCopy(nightUse);
+  const openAction = firstOpenAction(nightUse);
+  const leftoverActions = leftoverPublicActions(nightUse, openAction);
+  const productionNotes = publicProductionNotes({
+    canonicalShow,
+    featuredGuestTitle: featuredGuest?.performance.title,
+    expectedWrap: show.expectedWrap || show.hours,
+  });
+  const hasRunOfShow = showHasRunOfShow(timeline);
   const controlHref = `/show-control?show=${encodeURIComponent(show.slug)}`;
   const showHref = `/?show=${encodeURIComponent(show.slug)}`;
   const practiceHref = `${showHref}&practice=1#official-sets`;
@@ -220,17 +228,78 @@ export default async function Home({
         )}
 
         <div className={styles.heroCopy}>
-          <div className={styles.eyebrow}>
-            <span className={styles.liveDot} /> Live show plan
+          <div className={styles.firstOpenLead}>
+            <div className={styles.eyebrow}>
+              <span className={styles.liveDot} /> Live show plan
+            </div>
+            <p className={styles.publicShareLine} data-public-share="open">
+              {publishedPublicShareCopy(nightUse.hasVerifiedList)}
+            </p>
           </div>
-          <p className={styles.publicShareLine} data-public-share="open">
-            {publishedPublicShareCopy(nightUse.hasVerifiedList)}
-          </p>
+
+          <section
+            className={styles.nextActions}
+            aria-label="One next step for this show"
+            data-next-step={openAction.kind}
+            data-first-open-action={openAction.kind}
+            data-next-action-count="1"
+          >
+            <article className={styles.nextAction} data-kind={openAction.kind}>
+              <p className={styles.nextKicker}>One next step</p>
+              <h2>{openAction.title}</h2>
+              <p className={styles.nextActionCopy}>{openAction.copy}</p>
+              <div className={styles.nextActionLinks}>
+                <a className={styles.primaryAction} href={openAction.href}>
+                  {openAction.label}
+                </a>
+              </div>
+              {leftoverActions.length ? (
+                <div
+                  className={styles.leftoverPublic}
+                  data-leftover-count={String(leftoverActions.length)}
+                >
+                  <p className={styles.leftoverPublicKicker}>Also on this show</p>
+                  <div className={styles.leftoverPublicLinks}>
+                    {leftoverActions.map((action) =>
+                      action.kind === "practice-show" ? (
+                        <a
+                          className={styles.secondaryAction}
+                          href={practiceHref}
+                          key={action.kind}
+                        >
+                          {action.label}
+                        </a>
+                      ) : (
+                        <a
+                          className={styles.secondaryAction}
+                          href="#suggestions"
+                          key={action.kind}
+                        >
+                          {action.label}
+                        </a>
+                      ),
+                    )}
+                    <PracticeResume
+                      showSlug={show.slug}
+                      songs={songs.map((song) => ({
+                        id: song.id,
+                        title: song.title,
+                      }))}
+                      practiceHref={practiceHref}
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </article>
+          </section>
+
+          <div className={styles.heroRest}>
           <h1 className={styles.heroTitle}>
             RAD DAD <span className={styles.heroPlus}>+</span>
             <br />
             FRIENDS
           </h1>
+
           <p className={styles.heroDek}>
             The live set surface for this night: official order, handoffs, and
             keys. Covers can show YouTube and lyrics when saved; originals hide
@@ -252,79 +321,6 @@ export default async function Home({
             </div>
           </div>
 
-          <section
-            className={styles.nextActions}
-            aria-label="Next step for this show"
-            data-next-step={nightUse.hasVerifiedList ? "ready" : "empty"}
-          >
-            <article className={styles.nextAction} data-role="fan">
-              <p className={styles.nextKicker}>Fan next step</p>
-              <h2>{fanNext.title}</h2>
-              <p>{fanNext.copy}</p>
-              {nightUse.hasVerifiedList ? (
-                <div className={styles.nextSetJumps} aria-label="Jump to a set">
-                  {nightUse.sets
-                    .filter((set) => set.songCount > 0)
-                    .map((set) => (
-                      <a href={`#set-${set.slug}`} key={set.slug}>
-                        {set.title}
-                        <span>
-                          {set.songCount} song{set.songCount === 1 ? "" : "s"}
-                          {set.time ? ` · ${set.time}` : ""}
-                        </span>
-                      </a>
-                    ))}
-                </div>
-              ) : null}
-              <div className={styles.nextActionLinks}>
-                {nightUse.hasVerifiedList ? (
-                  <a
-                    className={styles.primaryAction}
-                    href={
-                      nightUse.firstSet
-                        ? `#set-${nightUse.firstSet.slug}`
-                        : "#official-sets"
-                    }
-                  >
-                    See the official sets
-                  </a>
-                ) : null}
-                <a
-                  className={
-                    nightUse.hasVerifiedList
-                      ? styles.secondaryAction
-                      : styles.primaryAction
-                  }
-                  href="#suggestions"
-                >
-                  Suggest a song
-                </a>
-              </div>
-            </article>
-            <article className={styles.nextAction} data-role="band">
-              <p className={styles.nextKicker}>Band next step</p>
-              <h2>{bandNext.title}</h2>
-              <p>{bandNext.copy}</p>
-              <div className={styles.nextActionLinks}>
-                {nightUse.hasVerifiedList ? (
-                  <>
-                    <a className={styles.primaryAction} href={practiceHref}>
-                      Practice this show
-                    </a>
-                    <PracticeResume
-                      showSlug={show.slug}
-                      songs={songs.map((song) => ({
-                        id: song.id,
-                        title: song.title,
-                      }))}
-                      practiceHref={practiceHref}
-                    />
-                  </>
-                ) : null}
-              </div>
-            </article>
-          </section>
-
           {listedSets.length ? (
           <div
             className={`${styles.eventGrid} ${styles.officialSetGrid}`}
@@ -342,9 +338,11 @@ export default async function Home({
           ) : null}
 
           <div className={styles.heroActions}>
-            <a className={styles.secondaryAction} href="#run-of-show">
-              See the running order
-            </a>
+            {hasRunOfShow ? (
+              <a className={styles.secondaryAction} href="#run-of-show">
+                See the running order
+              </a>
+            ) : null}
             {canonicalShow ? (
               <a
                 className={styles.secondaryAction}
@@ -360,11 +358,12 @@ export default async function Home({
               text={`Run of show and live set lists for ${show.date} at ${show.venue}.`}
             />
           </div>
+          </div>
         </div>
       </header>
       )}
 
-      {!practiceMode ? (
+      {!practiceMode && hasRunOfShow ? (
       <section className={styles.section} id="run-of-show">
         <div className={styles.sectionHeader}>
           <div>
@@ -458,7 +457,7 @@ export default async function Home({
         />
       </section>
 
-      {!practiceMode ? (
+      {!practiceMode && (hasRunOfShow || nightUse.hasVerifiedList) ? (
       <section className={styles.section} aria-labelledby="notes-title">
         <div className={styles.sectionHeader}>
           <div>
@@ -469,14 +468,7 @@ export default async function Home({
           </div>
         </div>
         <div className={styles.notesGrid}>
-          {[
-            "Share the backline where practical.",
-            "Protect the Mason / Fault Lines setup window.",
-            "Confirm guest keys and endings before show day.",
-            canonicalShow
-              ? "10:00 PM is the expected wrap, not a venue curfew."
-              : `${show.expectedWrap || show.hours} is the expected wrap, not a venue curfew.`,
-          ].map((note, index) => (
+          {productionNotes.map((note, index) => (
             <div className={styles.noteCard} key={note}>
               <span className={styles.noteNumber}>0{index + 1}</span>
               <p className={styles.noteText}>{note}</p>
