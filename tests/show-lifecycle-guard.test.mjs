@@ -180,12 +180,13 @@ test("Show Control puts lifecycle and empty-clone choice on the tester path", as
   const introAt = control.indexOf("className={styles.controlIntro}");
   const cloneAt = control.indexOf("Clone this show");
   const copyAt = control.indexOf('name="copySongs"', cloneAt);
-  const createAt = control.indexOf("Create draft", cloneAt);
+  const submitAt = control.indexOf('type="submit"', copyAt);
 
   assert.ok(managerAt >= 0, "missing show manager");
   assert.ok(introAt > managerAt, "show picker must sit above BUILD THE NIGHT");
   assert.ok(copyAt > cloneAt, "missing empty-clone checkbox");
-  assert.ok(createAt > copyAt, "empty-clone checkbox must come before Create draft");
+  assert.ok(submitAt > copyAt, "empty-clone checkbox must come before Create draft");
+  assert.match(control, /Uncheck the box before Create draft/);
   assert.match(control, /does not inherit songs or set times/);
 });
 
@@ -202,6 +203,6 @@ test("operator and technical docs name the lifecycle fence", async () => {
   }
   assert.match(readme, /uncheck/i);
   assert.match(readme, /Saving a draft does not open/i);
-  assert.match(guide, /Save \[set name\] writes/i);
+  assert.match(guide, /Save \[set name\].*writes/i);
   assert.match(guide, /picker at the top of Show Control/i);
 });

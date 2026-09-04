@@ -614,9 +614,7 @@ export default function ShowControlClient({
             <div>
               <strong>Clone this show</strong>
               <span>
-                The original show is unchanged. Uncheck the box before Create
-                draft to start an empty night that does not inherit songs or
-                set times.
+                The original show is unchanged. Uncheck the box before Create draft to start an empty night that does not inherit songs or set times.
               </span>
             </div>
             <input name="title" defaultValue={activeShow.title} aria-label="New show title" required />
