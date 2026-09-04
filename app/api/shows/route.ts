@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { getAdminUser } from "../../../lib/admin-access";
+import { showStatusChangeBlockReason } from "../../../lib/show-lifecycle";
 import { shouldCopyCloneSongs } from "../../../lib/show-public";
 import { ensureShowSeeded, getManagedShows } from "../../../lib/show-store";
 
@@ -116,11 +117,19 @@ export async function POST(request: Request) {
         return Response.json({ error: "Choose a show." }, { status: 400 });
       }
       const existing = await env.DB
-        .prepare("SELECT slug FROM shows WHERE slug = ? LIMIT 1")
+        .prepare("SELECT slug, status, is_default FROM shows WHERE slug = ? LIMIT 1")
         .bind(payload.showSlug)
-        .first();
+        .first<Record<string, string | number>>();
       if (!existing) {
         return Response.json({ error: "Show not found." }, { status: 404 });
+      }
+      const lifecycleBlock = showStatusChangeBlockReason({
+        currentStatus: existing.status as "draft" | "published" | "archived",
+        targetStatus: status as "draft" | "published" | "archived",
+        isDefault: existing.is_default === 1,
+      });
+      if (lifecycleBlock) {
+        return Response.json({ error: lifecycleBlock }, { status: 409 });
       }
       await env.DB
         .prepare("UPDATE shows SET status = ?, updated_at = ? WHERE slug = ?")
@@ -168,4 +177,3 @@ function slugify(value: string) {
 function clean(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
-

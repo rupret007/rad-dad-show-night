@@ -38,16 +38,20 @@
 .controlStats strong { color: var(--lime); font-family: Impact, sans-serif; font-size: 2rem; }
 .controlStats span { color: var(--muted); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .setTabs { margin-bottom: 18px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.showManager { margin-bottom: 10px; padding: 15px 17px; display: flex; align-items: end; gap: 12px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.025); }
+.showManager { margin-bottom: 10px; padding: 15px 17px; display: flex; flex-wrap: wrap; align-items: end; gap: 12px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.025); }
 .showSelect { min-width: 300px; flex: 1; }
 .showSelect label { display: block; margin-bottom: 5px; color: var(--blue); font-size: 0.65rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
 .showSelect select { width: 100%; height: 42px; padding: 0 10px; border: 1px solid rgba(255, 255, 255, 0.16); color: white; background: #101014; font: inherit; }
+.showSelect select:disabled { cursor: wait; opacity: 0.55; }
 .showStatus { padding: 7px 9px; color: var(--black); background: var(--blue); font-size: 0.65rem; font-weight: 900; letter-spacing: 0.09em; text-transform: uppercase; }
 .showStatus[data-status="published"] { background: var(--lime); }
 .showStatus[data-status="archived"] { color: white; background: #676b6d; }
 .showActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .showActions a, .showActions button { min-height: 36px; padding: 0 10px; display: inline-flex; align-items: center; border: 1px solid rgba(255, 255, 255, 0.17); color: #d7d9d6; background: transparent; cursor: pointer; font: inherit; font-size: 0.67rem; font-weight: 900; letter-spacing: 0.06em; text-decoration: none; text-transform: uppercase; }
 .showActions a:hover, .showActions button:hover { color: var(--black); background: var(--blue); }
+.showActions button:disabled { cursor: not-allowed; opacity: 0.42; }
+.showActions button:disabled:hover { color: #d7d9d6; background: transparent; }
+.lifecycleHint { flex-basis: 100%; margin: 0; color: #929796; font-size: 0.72rem; line-height: 1.35; }
 .clonePanel { margin-bottom: 18px; padding: 16px; display: grid; grid-template-columns: 1.15fr 1fr 1fr 0.8fr auto; align-items: end; gap: 9px; border: 1px solid rgba(184, 245, 39, 0.35); background: rgba(184, 245, 39, 0.05); }
 .clonePanel strong, .clonePanel span { display: block; }
 .clonePanel strong { text-transform: uppercase; }

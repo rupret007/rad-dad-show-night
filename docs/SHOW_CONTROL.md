@@ -41,6 +41,12 @@ deleting their history. The editor times come from this show's own verified
 payload, not the September 19 defaults. Rehearsal notes stay in Show Control
 and are not sent on public show reads.
 
+Publishing opens that show's saved public share link; archiving closes it.
+Show Control asks before either change and will not change lifecycle status
+while any set has unsaved edits. The default public show cannot be archived:
+the main link resolves only that record, and the product does not yet provide a
+replacement-default workflow. Archive non-default shows instead.
+
 Draft and archived links are private lifecycle records, not public previews.
 Anonymous page and API reads return not found; the authenticated owner can still
 load either status inside Show Control.

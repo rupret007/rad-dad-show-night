@@ -33,6 +33,7 @@ media fails closed. The public band site stays at
 | `lib/show-store.ts` | Database seeding, reads, and song hydration |
 | `lib/show-read-integrity.ts` | Exact-show fallback policy and validated device snapshots |
 | `lib/show-night-use.ts` | This-show next steps, set counts, and practice resume |
+| `lib/show-lifecycle.ts` | Shared owner/UI and API lifecycle guards and confirmation copy |
 | `lib/admin-access.ts` | Owner email authorization |
 | `lib/surface-roles.ts` | Live-set / catalog / public-site / band-OS roles |
 | `lib/song-resources.ts` | YouTube URL parsing and fail-closed public media |
@@ -105,6 +106,13 @@ show into a new draft. Cloning can copy the timeline and show-specific songs,
 or start an empty night that does not inherit another event's songs or set
 times. The original event remains unchanged. The editor shows this show's own
 set times from the loaded payload, not the September 19 defaults.
+
+The lifecycle API refuses to move the default public show away from `published`,
+because doing so would strand the unscoped public homepage and there is no
+replacement-default workflow. Show Control also blocks lifecycle requests while
+any set has unsaved browser edits and confirms the public-link consequence before
+an allowed publish or archive request. The API repeats the default-show guard;
+the disabled owner button is not the security or integrity boundary.
 
 ### Suggestions
 

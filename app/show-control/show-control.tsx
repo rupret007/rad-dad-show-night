@@ -16,6 +16,11 @@ import {
   getYouTubeVideoId,
   savedOfficialMediaUrl,
 } from "../../lib/song-resources";
+import {
+  showStatusChangeBlockReason,
+  showStatusChangeConfirmation,
+  type ShowLifecycleStatus,
+} from "../../lib/show-lifecycle";
 import type { Suggestion } from "../song-board";
 import styles from "./show-control.module.css";
 
@@ -69,6 +74,7 @@ export default function ShowControlClient({
   const [cloning, setCloning] = useState(false);
   const [coach, setCoach] = useState<CoachResult | null>(null);
   const [coaching, setCoaching] = useState(false);
+  const [statusChanging, setStatusChanging] = useState<ShowLifecycleStatus | null>(null);
   const dragIndex = useRef<number | null>(null);
   const draftIdPrefix = useId().replace(/[^a-z0-9-]/gi, "");
   const draftIdCounter = useRef(0);
@@ -411,20 +417,43 @@ export default function ShowControlClient({
   }
 
   async function changeShowStatus(status: ManagedShow["status"]) {
-    const response = await fetch("/api/shows", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "status", showSlug: activeShowSlug, status }),
+    const blocker = showStatusChangeBlockReason({
+      currentStatus: activeShow.status,
+      targetStatus: status,
+      isDefault: activeShow.isDefault,
+      dirtySetCount: dirtySets.size,
     });
-    const result = (await response.json()) as { show?: ManagedShow; error?: string };
-    if (!response.ok || !result.show) {
-      setNotice(result.error || "Could not update show status.");
+    if (blocker) {
+      setNotice(blocker);
       return;
     }
-    setShows((current) =>
-      current.map((show) => (show.slug === result.show!.slug ? result.show! : show)),
-    );
-    setNotice(`Show marked ${status}.`);
+    if (!window.confirm(showStatusChangeConfirmation(activeShow.title, status))) return;
+
+    setStatusChanging(status);
+    setNotice(`${status === "published" ? "Publishing" : "Archiving"} ${activeShow.title}...`);
+    try {
+      const response = await fetch("/api/shows", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "status", showSlug: activeShowSlug, status }),
+      });
+      const result = (await response.json()) as { show?: ManagedShow; error?: string };
+      if (!response.ok || !result.show) {
+        throw new Error(result.error || "Could not update show status.");
+      }
+      setShows((current) =>
+        current.map((show) => (show.slug === result.show!.slug ? result.show! : show)),
+      );
+      setNotice(
+        status === "published"
+          ? `${activeShow.title} is public at its saved share link.`
+          : `${activeShow.title} is archived. Its public share link is now closed.`,
+      );
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not update show status.");
+    } finally {
+      setStatusChanging(null);
+    }
   }
 
   async function runCoach() {
@@ -458,6 +487,24 @@ export default function ShowControlClient({
   if (loading) {
     return <main className={styles.controlShell}><div className={styles.loadingCard}>Loading official sets...</div></main>;
   }
+
+  const publishBlock = showStatusChangeBlockReason({
+    currentStatus: activeShow.status,
+    targetStatus: "published",
+    isDefault: activeShow.isDefault,
+    dirtySetCount: dirtySets.size,
+  });
+  const archiveBlock = showStatusChangeBlockReason({
+    currentStatus: activeShow.status,
+    targetStatus: "archived",
+    isDefault: activeShow.isDefault,
+    dirtySetCount: dirtySets.size,
+  });
+  const lifecycleHint = dirtySets.size
+    ? archiveBlock ?? publishBlock
+    : activeShow.isDefault
+      ? archiveBlock
+      : "Publishing opens the saved share link. Archiving closes it.";
 
   return (
     <main className={styles.controlShell}>
@@ -499,6 +546,7 @@ export default function ShowControlClient({
             <select
               id="show-picker"
               value={activeShowSlug}
+              disabled={Boolean(statusChanging)}
               onChange={(event) => void switchShow(event.target.value)}
             >
               {shows.map((show) => (
@@ -515,16 +563,39 @@ export default function ShowControlClient({
             <a href={`/?show=${encodeURIComponent(activeShowSlug)}`} target="_blank" rel="noreferrer">
               Open share link
             </a>
-            <button type="button" onClick={() => setCloneOpen((value) => !value)}>
+            <button
+              type="button"
+              onClick={() => setCloneOpen((value) => !value)}
+              disabled={Boolean(statusChanging)}
+            >
               Clone show
             </button>
             {activeShow.status !== "published" ? (
-              <button type="button" onClick={() => void changeShowStatus("published")}>Publish</button>
+              <button
+                type="button"
+                onClick={() => void changeShowStatus("published")}
+                disabled={Boolean(publishBlock) || Boolean(statusChanging)}
+                aria-describedby="show-lifecycle-hint"
+                title={publishBlock || "Open this show's saved public share link"}
+              >
+                {statusChanging === "published" ? "Publishing..." : "Publish saved show"}
+              </button>
             ) : null}
             {activeShow.status !== "archived" ? (
-              <button type="button" onClick={() => void changeShowStatus("archived")}>Archive</button>
+              <button
+                type="button"
+                onClick={() => void changeShowStatus("archived")}
+                disabled={Boolean(archiveBlock) || Boolean(statusChanging)}
+                aria-describedby="show-lifecycle-hint"
+                title={archiveBlock || "Close this show's public share link"}
+              >
+                {statusChanging === "archived" ? "Archiving..." : "Archive show"}
+              </button>
             ) : null}
           </div>
+          <p className={styles.lifecycleHint} id="show-lifecycle-hint" role="status">
+            {lifecycleHint}
+          </p>
         </section>
 
         {cloneOpen ? (
