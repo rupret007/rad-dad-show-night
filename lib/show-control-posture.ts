@@ -16,6 +16,14 @@ export type ShowControlNextAction = {
   setSlug?: SetSlug;
 };
 
+export type ShowControlLeftoverAction = {
+  kind: "save-set" | "add-song" | "see-share-link";
+  title: string;
+  detail: string;
+  label: string;
+  setSlug?: SetSlug;
+};
+
 type PostureItem = {
   label: string;
   value: string;
@@ -27,6 +35,7 @@ export type ShowControlPosture = {
   setPlan: PostureItem;
   booking: PostureItem;
   nextAction: ShowControlNextAction;
+  leftoverActions: ShowControlLeftoverAction[];
 };
 
 function safeSongCount(value: number): number {
@@ -58,6 +67,104 @@ function publicLinkPosture(
     value: "Closed · private draft",
     detail: "Saving sets does not open the link. Publish is a separate owner action.",
   };
+}
+
+function leftoverSaveAction(
+  set: ShowControlSetPosture,
+  status: ShowLifecycleStatus,
+): ShowControlLeftoverAction {
+  return {
+    kind: "save-set",
+    title: `Leftover unsaved ${set.title}.`,
+    detail:
+      status === "published"
+        ? `Leftover unsaved ${set.title} is still private in this browser. Save it before the public list can match.`
+        : `Leftover unsaved ${set.title} stays on this private show. Saving does not open the public share link.`,
+    label: `Save leftover ${set.title}`,
+    setSlug: set.slug,
+  };
+}
+
+function leftoverEmptyAction(set: ShowControlSetPosture): ShowControlLeftoverAction {
+  const window = set.time.trim();
+  return {
+    kind: "add-song",
+    title: `Start leftover ${set.title}.`,
+    detail: window
+      ? `This leftover set has no verified songs in its ${window} window. Add here instead of borrowing another night.`
+      : "This leftover set has no verified songs. Add here instead of borrowing another night.",
+    label: `Start leftover ${set.title}`,
+    setSlug: set.slug,
+  };
+}
+
+function leftoverShareAction(
+  status: ShowLifecycleStatus,
+  totalSongs: number,
+): ShowControlLeftoverAction {
+  if (status === "published" && totalSongs === 0) {
+    return {
+      kind: "see-share-link",
+      title: "Check this leftover empty public night.",
+      detail:
+        "The leftover public share link is open on this empty night. Another show's songs or times will not open there.",
+      label: "See live empty public list",
+    };
+  }
+  if (status === "published") {
+    return {
+      kind: "see-share-link",
+      title: "Check the last saved public list.",
+      detail:
+        "Leftover unsaved sets are still private in this browser. The open link still shows the last saved list.",
+      label: "See last saved public list",
+    };
+  }
+  return {
+    kind: "see-share-link",
+    title: "Prove this leftover night is closed.",
+    detail:
+      "The leftover public share link stays closed until you publish. Another night's set will not open there.",
+    label: "See closed public link",
+  };
+}
+
+export function buildLeftoverOwnerActions({
+  status,
+  sets,
+  dirtySetSlugs,
+  nextAction,
+  totalSongs,
+}: {
+  status: ShowLifecycleStatus;
+  sets: ShowControlSetPosture[];
+  dirtySetSlugs: Iterable<SetSlug>;
+  nextAction: ShowControlNextAction;
+  totalSongs: number;
+}): ShowControlLeftoverAction[] {
+  if (nextAction.kind === "none") return [];
+
+  const dirty = new Set(dirtySetSlugs);
+  const leftovers: ShowControlLeftoverAction[] = [];
+
+  for (const set of sets) {
+    if (!dirty.has(set.slug)) continue;
+    if (nextAction.kind === "save-set" && nextAction.setSlug === set.slug) continue;
+    leftovers.push(leftoverSaveAction(set, status));
+  }
+
+  for (const set of sets) {
+    if (dirty.has(set.slug)) continue;
+    if (safeSongCount(set.songCount) > 0) continue;
+    if (nextAction.kind === "add-song" && nextAction.setSlug === set.slug) continue;
+    leftovers.push(leftoverEmptyAction(set));
+  }
+
+  if (status !== "published" || dirty.size > 0 || totalSongs === 0) {
+    leftovers.push(leftoverShareAction(status, totalSongs));
+  }
+
+  return leftovers;
 }
 
 export function buildShowControlPosture({
@@ -135,5 +242,12 @@ export function buildShowControlPosture({
       detail: "Show Control never pitches, posts, or sends outreach.",
     },
     nextAction,
+    leftoverActions: buildLeftoverOwnerActions({
+      status,
+      sets,
+      dirtySetSlugs: dirty,
+      nextAction,
+      totalSongs,
+    }),
   };
 }

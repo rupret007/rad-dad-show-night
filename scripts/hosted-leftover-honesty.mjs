@@ -141,6 +141,18 @@ async function proveIsolation() {
   denyInheritedSet(closedPage.text, "closed draft page");
   denyInheritedSet(closedApi.text, "closed draft API");
   assert(
+    !/Leftover on this show|Save leftover|Start leftover/.test(home.text),
+    "canonical page leaked owner leftover work",
+  );
+  assert(
+    !/Leftover on this show|Save leftover|Start leftover/.test(clonePage.text),
+    "clone page leaked owner leftover work",
+  );
+  assert(
+    !/Leftover on this show|Save leftover|Start leftover/.test(closedPage.text),
+    "closed draft leaked owner leftover work",
+  );
+  assert(
     !/Closed Draft Night/.test(closedPage.text),
     "closed draft page leaked its private title",
   );

@@ -29,7 +29,11 @@ import {
   showStatusChangeConfirmation,
   type ShowLifecycleStatus,
 } from "../../lib/show-lifecycle";
-import { buildShowControlPosture } from "../../lib/show-control-posture";
+import {
+  buildShowControlPosture,
+  type ShowControlLeftoverAction,
+  type ShowControlNextAction,
+} from "../../lib/show-control-posture";
 import type { Suggestion } from "../song-board";
 import styles from "./show-control.module.css";
 
@@ -557,8 +561,7 @@ export default function ShowControlClient({
   });
   const runShowHref = `${shareHref}&practice=1#official-sets`;
 
-  function handleControlNextAction() {
-    const action = controlPosture.nextAction;
+  function runControlAction(action: ShowControlNextAction | ShowControlLeftoverAction) {
     if (action.kind === "save-set" && action.setSlug) {
       void saveSet(action.setSlug);
       return;
@@ -709,7 +712,7 @@ export default function ShowControlClient({
                 <button
                   className={styles.nextActionControl}
                   type="button"
-                  onClick={handleControlNextAction}
+                  onClick={() => runControlAction(controlPosture.nextAction)}
                   disabled={
                     saving ||
                     Boolean(statusChanging) ||
@@ -721,6 +724,58 @@ export default function ShowControlClient({
                     : controlPosture.nextAction.label}
                 </button>
               )}
+              {controlPosture.nextAction.kind !== "none" ? (
+                <div
+                  className={styles.leftoverWork}
+                  data-leftover-count={controlPosture.leftoverActions.length}
+                  aria-labelledby="leftover-work-title"
+                >
+                  <span id="leftover-work-title">Leftover on this show</span>
+                  {controlPosture.leftoverActions.length ? (
+                    <>
+                      <p>
+                        Remaining work on this verified night. Another show&apos;s
+                        songs or times will not be borrowed.
+                      </p>
+                      <ul className={styles.leftoverList} data-leftover-list="true">
+                        {controlPosture.leftoverActions.map((action) => (
+                          <li
+                            key={`${action.kind}-${action.setSlug ?? action.label}`}
+                            data-leftover-kind={action.kind}
+                            data-leftover-set={action.setSlug ?? ""}
+                          >
+                            <strong>{action.title}</strong>
+                            <p>{action.detail}</p>
+                            {action.kind === "see-share-link" ? (
+                              <a
+                                className={styles.leftoverControl}
+                                href={shareHref}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                {action.label}
+                              </a>
+                            ) : (
+                              <button
+                                className={styles.leftoverControl}
+                                type="button"
+                                onClick={() => runControlAction(action)}
+                                disabled={saving || Boolean(statusChanging)}
+                              >
+                                {saving && action.kind === "save-set"
+                                  ? "Saving leftover..."
+                                  : action.label}
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p data-leftover-empty="true">No leftover work on this verified show.</p>
+                  )}
+                </div>
+              ) : null}
             </article>
           </div>
         </section>
@@ -749,6 +804,13 @@ export default function ShowControlClient({
             <button
               className={activeSet === set.slug ? styles.activeTab : ""}
               data-accent={set.accent}
+              data-leftover={
+                dirtySets.has(set.slug)
+                  ? "unsaved"
+                  : songsBySet[set.slug].length === 0
+                    ? "empty"
+                    : undefined
+              }
               type="button"
               disabled={saving}
               key={set.slug}
