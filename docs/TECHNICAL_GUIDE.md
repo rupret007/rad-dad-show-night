@@ -35,6 +35,7 @@ media fails closed. The public band site stays at
 | `lib/show-read-integrity.ts` | Exact-show fallback policy and validated device snapshots |
 | `lib/show-night-use.ts` | This-show next steps, set counts, and practice resume |
 | `lib/show-lifecycle.ts` | Shared owner/UI and API lifecycle guards and confirmation copy |
+| `lib/show-control-posture.ts` | Owner status deck and deterministic one-next-step priority |
 | `lib/admin-access.ts` | Owner email authorization |
 | `lib/surface-roles.ts` | Live-set / catalog / public-site / band-OS roles |
 | `lib/song-resources.ts` | YouTube URL parsing and fail-closed public media |
@@ -119,8 +120,17 @@ Owner copy in `lib/show-lifecycle.ts` keeps Save and Publish distinct: saving a
 set never claims a draft is live. The public page names an open public share link.
 Unknown, draft, and archived slugs share `app/not-found.tsx` and the same
 "no published show was found" copy, so a closed link cannot leak private title
-or inherit another event. Phone Show Control only restyles the existing picker,
-status, share action, and hint; it does not add a route or write path.
+or inherit another event.
+
+`lib/show-control-posture.ts` derives the phone status deck only from the
+currently verified show payload and in-browser dirty-set state. Its one next
+step prioritizes saving changed sets, starting a verified empty show, publishing
+saved private sets, then opening band run mode. Missing set definitions fail
+closed with no action. The deck also says that Travis owns booking; it adds no
+booking, outreach, posting, or alternate write path. Its Save and Publish
+controls reuse the existing authenticated endpoints and lifecycle confirmation.
+An initial owner-read failure renders a retry screen before the posture helper
+or editor controls can render; repository fallback state never enables a write.
 
 ### Suggestions
 

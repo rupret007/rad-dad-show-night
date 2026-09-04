@@ -22,11 +22,17 @@ stays at [raddadband.com](https://www.raddadband.com).
 
 Show Control is the owner-only editor. Sign in with ChatGPT using
 `jeffstory007@gmail.com` to add, edit, remove, and reorder songs. Saving a set
-updates the public page without requiring a code change or GitHub commit.
+writes that show's official list without requiring a code change or GitHub
+commit. A save updates the public page only when that show is already published.
 
 ## What the site does
 
 - Manages multiple shows from one owner dashboard.
+- Puts the public-link state, official set posture, and booking boundary in one
+  phone-friendly status deck. It derives one next step: save unsaved work, start
+  an empty list, publish a saved private show, or open band run mode.
+- Stops at a retry screen when the owner show payload cannot be verified. Add,
+  Save, Publish, and Archive never appear from fallback editor state.
 - Clones a complete show into a new private draft.
 - Gives every published show its own shareable public link and lifecycle status.
 - Keeps the default public show published so the main show link cannot be
@@ -81,7 +87,8 @@ covers table is not the set.
 5. Paste the exact YouTube version when you have one.
 6. Mark **Original / hide resources** when YouTube and lyrics do not apply.
 7. Turn on **Flows to next** when the transition arrow is intentional.
-8. Press **Save** for that set to publish it.
+8. Press **Save** for that set. If the show is published, its public list updates;
+   if it is a draft or archived, the saved set stays private.
 
 Unsaved changes remain private in the browser. Public suggestions also remain
 separate until the owner deliberately adds one to a draft and saves it.
@@ -101,7 +108,9 @@ Jeff can tap this on a phone without mixing Save and Publish:
    public share link is live.
 2. Open [Show Control](https://rad-dad-show-night.jeffstory007.chatgpt.site/show-control)
    and sign in. The September 19 default public show stays **Published · public**.
-   Archive stays blocked because the main show link would stop working.
+   Archive stays blocked because the main show link would stop working. The
+   status deck names the public link, official set plan, and that Travis owns
+   booking, then presents one next step.
 3. Choose **Clone show**, uncheck **Copy official songs and set times**, and
    create an empty draft. That night stays empty. The public share link stays
    closed until you publish.

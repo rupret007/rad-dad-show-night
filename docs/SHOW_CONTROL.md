@@ -61,6 +61,28 @@ On a phone, the show picker, status badge, share-link action, and lifecycle
 hint stay stacked above the set editor so Jeff can see whether the public link
 is open before saving a set.
 
+## Show status and one next step
+
+The status deck directly below the show picker keeps three separate facts in
+view: whether the public share link is open, how many verified songs and set
+windows belong to this show, and that Travis owns booking and outreach outside
+Show Control. The app never pitches, posts, or sends on his behalf.
+
+The highlighted **One next step** follows a fixed order instead of guessing:
+
+1. Save the first set with unsaved changes.
+2. If this show has no verified songs, focus the first set's Add Song field.
+3. If saved songs belong to a draft or archived show, offer the existing
+   confirmed **Publish saved show** action.
+4. If the saved show is already public, open its phone-friendly band run mode.
+
+If the set definitions do not verify, the card offers no action. An empty show
+stays empty and never borrows another night's songs or set times.
+
+If the initial owner show payload itself cannot be verified, Show Control stops
+before rendering the editor and offers **Retry verified load**. Add, Save,
+Publish, and Archive are unavailable until that exact show loads successfully.
+
 ## Set Coach
 
 Select **Review this set** to check estimated runtime, transitions, performance

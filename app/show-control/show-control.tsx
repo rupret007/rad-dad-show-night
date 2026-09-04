@@ -29,6 +29,7 @@ import {
   showStatusChangeConfirmation,
   type ShowLifecycleStatus,
 } from "../../lib/show-lifecycle";
+import { buildShowControlPosture } from "../../lib/show-control-posture";
 import type { Suggestion } from "../song-board";
 import styles from "./show-control.module.css";
 
@@ -66,6 +67,7 @@ export default function ShowControlClient({
   const [activeSet, setActiveSet] = useState<SetSlug>("rad-dad");
   const [dirtySets, setDirtySets] = useState<Set<SetSlug>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [showVerified, setShowVerified] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [draftTitle, setDraftTitle] = useState("");
@@ -84,6 +86,7 @@ export default function ShowControlClient({
   const [coaching, setCoaching] = useState(false);
   const [statusChanging, setStatusChanging] = useState<ShowLifecycleStatus | null>(null);
   const dragIndex = useRef<number | null>(null);
+  const draftTitleRef = useRef<HTMLInputElement | null>(null);
   const draftIdPrefix = useId().replace(/[^a-z0-9-]/gi, "");
   const draftIdCounter = useRef(0);
 
@@ -117,6 +120,7 @@ export default function ShowControlClient({
         setActiveShowSlug(showData.show.slug);
         if (showData.sets?.length) setShowSets(showData.sets);
         setSuggestions(suggestionData.suggestions ?? []);
+        setShowVerified(true);
       })
       .catch((error) => {
         if (active) setNotice(error instanceof Error ? error.message : "Could not load Show Control.");
@@ -309,36 +313,43 @@ export default function ShowControlClient({
     setDeleted(null);
   }
 
-  async function saveActiveSet() {
+  async function saveSet(setSlug: SetSlug) {
+    const setDefinition =
+      showSets.find((set) => set.slug === setSlug) ??
+      SET_DEFINITIONS.find((set) => set.slug === setSlug)!;
     setSaving(true);
-    setNotice(showOwnerSavingNotice(activeDefinition.title, activeShow.status));
+    setNotice(showOwnerSavingNotice(setDefinition.title, activeShow.status));
     try {
       const response = await fetch("/api/show", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           showSlug: activeShowSlug,
-          setSlug: activeSet,
-          songs: activeSongs,
+          setSlug,
+          songs: songsBySet[setSlug],
         }),
       });
       const result = (await response.json()) as { error?: string; songs?: ShowSong[] };
       if (!response.ok || !result.songs) {
         throw new Error(result.error || "The set could not be saved.");
       }
-      setSongsBySet((current) => ({ ...current, [activeSet]: result.songs! }));
+      setSongsBySet((current) => ({ ...current, [setSlug]: result.songs! }));
       setDirtySets((current) => {
         const next = new Set(current);
-        next.delete(activeSet);
+        next.delete(setSlug);
         return next;
       });
-      setDeleted(null);
-      setNotice(showOwnerSavedNotice(activeDefinition.title, activeShow.status));
+      if (setSlug === activeSet) setDeleted(null);
+      setNotice(showOwnerSavedNotice(setDefinition.title, activeShow.status));
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "The set could not be saved.");
     } finally {
       setSaving(false);
     }
+  }
+
+  async function saveActiveSet() {
+    await saveSet(activeSet);
   }
 
   function addSuggestion(song: Suggestion) {
@@ -496,6 +507,25 @@ export default function ShowControlClient({
     return <main className={styles.controlShell}><div className={styles.loadingCard}>Loading official sets...</div></main>;
   }
 
+  if (!showVerified) {
+    return (
+      <main className={styles.accessPage} data-show-control="unverified">
+        <section className={styles.loadFailureCard} role="alert">
+          <span>Verified show required</span>
+          <h1>SHOW CONTROL COULD NOT VERIFY THIS SHOW.</h1>
+          <p>{notice || "The owner show payload did not load."}</p>
+          <p>No Add, Save, Publish, or Archive action is available from fallback data.</p>
+          <div>
+            <button type="button" onClick={() => window.location.reload()}>
+              Retry verified load
+            </button>
+            <Link href="/">Back to the public show</Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   const publishBlock = showStatusChangeBlockReason({
     currentStatus: activeShow.status,
     targetStatus: "published",
@@ -515,6 +545,37 @@ export default function ShowControlClient({
   });
   const shareHref = `/?show=${encodeURIComponent(activeShowSlug)}`;
   const shareLabel = showShareLinkLabel(activeShow.status);
+  const controlPosture = buildShowControlPosture({
+    status: activeShow.status,
+    sets: showSets.map((set) => ({
+      slug: set.slug,
+      title: set.title,
+      time: set.time,
+      songCount: songsBySet[set.slug].length,
+    })),
+    dirtySetSlugs: [...dirtySets],
+  });
+  const runShowHref = `${shareHref}&practice=1#official-sets`;
+
+  function handleControlNextAction() {
+    const action = controlPosture.nextAction;
+    if (action.kind === "save-set" && action.setSlug) {
+      void saveSet(action.setSlug);
+      return;
+    }
+    if (action.kind === "add-song" && action.setSlug) {
+      setActiveSet(action.setSlug);
+      setDeleted(null);
+      window.requestAnimationFrame(() => {
+        draftTitleRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        draftTitleRef.current?.focus({ preventScroll: true });
+      });
+      return;
+    }
+    if (action.kind === "publish-show") {
+      void changeShowStatus("published");
+    }
+  }
 
   return (
     <main className={styles.controlShell}>
@@ -557,7 +618,7 @@ export default function ShowControlClient({
             <select
               id="show-picker"
               value={activeShowSlug}
-              disabled={Boolean(statusChanging)}
+              disabled={Boolean(statusChanging) || saving}
               onChange={(event) => void switchShow(event.target.value)}
             >
               {shows.map((show) => (
@@ -614,6 +675,56 @@ export default function ShowControlClient({
           </p>
         </section>
 
+        <section
+          className={styles.postureDeck}
+          aria-labelledby="show-posture-title"
+          data-next-action={controlPosture.nextAction.kind}
+        >
+          <header className={styles.postureHeader}>
+            <div>
+              <span>Show status at a glance</span>
+              <h2 id="show-posture-title">KNOW WHAT IS LIVE. DO ONE NEXT THING.</h2>
+            </div>
+            <small>{activeShow.title} · {activeShow.showDate}</small>
+          </header>
+          <div className={styles.postureGrid}>
+            {[controlPosture.publicLink, controlPosture.setPlan, controlPosture.booking].map((item) => (
+              <article className={styles.postureItem} key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <p>{item.detail}</p>
+              </article>
+            ))}
+            <article className={styles.nextActionCard}>
+              <span>One next step</span>
+              <strong>{controlPosture.nextAction.title}</strong>
+              <p>{controlPosture.nextAction.detail}</p>
+              {controlPosture.nextAction.kind === "run-show" ? (
+                <a className={styles.nextActionControl} href={runShowHref} target="_blank" rel="noreferrer">
+                  Open band run mode
+                </a>
+              ) : controlPosture.nextAction.kind === "none" ? (
+                <span className={styles.noSafeAction}>No safe action until the set plan verifies</span>
+              ) : (
+                <button
+                  className={styles.nextActionControl}
+                  type="button"
+                  onClick={handleControlNextAction}
+                  disabled={
+                    saving ||
+                    Boolean(statusChanging) ||
+                    (controlPosture.nextAction.kind === "publish-show" && Boolean(publishBlock))
+                  }
+                >
+                  {saving && controlPosture.nextAction.kind === "save-set"
+                    ? "Saving..."
+                    : controlPosture.nextAction.label}
+                </button>
+              )}
+            </article>
+          </div>
+        </section>
+
         {cloneOpen ? (
           <form className={styles.clonePanel} onSubmit={cloneShow}>
             <div>
@@ -639,6 +750,7 @@ export default function ShowControlClient({
               className={activeSet === set.slug ? styles.activeTab : ""}
               data-accent={set.accent}
               type="button"
+              disabled={saving}
               key={set.slug}
               onClick={() => {
                 setActiveSet(set.slug);
@@ -679,6 +791,8 @@ export default function ShowControlClient({
                 <div><strong>Add a song</strong><small>It goes to the bottom and finds YouTube.</small></div>
               </div>
               <input
+                id="new-song-title"
+                ref={draftTitleRef}
                 aria-label="New song title"
                 placeholder="Song title"
                 value={draftTitle}

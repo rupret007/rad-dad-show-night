@@ -148,8 +148,8 @@ test("Show Control disables guarded actions and confirms allowed ones", async ()
   assert.match(control, /Publish saved show/);
   assert.match(control, /Archive show/);
   assert.match(control, /showShareLinkLabel\(activeShow\.status\)/);
-  assert.match(control, /showOwnerSavingNotice\(activeDefinition\.title, activeShow\.status\)/);
-  assert.match(control, /showOwnerSavedNotice\(activeDefinition\.title, activeShow\.status\)/);
+  assert.match(control, /showOwnerSavingNotice\(setDefinition\.title, activeShow\.status\)/);
+  assert.match(control, /showOwnerSavedNotice\(setDefinition\.title, activeShow\.status\)/);
   assert.match(control, /showEditorLiveState/);
   assert.doesNotMatch(control, /Publishing \$\{activeDefinition\.title\}/);
   assert.doesNotMatch(control, /is live on the public show page/);
