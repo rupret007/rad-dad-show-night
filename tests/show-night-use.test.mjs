@@ -155,7 +155,7 @@ test("the live page uses one first-open next step and honest empty sets", async 
   assert.match(nextStep, /See the official sets/);
   assert.match(page, /openAction\.label/);
   assert.match(page, /Suggest a song/);
-  assert.match(page, /Practice this show/);
+  assert.match(nextStep, /Practice this show/);
   assert.match(page, /PracticeResume/);
   assert.match(page, /data-has-verified-list/);
   assert.match(page, /publishedPublicShareCopy/);

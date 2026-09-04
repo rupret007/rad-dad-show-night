@@ -97,7 +97,8 @@ test("the live page names one first-open next step for this show", async () => {
   assert.match(nextStep, /See the official sets/);
   assert.match(page, /openAction\.label/);
   assert.match(page, /Suggest a song/);
-  assert.match(page, /Practice this show/);
+  assert.match(nextStep, /Practice this show/);
+  assert.match(page, /leftoverPublicActions/);
   assert.match(page, /buildShowNightUse/);
   assert.match(nextStep, /This show has no official set yet/);
   assert.match(nextStep, /See the official sets/);
