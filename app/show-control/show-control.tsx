@@ -17,6 +17,12 @@ import {
   savedOfficialMediaUrl,
 } from "../../lib/song-resources";
 import {
+  savedSetNotice,
+  savedSetStateLabel,
+  savingSetNotice,
+  showLifecycleHint,
+  showPublicShareLinkLabel,
+  showPublicShareLinkOpen,
   showStatusChangeBlockReason,
   showStatusChangeConfirmation,
   type ShowLifecycleStatus,
@@ -303,7 +309,7 @@ export default function ShowControlClient({
 
   async function saveActiveSet() {
     setSaving(true);
-    setNotice(`Publishing ${activeDefinition.title}...`);
+    setNotice(savingSetNotice(activeDefinition.title));
     try {
       const response = await fetch("/api/show", {
         method: "POST",
@@ -325,7 +331,7 @@ export default function ShowControlClient({
         return next;
       });
       setDeleted(null);
-      setNotice(`${activeDefinition.title} is live on the public show page.`);
+      setNotice(savedSetNotice(activeDefinition.title, activeShow.status));
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "The set could not be saved.");
     } finally {
@@ -500,11 +506,12 @@ export default function ShowControlClient({
     isDefault: activeShow.isDefault,
     dirtySetCount: dirtySets.size,
   });
-  const lifecycleHint = dirtySets.size
-    ? archiveBlock ?? publishBlock
-    : activeShow.isDefault
-      ? archiveBlock
-      : "Publishing opens the saved share link. Archiving closes it.";
+  const lifecycleHint = showLifecycleHint({
+    currentStatus: activeShow.status,
+    isDefault: activeShow.isDefault,
+    dirtySetCount: dirtySets.size,
+  });
+  const shareLinkOpen = showPublicShareLinkOpen(activeShow.status);
 
   return (
     <main className={styles.controlShell}>
@@ -516,31 +523,25 @@ export default function ShowControlClient({
         <div className={styles.ownerStrip}>
           <span className={styles.privateBadge}>Owner only</span>
           <span className={styles.ownerName}>{userName}</span>
-          <a href={`/?show=${encodeURIComponent(activeShowSlug)}`} target="_blank" rel="noreferrer">Open public show</a>
+          <a
+            href={`/?show=${encodeURIComponent(activeShowSlug)}`}
+            target="_blank"
+            rel="noreferrer"
+            data-share-open={shareLinkOpen ? "true" : "false"}
+          >
+            {showPublicShareLinkLabel(activeShow.status, "header")}
+          </a>
           <a href={signOutHref}>Sign out</a>
         </div>
       </header>
 
       <div className={styles.workspace}>
-        <section className={styles.controlIntro}>
-          <div>
-            <p className={styles.controlKicker}>
-              {activeShow.showDate} / {activeShow.venue}
-            </p>
-            <h1>BUILD THE NIGHT.</h1>
-            <p>
-              Reorder by dragging or using Move. Open Details for keys, cues,
-              a YouTube link, and rehearsal notes. Nothing changes in
-              public until you press Save.
-            </p>
-          </div>
-          <div className={styles.controlStats}>
-            <div><strong>{totalSongs}</strong><span>Total songs</span></div>
-            <div><strong>{dirtySets.size}</strong><span>Sets changed</span></div>
-          </div>
-        </section>
-
-        <section className={styles.showManager}>
+        <section
+          className={styles.showManager}
+          id="show-manager"
+          data-show-status={activeShow.status}
+          data-default-show={activeShow.isDefault ? "true" : "false"}
+        >
           <div className={styles.showSelect}>
             <label htmlFor="show-picker">Editing show</label>
             <select
@@ -560,8 +561,13 @@ export default function ShowControlClient({
             {activeShow.status}
           </span>
           <div className={styles.showActions}>
-            <a href={`/?show=${encodeURIComponent(activeShowSlug)}`} target="_blank" rel="noreferrer">
-              Open share link
+            <a
+              href={`/?show=${encodeURIComponent(activeShowSlug)}`}
+              target="_blank"
+              rel="noreferrer"
+              data-share-open={shareLinkOpen ? "true" : "false"}
+            >
+              {showPublicShareLinkLabel(activeShow.status, "actions")}
             </a>
             <button
               type="button"
@@ -593,7 +599,12 @@ export default function ShowControlClient({
               </button>
             ) : null}
           </div>
-          <p className={styles.lifecycleHint} id="show-lifecycle-hint" role="status">
+          <p
+            className={styles.lifecycleHint}
+            id="show-lifecycle-hint"
+            role="status"
+            data-blocked={publishBlock || archiveBlock ? "true" : "false"}
+          >
             {lifecycleHint}
           </p>
         </section>
@@ -602,18 +613,41 @@ export default function ShowControlClient({
           <form className={styles.clonePanel} onSubmit={cloneShow}>
             <div>
               <strong>Clone this show</strong>
-              <span>The original show is unchanged. Uncheck the box to start an empty night that does not inherit songs or set times.</span>
+              <span>
+                The original show is unchanged. Uncheck the box before Create
+                draft to start an empty night that does not inherit songs or
+                set times.
+              </span>
             </div>
             <input name="title" defaultValue={activeShow.title} aria-label="New show title" required />
             <input name="venue" defaultValue={activeShow.venue} aria-label="New show venue" required />
             <input name="showDate" type="date" aria-label="New show date" required />
-            <button type="submit" disabled={cloning}>{cloning ? "Cloning..." : "Create draft"}</button>
             <label className={styles.cloneCopyChoice}>
               <input name="copySongs" type="checkbox" defaultChecked />
               <span>Copy official songs and set times into the draft</span>
             </label>
+            <button type="submit" disabled={cloning}>{cloning ? "Cloning..." : "Create draft"}</button>
           </form>
         ) : null}
+
+        <section className={styles.controlIntro}>
+          <div>
+            <p className={styles.controlKicker}>
+              {activeShow.showDate} / {activeShow.venue}
+            </p>
+            <h1>BUILD THE NIGHT.</h1>
+            <p>
+              Reorder by dragging or using Move. Open Details for keys, cues,
+              a YouTube link, and rehearsal notes. Saving a set writes this
+              show only. A draft does not become public until you press
+              Publish saved show.
+            </p>
+          </div>
+          <div className={styles.controlStats}>
+            <div><strong>{totalSongs}</strong><span>Total songs</span></div>
+            <div><strong>{dirtySets.size}</strong><span>Sets changed</span></div>
+          </div>
+        </section>
 
         <nav className={styles.setTabs} aria-label="Choose a set to edit">
           {SET_DEFINITIONS.map((set) => {
@@ -650,7 +684,7 @@ export default function ShowControlClient({
                 <h2>{activeDefinition.title}</h2>
               </div>
               <span className={styles.liveState}>
-                {dirtySets.has(activeSet) ? "Draft changes" : "Matches public page"}
+                {savedSetStateLabel(activeShow.status, dirtySets.has(activeSet))}
               </span>
             </header>
 

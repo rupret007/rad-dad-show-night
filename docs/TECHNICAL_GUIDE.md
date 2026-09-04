@@ -99,7 +99,9 @@ buttons are convenience controls, not the authorization boundary.
 
 The editor keeps changes in browser state until the owner saves the active set.
 `POST /api/show` validates the payload, replaces that set in one D1 batch, and
-returns the canonical saved rows.
+returns the canonical saved rows. Saving a set is not **Publish saved show**:
+the set write updates D1, and only a published show is readable on the public
+share link.
 
 Show Control can switch between D1-backed show records and clone an existing
 show into a new draft. Cloning can copy the timeline and show-specific songs,
@@ -111,8 +113,10 @@ The lifecycle API refuses to move the default public show away from `published`,
 because doing so would strand the unscoped public homepage and there is no
 replacement-default workflow. Show Control also blocks lifecycle requests while
 any set has unsaved browser edits and confirms the public-link consequence before
-an allowed publish or archive request. The API repeats the default-show guard;
-the disabled owner button is not the security or integrity boundary.
+an allowed **Publish saved show** or archive request. The API repeats the
+default-show guard; the disabled owner button is not the security or integrity
+boundary. Share-link controls say whether that public link is open or closed
+instead of implying a draft is already public.
 
 ### Suggestions
 

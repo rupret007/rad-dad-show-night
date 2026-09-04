@@ -21,8 +21,10 @@ stays at [raddadband.com](https://www.raddadband.com).
 ### [OPEN PRIVATE SHOW CONTROL](https://rad-dad-show-night.jeffstory007.chatgpt.site/show-control)
 
 Show Control is the owner-only editor. Sign in with ChatGPT using
-`jeffstory007@gmail.com` to add, edit, remove, and reorder songs. Saving a set
-updates the public page without requiring a code change or GitHub commit.
+`jeffstory007@gmail.com`. The show picker, status, and lifecycle actions sit at
+the top. **Save** writes the active set; **Publish saved show** opens that
+show's public share link. Saving a published set updates the public page
+without a code change or GitHub commit.
 
 ## What the site does
 
@@ -76,12 +78,20 @@ covers table is not the set.
 
 1. Open [Show Control](https://rad-dad-show-night.jeffstory007.chatgpt.site/show-control).
 2. Sign in with the authorized ChatGPT account.
-3. Choose **Jeff Story & Friends**, **Stalemate**, or **Rad Dad**.
-4. Add a song, edit its details, or move it into position.
-5. Paste the exact YouTube version when you have one.
-6. Mark **Original / hide resources** when YouTube and lyrics do not apply.
-7. Turn on **Flows to next** when the transition arrow is intentional.
-8. Press **Save** for that set to publish it.
+3. Confirm the default September 19 show is **Published**. Archive stays
+   blocked on that default public show until a replacement-default workflow
+   exists.
+4. To try another night, press **Clone show**, uncheck **Copy official songs
+   and set times**, then **Create draft**. That empty clone stays empty.
+5. Choose **Jeff Story & Friends**, **Stalemate**, or **Rad Dad**.
+6. Add a song, edit its details, or move it into position.
+7. Paste the exact YouTube version when you have one.
+8. Mark **Original / hide resources** when YouTube and lyrics do not apply.
+9. Turn on **Flows to next** when the transition arrow is intentional.
+10. Press **Save** for that set. Saving a draft does not open the public share
+    link.
+11. Press **Publish saved show** only after every set is saved. Unsaved sets
+    block Publish and Archive.
 
 Unsaved changes remain private in the browser. Public suggestions also remain
 separate until the owner deliberately adds one to a draft and saves it.

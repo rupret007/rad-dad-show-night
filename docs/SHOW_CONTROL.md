@@ -26,18 +26,19 @@ master timeline, but its song list is not managed in Show Control.
 
 ## Reuse the site for another show
 
-Use the show picker at the top of Show Control to switch events. Select **Clone
-show** to copy the current timeline, sets, cues, song resources, original flags,
-and durations into a new private draft. Enter the new date, venue, and title,
-then create the draft.
+Use the show picker at the top of Show Control to switch events. The picker,
+status, and lifecycle actions render first so a phone can test them without
+scrolling past the heading. Select **Clone show** to copy the current
+timeline, sets, cues, song resources, original flags, and durations into a new
+private draft. Enter the new date, venue, and title. Uncheck **Copy official
+songs and set times** before **Create draft** to start an empty night.
 
 Every show has a unique share link using `?show=show-slug`. The clone keeps its
 own set rows. Later edits to the original show cannot change the draft, and the
-public page will not paint another event's songs or set times onto it. Uncheck
-**Copy official songs and set times** to start an empty night; that draft will
-not inherit another show's set. Mark a draft **Published** when it is ready for
-the band, and archive completed events to keep the picker organized without
-deleting their history. The editor times come from this show's own verified
+public page will not paint another event's songs or set times onto it. An empty
+draft will not inherit another show's set. Mark a draft **Publish saved show**
+when it is ready for the band, and archive completed events to keep the picker
+organized without deleting their history. The editor times come from this show's own verified
 payload, not the September 19 defaults. Rehearsal notes stay in Show Control
 and are not sent on public show reads.
 
@@ -159,11 +160,14 @@ with YouTube and lyrics hidden.
 
 ## Save and publish
 
-The status bar at the bottom explains whether the active set matches the public
-page or contains unsaved changes.
+The status bar at the bottom explains whether the active set is saved or still
+has draft changes. On a published show, a clean set says it matches the public
+page. On a draft or archived show, a clean set says it is saved privately.
 
-- **Save [set name]** publishes only the active set.
-- Other sets with drafts remain unsaved.
+- **Save [set name]** writes only the active set to this show.
+- Saving a draft does not open the public share link.
+- **Publish saved show** opens that show's saved public share link.
+- Other sets with drafts remain unsaved and block Publish and Archive.
 - **Undo Remove** restores the most recently removed song before saving.
 - Leaving the page with unsaved changes triggers a browser warning.
 - The public page checks for updates every 30 seconds and whenever it becomes

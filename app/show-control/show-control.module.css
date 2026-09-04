@@ -49,16 +49,19 @@
 .showActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .showActions a, .showActions button { min-height: 36px; padding: 0 10px; display: inline-flex; align-items: center; border: 1px solid rgba(255, 255, 255, 0.17); color: #d7d9d6; background: transparent; cursor: pointer; font: inherit; font-size: 0.67rem; font-weight: 900; letter-spacing: 0.06em; text-decoration: none; text-transform: uppercase; }
 .showActions a:hover, .showActions button:hover { color: var(--black); background: var(--blue); }
+.showActions a[data-share-open="false"] { color: #8d9291; }
 .showActions button:disabled { cursor: not-allowed; opacity: 0.42; }
 .showActions button:disabled:hover { color: #d7d9d6; background: transparent; }
 .lifecycleHint { flex-basis: 100%; margin: 0; color: #929796; font-size: 0.72rem; line-height: 1.35; }
-.clonePanel { margin-bottom: 18px; padding: 16px; display: grid; grid-template-columns: 1.15fr 1fr 1fr 0.8fr auto; align-items: end; gap: 9px; border: 1px solid rgba(184, 245, 39, 0.35); background: rgba(184, 245, 39, 0.05); }
+.lifecycleHint[data-blocked="true"] { color: var(--lime); font-weight: 800; }
+.clonePanel { margin-bottom: 18px; padding: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr auto; align-items: end; gap: 9px; border: 1px solid rgba(184, 245, 39, 0.35); background: rgba(184, 245, 39, 0.05); }
+.clonePanel > div { grid-column: 1 / -1; }
 .clonePanel strong, .clonePanel span { display: block; }
 .clonePanel strong { text-transform: uppercase; }
 .clonePanel span { margin-top: 3px; color: var(--muted); font-size: 0.72rem; }
 .clonePanel input { height: 42px; box-sizing: border-box; padding: 0 10px; border: 1px solid rgba(255, 255, 255, 0.15); color: white; background: #111116; font: inherit; }
-.clonePanel button { height: 42px; padding: 0 13px; border: 0; color: var(--black); background: var(--lime); cursor: pointer; font: inherit; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; }
-.cloneCopyChoice { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 10px; color: #d7d9d6; font-size: 0.78rem; line-height: 1.35; }
+.clonePanel button { min-height: 42px; padding: 0 13px; border: 0; color: var(--black); background: var(--lime); cursor: pointer; font: inherit; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; }
+.cloneCopyChoice { grid-column: 1 / 4; display: flex; align-items: flex-start; gap: 10px; color: #d7d9d6; font-size: 0.78rem; line-height: 1.35; }
 .cloneCopyChoice input { width: auto; height: auto; margin-top: 3px; accent-color: var(--lime); }
 .cloneCopyChoice span { margin-top: 0; color: #d7d9d6; font-size: 0.78rem; text-transform: none; }
 .setTabs button { position: relative; min-height: 100px; padding: 17px 20px; border: 1px solid rgba(255, 255, 255, 0.13); color: var(--paper); background: rgba(255, 255, 255, 0.025); cursor: pointer; font: inherit; text-align: left; }
@@ -184,7 +187,8 @@
   .inboxList { max-height: 430px; }
   .composer { grid-template-columns: 1fr 1fr; }
   .clonePanel { grid-template-columns: 1fr 1fr; }
-  .clonePanel > div { grid-column: 1 / -1; }
+  .clonePanel > div, .cloneCopyChoice { grid-column: 1 / -1; }
+  .clonePanel button { grid-column: 1 / -1; }
   .composerTitle { grid-column: 1 / -1; }
 }
 
@@ -194,15 +198,17 @@
   .ownerName { display: none; }
   .workspace { width: calc(100% - 22px); padding-top: 40px; }
   .controlIntro { align-items: flex-start; flex-direction: column; }
-  .controlIntro h1 { font-size: clamp(4rem, 20vw, 6rem); }
+  .controlIntro h1 { font-size: clamp(2.4rem, 14vw, 4rem); }
   .controlStats { width: 100%; }
   .controlStats div { flex: 1; }
   .setTabs { grid-template-columns: 1fr; }
   .showManager { align-items: stretch; flex-direction: column; }
   .showSelect { min-width: 0; }
   .showActions { justify-content: flex-start; }
+  .showActions a, .showActions button { min-height: 44px; flex: 1; justify-content: center; }
+  .lifecycleHint { font-size: 0.8rem; }
   .clonePanel { grid-template-columns: 1fr; }
-  .clonePanel > div { grid-column: auto; }
+  .clonePanel > div, .cloneCopyChoice, .clonePanel button { grid-column: auto; }
   .coachPanel { align-items: stretch; flex-direction: column; }
   .coachFindings { grid-template-columns: 1fr; }
   .setTabs button { min-height: 78px; }
