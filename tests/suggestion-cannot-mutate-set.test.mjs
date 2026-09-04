@@ -233,12 +233,15 @@ test("show clone and status writes are owner-only and unused by the public board
 test("Show Control adds a suggestion only to a local draft until the owner saves", async () => {
   const source = await readFile(showControlUrl, "utf8");
   const addSuggestion = extractNamedFunction(source, "function addSuggestion");
+  const saveSet = extractNamedFunction(source, "async function saveSet");
   const saveActiveSet = extractNamedFunction(source, "async function saveActiveSet");
 
   assert.doesNotMatch(addSuggestion, /fetch\(/);
   assert.match(addSuggestion, /addSong/);
-  assert.match(saveActiveSet, /\/api\/show/);
-  assert.match(saveActiveSet, /method:\s*["']POST["']/);
+  assert.match(saveSet, /\/api\/show/);
+  assert.match(saveSet, /method:\s*["']POST["']/);
+  assert.match(saveSet, /songs:\s*songsBySet\[setSlug\]/);
+  assert.match(saveActiveSet, /saveSet\(activeSet\)/);
 });
 
 test("this leftover does not rewrite Jeff's official set or add a fourth live band", async () => {

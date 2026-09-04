@@ -55,6 +55,23 @@
 .showActions button:disabled { cursor: not-allowed; opacity: 0.42; }
 .showActions button:disabled:hover { color: #d7d9d6; background: transparent; }
 .lifecycleHint { flex-basis: 100%; margin: 0; color: #c6c9c6; font-size: 0.78rem; line-height: 1.4; }
+.postureDeck { margin-bottom: 18px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.16); background: linear-gradient(125deg, rgba(24, 170, 245, 0.08), rgba(184, 245, 39, 0.025) 52%, rgba(255, 61, 135, 0.07)); box-shadow: 7px 7px 0 rgba(24, 170, 245, 0.12); }
+.postureHeader { padding: 17px 19px; display: flex; align-items: end; justify-content: space-between; gap: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+.postureHeader span { color: var(--blue); font-size: 0.65rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; }
+.postureHeader h2 { margin: 4px 0 0; font-family: Impact, "Arial Black", sans-serif; font-size: clamp(1.65rem, 3vw, 2.4rem); line-height: 0.95; letter-spacing: -0.01em; }
+.postureHeader small { max-width: 280px; color: #b7bbba; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em; text-align: right; text-transform: uppercase; }
+.postureGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(280px, 1.2fr); }
+.postureItem, .nextActionCard { min-width: 0; padding: 17px 18px; }
+.postureItem + .postureItem, .nextActionCard { border-left: 1px solid rgba(255, 255, 255, 0.1); }
+.postureItem > span, .nextActionCard > span:first-child { display: block; color: #858b8e; font-size: 0.61rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
+.postureItem strong, .nextActionCard strong { display: block; margin-top: 5px; color: white; font-size: 1rem; text-transform: uppercase; }
+.postureItem p, .nextActionCard p { margin: 7px 0 0; color: #a8adac; font-size: 0.77rem; line-height: 1.35; }
+.nextActionCard { background: rgba(184, 245, 39, 0.075); }
+.nextActionCard strong { color: var(--lime); font-size: 1.12rem; }
+.nextActionControl { width: 100%; min-height: 48px; margin-top: 13px; padding: 0 13px; display: inline-flex; align-items: center; justify-content: center; border: 0; color: var(--black); background: var(--lime); box-shadow: 4px 4px 0 var(--blue); cursor: pointer; font: inherit; font-size: 0.7rem; font-weight: 900; letter-spacing: 0.07em; text-align: center; text-decoration: none; text-transform: uppercase; }
+.nextActionControl:hover { background: var(--blue); box-shadow: 4px 4px 0 var(--pink); }
+.nextActionControl:disabled { cursor: wait; opacity: 0.45; box-shadow: none; }
+.noSafeAction { margin-top: 13px; padding: 10px; color: white !important; border: 1px dashed var(--pink); font-size: 0.7rem !important; line-height: 1.3; }
 .clonePanel { margin-bottom: 18px; padding: 16px; display: grid; grid-template-columns: 1.15fr 1fr 1fr 0.8fr auto; align-items: end; gap: 9px; border: 1px solid rgba(184, 245, 39, 0.35); background: rgba(184, 245, 39, 0.05); }
 .clonePanel strong, .clonePanel span { display: block; }
 .clonePanel strong { text-transform: uppercase; }
@@ -181,10 +198,19 @@
 .accessActions { margin-top: 24px; display: flex; gap: 9px; }
 .accessActions a { padding: 11px 13px; color: var(--black); background: var(--lime); font-weight: 900; text-decoration: none; text-transform: uppercase; }
 .accessActions a + a { color: white; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; }
+.loadFailureCard { width: min(620px, 100%); box-sizing: border-box; padding: 38px; border: 1px solid rgba(255, 61, 135, 0.5); background: #0c0c0f; box-shadow: 10px 10px 0 var(--pink); }
+.loadFailureCard > span { color: var(--pink); font-size: 0.7rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
+.loadFailureCard h1 { margin: 16px 0; font-family: Impact, "Arial Black", sans-serif; font-size: clamp(2.5rem, 9vw, 4.5rem); line-height: 0.9; }
+.loadFailureCard p { color: #c4c8c6; line-height: 1.45; }
+.loadFailureCard > div { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 9px; }
+.loadFailureCard button, .loadFailureCard a { min-height: 46px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; border: 0; color: var(--black); background: var(--lime); cursor: pointer; font: inherit; font-size: 0.72rem; font-weight: 900; text-decoration: none; text-transform: uppercase; }
+.loadFailureCard a { color: white; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; }
 .loadingCard { color: var(--lime); font-size: 1.2rem; font-weight: 900; text-align: center; text-transform: uppercase; }
 
 @media (max-width: 1060px) {
   .controlGrid { grid-template-columns: 1fr; }
+  .postureGrid { grid-template-columns: 1fr 1fr; }
+  .nextActionCard { border-top: 1px solid rgba(255, 255, 255, 0.1); }
   .suggestionInbox { position: static; }
   .inboxList { max-height: 430px; }
   .composer { grid-template-columns: 1fr 1fr; }
@@ -197,11 +223,18 @@
   .controlTopbar { padding: 10px 14px; align-items: flex-start; }
   .ownerStrip { justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
   .ownerName { display: none; }
-  .workspace { width: calc(100% - 22px); padding-top: 40px; }
-  .controlIntro { align-items: flex-start; flex-direction: column; }
-  .controlIntro h1 { font-size: clamp(4rem, 20vw, 6rem); }
+  .workspace { width: calc(100% - 22px); padding-top: 28px; }
+  .controlIntro { margin-bottom: 22px; align-items: flex-start; flex-direction: column; gap: 18px; }
+  .controlIntro h1 { font-size: clamp(3.4rem, 16vw, 4.8rem); }
+  .controlIntro p:not(.controlKicker) { margin-top: 14px; font-size: 0.96rem; }
   .controlStats { width: 100%; }
-  .controlStats div { flex: 1; }
+  .controlStats div { padding: 12px 14px; flex: 1; }
+  .postureHeader { padding: 15px; align-items: flex-start; flex-direction: column; gap: 8px; }
+  .postureHeader h2 { font-size: 1.7rem; }
+  .postureHeader small { text-align: left; }
+  .postureGrid { display: flex; flex-direction: column; }
+  .postureItem, .nextActionCard { padding: 15px; border-top: 1px solid rgba(255, 255, 255, 0.1); border-left: 0; }
+  .nextActionCard { order: -1; }
   .setTabs { grid-template-columns: 1fr; }
   .showManager { align-items: stretch; flex-direction: column; }
   .showSelect { min-width: 0; }
@@ -233,4 +266,6 @@
   .workspace { padding-bottom: 160px; }
   .previewBackdrop { padding: 10px; }
   .previewModal { box-shadow: 5px 5px 0 var(--blue); }
+  .loadFailureCard { padding: 27px 22px; box-shadow: 6px 6px 0 var(--pink); }
+  .loadFailureCard button, .loadFailureCard a { width: 100%; box-sizing: border-box; }
 }
