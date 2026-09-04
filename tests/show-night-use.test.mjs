@@ -152,6 +152,10 @@ test("the live page uses one first-open next step and honest empty sets", async 
   assert.doesNotMatch(page, /nextSetJumps/);
   assert.match(page, /data-next-action-count="1"/);
   assert.match(page, /data-first-open-action/);
+  assert.match(page, /styles\.firstOpenLead/);
+  assert.match(page, /styles\.heroRest/);
+  assert.match(styles, /\.nextActions \{ order: 2;/);
+  assert.match(styles, /\.heroPosterWrap \{ order: 3;/);
   assert.match(nextStep, /See the official sets/);
   assert.match(page, /openAction\.label/);
   assert.match(page, /Suggest a song/);

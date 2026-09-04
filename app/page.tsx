@@ -228,17 +228,14 @@ export default async function Home({
         )}
 
         <div className={styles.heroCopy}>
-          <div className={styles.eyebrow}>
-            <span className={styles.liveDot} /> Live show plan
+          <div className={styles.firstOpenLead}>
+            <div className={styles.eyebrow}>
+              <span className={styles.liveDot} /> Live show plan
+            </div>
+            <p className={styles.publicShareLine} data-public-share="open">
+              {publishedPublicShareCopy(nightUse.hasVerifiedList)}
+            </p>
           </div>
-          <p className={styles.publicShareLine} data-public-share="open">
-            {publishedPublicShareCopy(nightUse.hasVerifiedList)}
-          </p>
-          <h1 className={styles.heroTitle}>
-            RAD DAD <span className={styles.heroPlus}>+</span>
-            <br />
-            FRIENDS
-          </h1>
 
           <section
             className={styles.nextActions}
@@ -295,6 +292,13 @@ export default async function Home({
               ) : null}
             </article>
           </section>
+
+          <div className={styles.heroRest}>
+          <h1 className={styles.heroTitle}>
+            RAD DAD <span className={styles.heroPlus}>+</span>
+            <br />
+            FRIENDS
+          </h1>
 
           <p className={styles.heroDek}>
             The live set surface for this night: official order, handoffs, and
@@ -353,6 +357,7 @@ export default async function Home({
               title={`${show.title} Show Night`}
               text={`Run of show and live set lists for ${show.date} at ${show.venue}.`}
             />
+          </div>
           </div>
         </div>
       </header>
