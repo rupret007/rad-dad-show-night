@@ -164,7 +164,10 @@ test("store, owner UI, and leftover CI keep this leftover real", async () => {
 
   assert.match(showControl, /copySongs: data\.copySongs === "on"/);
   assert.match(showControl, /does not inherit another show/);
+  assert.match(showControl, /Leftover on this show/);
   assert.match(showControl, /activeSetTime/);
+  assert.doesNotMatch(page, /Leftover on this show|Save leftover|Start leftover/);
+  assert.doesNotMatch(liveList, /Leftover on this show|Save leftover|Start leftover/);
   assert.doesNotMatch(
     showControl.slice(showControl.indexOf("editorHeader"), showControl.indexOf("composer")),
     /activeDefinition\.time/,

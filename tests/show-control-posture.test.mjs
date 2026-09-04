@@ -50,6 +50,7 @@ test("a clean published show leads with the verified band run", () => {
     detail: "32 saved songs are public. Open the phone-friendly band run mode.",
     label: "Open band run mode",
   });
+  assert.deepEqual(posture.leftoverActions, []);
 });
 
 test("the first unsaved set wins before publish or run actions", () => {
@@ -65,6 +66,13 @@ test("the first unsaved set wins before publish or run actions", () => {
   assert.equal(posture.nextAction.setSlug, "stalemate");
   assert.equal(posture.nextAction.label, "Save Stalemate");
   assert.match(posture.nextAction.detail, /before changing the show lifecycle/);
+  assert.deepEqual(
+    posture.leftoverActions.map((action) => [action.kind, action.setSlug ?? action.label]),
+    [
+      ["save-set", "rad-dad"],
+      ["see-share-link", "See last saved public list"],
+    ],
+  );
 });
 
 test("an empty clone starts here and never borrows another night's list", () => {
@@ -81,6 +89,14 @@ test("an empty clone starts here and never borrows another night's list", () => 
   assert.equal(posture.nextAction.kind, "add-song");
   assert.equal(posture.nextAction.setSlug, "jeff-story-friends");
   assert.match(posture.nextAction.detail, /instead of borrowing another night's list/);
+  assert.deepEqual(
+    posture.leftoverActions.map((action) => [action.kind, action.setSlug ?? action.label]),
+    [
+      ["add-song", "stalemate"],
+      ["add-song", "rad-dad"],
+      ["see-share-link", "See closed public link"],
+    ],
+  );
 });
 
 test("a saved private show offers publish while missing set definitions fail closed", () => {
@@ -99,6 +115,7 @@ test("a saved private show offers publish while missing set definitions fail clo
   assert.equal(unknown.nextAction.kind, "none");
   assert.equal(unknown.nextAction.label, "No safe action");
   assert.match(unknown.nextAction.detail, /will not guess/);
+  assert.deepEqual(unknown.leftoverActions, []);
 });
 
 test("Show Control renders the posture and its one real action on phones", async () => {
