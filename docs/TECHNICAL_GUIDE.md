@@ -116,7 +116,7 @@ an allowed publish or archive request. The API repeats the default-show guard;
 the disabled owner button is not the security or integrity boundary.
 
 Owner copy in `lib/show-lifecycle.ts` keeps Save and Publish distinct: saving a
-set never claims a draft is live. The public page names an open share link.
+set never claims a draft is live. The public page names an open public share link.
 Unknown, draft, and archived slugs share `app/not-found.tsx` and the same
 "no published show was found" copy, so a closed link cannot leak private title
 or inherit another event. Phone Show Control only restyles the existing picker,
