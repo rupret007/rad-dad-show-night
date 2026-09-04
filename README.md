@@ -85,11 +85,36 @@ covers table is not the set.
 
 Unsaved changes remain private in the browser. Public suggestions also remain
 separate until the owner deliberately adds one to a draft and saves it.
-Show Control blocks publish and archive actions while any set has unsaved
-changes, and states whether an allowed lifecycle action opens or closes the
-public share link before it runs.
+Saving a set writes that show's official list. It does not open a draft or
+archived share link. Show Control blocks publish and archive actions while any
+set has unsaved changes, and states whether an allowed lifecycle action opens
+or closes the public share link before it runs.
 The inline board has one application write path, `/api/suggestions`; its backup
 link opens the connected Google Form directly rather than a second API route.
+
+## Phone tester path
+
+Jeff can tap this on a phone without mixing Save and Publish:
+
+1. Open the [public show page](https://rad-dad-show-night.jeffstory007.chatgpt.site).
+   The header keeps **Set lists** and **Suggest a song**. The page says this
+   public share link is live.
+2. Open [Show Control](https://rad-dad-show-night.jeffstory007.chatgpt.site/show-control)
+   and sign in. The September 19 default public show stays **Published · public**.
+   Archive stays blocked because the main show link would stop working.
+3. Choose **Clone show**, uncheck **Copy official songs and set times**, and
+   create an empty draft. That night stays empty. The public share link stays
+   closed until you publish.
+4. Save a set on the draft if you want. Saving writes this private show. It
+   does not open the public link. The editor says **Private draft — not public**.
+5. Tap **See closed public link**. The public page says no published show was
+   found and does not open September 19 songs.
+6. Publish the empty draft. The share link opens on an empty night. It still
+   does not inherit another show's set.
+7. Archive that non-default show. The share link closes again.
+
+Do not archive the default public show. Travis still books. This path does not
+invent outreach or send public posts.
 
 ## Show-night data status
 

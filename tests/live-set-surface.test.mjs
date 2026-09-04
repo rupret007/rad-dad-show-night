@@ -168,6 +168,9 @@ test("draft and archived show slugs fail closed outside authenticated Show Contr
   assert.match(route, /if \(!payload\.showSlug\?\.trim\(\)\)/);
   assert.match(page, /getShowPayload\(params\.show, "public"\)/);
   assert.match(page, /if \(isShowNotFoundError\(error\)\) notFound\(\)/);
+  const notFound = await readFile(new URL("../app/not-found.tsx", import.meta.url), "utf8");
+  assert.match(notFound, /unpublishedPublicCopy/);
+  assert.match(notFound, /data-public-share="closed"/);
   assert.match(readme, /Draft and archived show slugs stay owner-only/);
   assert.match(
     guide,

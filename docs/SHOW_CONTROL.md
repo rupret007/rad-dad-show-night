@@ -41,6 +41,12 @@ deleting their history. The editor times come from this show's own verified
 payload, not the September 19 defaults. Rehearsal notes stay in Show Control
 and are not sent on public show reads.
 
+Saving a set does not publish the show. Save writes this show's official list
+in the database. Publish is the separate action that opens the public share
+link. Archive closes that link. A draft or archived **See closed public link**
+action opens the same not-found page a guest would see; it is not a public
+preview and does not inherit another night's set.
+
 Publishing opens that show's saved public share link; archiving closes it.
 Show Control asks before either change and will not change lifecycle status
 while any set has unsaved edits. The default public show cannot be archived:
@@ -50,6 +56,10 @@ replacement-default workflow. Archive non-default shows instead.
 Draft and archived links are private lifecycle records, not public previews.
 Anonymous page and API reads return not found; the authenticated owner can still
 load either status inside Show Control.
+
+On a phone, the show picker, status badge, share-link action, and lifecycle
+hint stay stacked above the set editor so Jeff can see whether the public link
+is open before saving a set.
 
 ## Set Coach
 
@@ -159,11 +169,13 @@ with YouTube and lyrics hidden.
 
 ## Save and publish
 
-The status bar at the bottom explains whether the active set matches the public
-page or contains unsaved changes.
+The status bar at the bottom explains whether the active set is saved, and
+whether this show's public share link is open.
 
-- **Save [set name]** publishes only the active set.
-- Other sets with drafts remain unsaved.
+- **Save [set name]** writes only the active set for this show.
+- On a published show, that save updates the public share link.
+- On a draft or archived show, that save stays private until **Publish saved show**.
+- Other sets with unsaved edits remain unsaved.
 - **Undo Remove** restores the most recently removed song before saving.
 - Leaving the page with unsaved changes triggers a browser warning.
 - The public page checks for updates every 30 seconds and whenever it becomes
