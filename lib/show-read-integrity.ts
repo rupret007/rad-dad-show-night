@@ -4,7 +4,7 @@ export const SHOW_SNAPSHOT_VERSION = 1;
 export const MAX_SNAPSHOT_SONGS = 180;
 export const CONFIRMED_FALLBACK_SHOW_SLUG = "guitars-growlers-2026-09-19";
 export const SHOW_TIME_ZONE = "America/Chicago";
-export const OFFLINE_CACHE_VERSION = 2;
+export const OFFLINE_CACHE_VERSION = 3;
 
 const SNAPSHOT_SET_SLUGS = new Set<ShowSong["setSlug"]>([
   "jeff-story-friends",
@@ -220,6 +220,13 @@ export function showSnapshotKey(showSlug: string): string {
 
 export function offlineReadyKey(showSlug: string): string {
   return `rad-dad-offline-ready-v${OFFLINE_CACHE_VERSION}:${showSlug}`;
+}
+
+/** An older active worker must not mark the replacement cache ready. */
+export function canConfirmOfflineReady(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const result = value as Record<string, unknown>;
+  return result.ready === true && result.cacheVersion === OFFLINE_CACHE_VERSION;
 }
 
 export function formatShowTimestamp(value: string): string {

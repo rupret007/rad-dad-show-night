@@ -145,7 +145,13 @@ test("public and owner paths do not treat the covers table or search links as of
   assert.match(liveList, /publicSongResourceActions/);
   assert.doesNotMatch(liveList, /getCuratedSongResources/);
   assert.doesNotMatch(liveList, /resolveSongResourceLinks/);
-  assert.match(showRoute, /hydrateOfficialSongMedia/);
+  assert.match(showRoute, /normalizeOfficialSongContent\(song\)/);
+  const normalization = resources.slice(
+    resources.indexOf("export function normalizeOfficialSongContent"),
+    resources.indexOf("function cleanOwnerText"),
+  );
+  assert.match(normalization, /hydrateOfficialSongMedia/);
+  assert.doesNotMatch(normalization, /getCuratedSongResources|resolveSongResourceLinks/);
   assert.match(showControl, /savedOfficialMediaUrl/);
   assert.doesNotMatch(showControl, /chordsUrl: resources\.chordsSearchUrl/);
   assert.doesNotMatch(showControl, /lyricsUrl: resources\.lyricsSearchUrl/);

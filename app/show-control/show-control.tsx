@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   SET_DEFINITIONS,
   SHOW_DETAILS,
@@ -14,6 +14,7 @@ import {
   buildSongResourceLinks,
   getYouTubeEmbedUrl,
   getYouTubeVideoId,
+  normalizeOfficialSongContent,
   savedOfficialMediaUrl,
 } from "../../lib/song-resources";
 import {
@@ -43,17 +44,29 @@ import {
   canApplyUndoRemove,
   classifyOwnerSaveResult,
   OWNER_SAVE_DEADLINE_MS,
+  officialSetRevision,
+  readReviewedVersion,
+  readSetWriteVersions,
   reconcileCheckedOfficialSet,
   revisionsFromOfficialSets,
   type BoundUndoRemove,
   type OwnerSaveHold,
 } from "../../lib/owner-set-save";
+import {
+  readOwnerSetSongs, readOwnerShowSongs, removedDraftSongs,
+  stageReviewedOwnerDraft, ownerSongReviewDetails,
+} from "../../lib/owner-set-review";
 import type { Suggestion } from "../song-board";
 import { parseSuggestionFeedPayload } from "../../lib/suggestion-board";
 import styles from "./show-control.module.css";
 
 type SongMap = Record<SetSlug, ShowSong[]>;
 type DeletedSong = BoundUndoRemove | null;
+type SetReview = {
+  showId: string; showSlug: string; setSlug: SetSlug; songs: ShowSong[];
+  reviewedBase: string; reviewedVersion: string;
+};
+type OwnerOperation = { controller: AbortController; showSlug: string; showId: string; setSlug: SetSlug };
 type CoachResult = {
   source: "smart-check" | "openai";
   score: number;
@@ -72,6 +85,24 @@ const emptySongMap = (): SongMap => ({
   stalemate: [],
   "rad-dad": [],
 });
+
+// An offline/public copy is never authority for an owner write or review.
+function verifiedOwnerResponse(response: Response): boolean {
+  return response.ok
+    && response.headers.get("X-Rad-Dad-Read-Scope") === "owner"
+    && response.headers.get("X-Rad-Dad-Data-Source") === "owner-database"
+    && response.headers.get("X-Rad-Dad-Offline") !== "1";
+}
+
+// The deadline covers headers and body, even if a late response ignores abort.
+function withinOwnerDeadline<T>(pending: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(new Error("The saved list could not be verified before the check timed out. Check again; your draft is kept."));
+    signal.addEventListener("abort", abort, { once: true });
+    pending.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+    if (signal.aborted) abort();
+  });
+}
 
 export default function ShowControlClient({
   userName,
@@ -100,7 +131,18 @@ export default function ShowControlClient({
     "rad-dad": null,
   });
   const [saveHolds, setSaveHolds] = useState<Partial<Record<SetSlug, OwnerSaveHold>>>({});
+  const [reviewedVersions, setReviewedVersions] = useState<Partial<Record<SetSlug, string>>>({});
+  const [setReviews, setSetReviews] = useState<Partial<Record<SetSlug, SetReview>>>({});
+  const [reviewReadFailed, setReviewReadFailed] = useState<Partial<Record<SetSlug, boolean>>>({});
   const [checkingSet, setCheckingSet] = useState<SetSlug | null>(null);
+  const ownerOperation = useRef<OwnerOperation | null>(null);
+  const retiredVersions = useRef<Partial<Record<SetSlug, string[]>>>({});
+  const mounted = useRef(true);
+  const reviewRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; ownerOperation.current?.controller.abort(); ownerOperation.current = null; };
+  }, []);
   const songsBySetRef = useRef<SongMap>(emptySongMap());
   useEffect(() => {
     songsBySetRef.current = songsBySet;
@@ -128,12 +170,13 @@ export default function ShowControlClient({
     const requestedShow =
       new URLSearchParams(window.location.search).get("show") || SHOW_DETAILS.slug;
     Promise.all([
-      fetch(`/api/show?show=${encodeURIComponent(requestedShow)}`, { cache: "no-store" }).then((response) => {
-        if (!response.ok) throw new Error("Could not load the official sets.");
+      fetch(`/api/show?show=${encodeURIComponent(requestedShow)}&scope=owner`, { cache: "no-store" }).then((response) => {
+        if (!verifiedOwnerResponse(response)) throw new Error("Could not verify the current owner set data.");
         return response.json() as Promise<{
           songs: ShowSong[];
           show: ManagedShow;
           sets?: ShowSetDefinition[];
+          setWriteVersions?: unknown;
         }>;
       }),
       fetch("/api/shows", { cache: "no-store" }).then((response) =>
@@ -145,9 +188,14 @@ export default function ShowControlClient({
         if (!showPayloadBelongsToShow(showData, requestedShow)) {
           throw new Error("That show's set could not be verified.");
         }
-        const grouped = groupSongs(showData.songs);
+        const grouped = readOwnerShowSongs(showData.songs, showData.show.id);
+        const versions = readSetWriteVersions(showData.setWriteVersions);
+        if (!grouped || !versions) throw new Error("That show's official lists and write versions could not be verified.");
         setSongsBySet(grouped);
         setReviewedBases(revisionsFromOfficialSets(grouped));
+        setReviewedVersions(versions);
+        retiredVersions.current = {};
+        setSetReviews({}); setReviewReadFailed({});
         setSaveHolds({});
         setDeleted(null);
         setShows(showList.shows ?? [showData.show]);
@@ -224,6 +272,10 @@ export default function ShowControlClient({
     shows.find((show) => show.slug === activeShowSlug) ??
     (SHOW_DETAILS as ManagedShow);
   const activeSongs = songsBySet[activeSet];
+  const currentShow = useRef({ id: activeShow.id, slug: activeShowSlug });
+  useLayoutEffect(() => {
+    currentShow.current = { id: activeShow.id, slug: activeShowSlug };
+  }, [activeShow.id, activeShowSlug]);
   const totalSongs = useMemo(
     () => Object.values(songsBySet).reduce((total, setSongs) => total + setSongs.length, 0),
     [songsBySet],
@@ -391,53 +443,83 @@ export default function ShowControlClient({
       delete next[setSlug];
       return next;
     });
+    setSetReviews((current) => { const next = { ...current }; delete next[setSlug]; return next; });
+    setReviewReadFailed((current) => { const next = { ...current }; delete next[setSlug]; return next; });
+  }
+
+  function operationIsCurrent(operation: OwnerOperation) {
+    return operationStillOwned(operation) && !operation.controller.signal.aborted;
+  }
+
+  function operationStillOwned(operation: OwnerOperation) {
+    return mounted.current && ownerOperation.current === operation
+      && currentShow.current.id === operation.showId && currentShow.current.slug === operation.showSlug;
+  }
+
+  function adoptSetAuthority(setSlug: SetSlug, reviewedBase: string, reviewedVersion: string) {
+    const old = reviewedVersions[setSlug];
+    if (old && old !== reviewedVersion) {
+      retiredVersions.current[setSlug] = [...(retiredVersions.current[setSlug] ?? []), old].slice(-16);
+    }
+    setReviewedBases((current) => ({ ...current, [setSlug]: reviewedBase }));
+    setReviewedVersions((current) => ({ ...current, [setSlug]: reviewedVersion }));
   }
 
   async function saveSet(setSlug: SetSlug) {
-    if (saveHolds[setSlug] || checkingSet) return;
+    if (saveHolds[setSlug] || setReviews[setSlug] || checkingSet || ownerOperation.current || !showVerified) return;
     const setDefinition =
       showSets.find((set) => set.slug === setSlug) ??
       SET_DEFINITIONS.find((set) => set.slug === setSlug)!;
     const sentSongs = songsBySet[setSlug];
     const reviewedBase = reviewedBases[setSlug];
-    if (!reviewedBase) {
+    const reviewedVersion = readReviewedVersion(reviewedVersions[setSlug]);
+    if (!reviewedBase || !reviewedVersion) {
       setNotice("This official set could not be verified. Retry the verified load before saving.");
       return;
     }
+    const controller = new AbortController();
+    const operation = { controller, showSlug: activeShowSlug, showId: activeShow.id, setSlug };
+    ownerOperation.current = operation;
     setSaving(true);
     setNotice(showOwnerSavingNotice(setDefinition.title, activeShow.status));
-    const controller = new AbortController();
     const deadline = window.setTimeout(() => controller.abort(), OWNER_SAVE_DEADLINE_MS);
     try {
       let response: Response;
       try {
-        response = await fetch("/api/show", {
+        response = await withinOwnerDeadline(fetch("/api/show", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
-            showSlug: activeShowSlug,
+            showSlug: operation.showSlug,
             setSlug,
             songs: sentSongs,
             reviewedBase,
+            reviewedVersion,
           }),
-        });
+        }), controller.signal);
       } catch {
+        if (!operationStillOwned(operation)) return;
         holdSave(setSlug, "uncertain", showOwnerSaveHoldNotice("uncertain", setDefinition.title));
         return;
       }
       let body: unknown = null;
       try {
-        body = await response.json();
+        body = await withinOwnerDeadline(response.json(), controller.signal);
       } catch {
+        if (!operationStillOwned(operation)) return;
         holdSave(setSlug, "uncertain", showOwnerSaveHoldNotice("uncertain", setDefinition.title));
+        return;
+      }
+      if (!operationIsCurrent(operation)) {
+        if (operationStillOwned(operation)) holdSave(setSlug, "uncertain", showOwnerSaveHoldNotice("uncertain", setDefinition.title));
         return;
       }
       const classified = classifyOwnerSaveResult({
         ok: response.ok,
         status: response.status,
         body,
-        showId: activeShow.id,
+        showId: operation.showId,
         setSlug,
       });
       if (classified.kind === "refused") {
@@ -452,17 +534,25 @@ export default function ShowControlClient({
         holdSave(setSlug, "uncertain", classified.message);
         return;
       }
+      const savedRows = readOwnerSetSongs(classified.songs, operation.showId, setSlug);
+      if (!savedRows || classified.reviewedVersion === reviewedVersion
+        || retiredVersions.current[setSlug]?.includes(classified.reviewedVersion)) {
+        holdSave(setSlug, "uncertain", showOwnerSaveHoldNotice("uncertain", setDefinition.title));
+        return;
+      }
       const applied = applySuccessfulOfficialSave({
         currentSongs: songsBySetRef.current[setSlug],
         sentSongs,
-        savedSongs: classified.songs,
+        expectedSavedSongs: sentSongs.map(normalizeOfficialSongContent),
+        savedSongs: savedRows,
+        reviewedVersion: classified.reviewedVersion,
       });
       if (!applied) {
         holdSave(setSlug, "uncertain", showOwnerSaveHoldNotice("uncertain", setDefinition.title));
         return;
       }
       setSongsBySet((current) => ({ ...current, [setSlug]: applied.songs }));
-      setReviewedBases((current) => ({ ...current, [setSlug]: applied.reviewedBase }));
+      adoptSetAuthority(setSlug, applied.reviewedBase, applied.reviewedVersion);
       clearSaveHold(setSlug);
       setDirtySets((current) => {
         const next = new Set(current);
@@ -478,42 +568,77 @@ export default function ShowControlClient({
       );
     } finally {
       window.clearTimeout(deadline);
-      setSaving(false);
+      if (ownerOperation.current === operation) {
+        ownerOperation.current = null;
+        if (mounted.current) setSaving(false);
+      }
     }
   }
 
   async function checkSavedSet(setSlug: SetSlug) {
-    if (saving || checkingSet) return;
+    if (saving || checkingSet || ownerOperation.current || !showVerified) return;
     const setDefinition =
       showSets.find((set) => set.slug === setSlug) ??
       SET_DEFINITIONS.find((set) => set.slug === setSlug)!;
-    setCheckingSet(setSlug);
-    setNotice(`Checking the saved ${setDefinition.title} list...`);
     const controller = new AbortController();
+    const operation = { controller, showSlug: activeShowSlug, showId: activeShow.id, setSlug };
+    ownerOperation.current = operation;
+    setCheckingSet(setSlug);
+    setReviewReadFailed((current) => ({ ...current, [setSlug]: true }));
+    setNotice(`Checking the saved ${setDefinition.title} list...`);
     const deadline = window.setTimeout(() => controller.abort(), OWNER_SAVE_DEADLINE_MS);
     try {
-      const response = await fetch(`/api/show?show=${encodeURIComponent(activeShowSlug)}`, {
+      const response = await withinOwnerDeadline(fetch(`/api/show?show=${encodeURIComponent(operation.showSlug)}&scope=owner`, {
         cache: "no-store",
         signal: controller.signal,
-      });
-      if (!response.ok) throw new Error("The saved official list could not be checked.");
-      const data = (await response.json()) as {
+      }), controller.signal);
+      if (!verifiedOwnerResponse(response)) throw new Error("The saved official list could not be checked from current owner data.");
+      const data = (await withinOwnerDeadline(response.json(), controller.signal)) as {
         songs: ShowSong[];
         show: ManagedShow;
+        setWriteVersions?: unknown;
       };
-      if (!showPayloadBelongsToShow(data, activeShowSlug)) {
+      if (!operationIsCurrent(operation)) throw new Error("The saved official list could not be checked. Try checking again.");
+      if (!showPayloadBelongsToShow(data, operation.showSlug) || data.show.id !== operation.showId) {
         throw new Error("The saved official list could not be verified.");
       }
-      const official = groupSongs(data.songs)[setSlug];
+      const grouped = readOwnerShowSongs(data.songs, operation.showId);
+      const versions = readSetWriteVersions(data.setWriteVersions);
+      if (!grouped || !versions) throw new Error("The saved official list and write version could not be verified. Try checking again.");
+      const official = grouped[setSlug];
+      const version = versions[setSlug];
+      if ((retiredVersions.current[setSlug]?.includes(version) && version !== reviewedVersions[setSlug])
+        || (version === reviewedVersions[setSlug] && officialSetRevision(official) !== reviewedBases[setSlug])) {
+        throw new Error("That check returned an older or inconsistent saved version. Your draft is kept; check again.");
+      }
       const reconciled = reconcileCheckedOfficialSet({
         draftSongs: songsBySetRef.current[setSlug],
         officialSongs: official,
+        reviewedVersion: version,
       });
       if (!reconciled) {
         setNotice("The saved official list could not be verified. Try checking again.");
         return;
       }
-      setReviewedBases((current) => ({ ...current, [setSlug]: reconciled.reviewedBase }));
+      setShows((current) => current.map((show) => show.id === operation.showId ? data.show : show));
+      if (reconciled.stillDirty) {
+        setSetReviews((current) => ({ ...current, [setSlug]: {
+          showId: operation.showId, showSlug: operation.showSlug, setSlug, songs: official,
+          reviewedBase: reconciled.reviewedBase, reviewedVersion: reconciled.reviewedVersion,
+        } }));
+        setSaveHolds((current) => ({ ...current, [setSlug]: current[setSlug] ?? "conflict" }));
+        setReviewReadFailed((current) => ({ ...current, [setSlug]: false }));
+        setActiveSet(setSlug);
+        setNotice(`Review the saved ${setDefinition.title} list beside your browser draft. Nothing has been overwritten.`);
+        window.requestAnimationFrame(() => {
+          if (!mounted.current || currentShow.current.id !== operation.showId
+            || reviewRef.current?.dataset.reviewSet !== setSlug) return;
+          reviewRef.current?.focus({ preventScroll: true });
+          reviewRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+        });
+        return;
+      }
+      adoptSetAuthority(setSlug, reconciled.reviewedBase, reconciled.reviewedVersion);
       if (!reconciled.stillDirty) {
         setSongsBySet((current) => ({ ...current, [setSlug]: reconciled.songs }));
       }
@@ -531,11 +656,42 @@ export default function ShowControlClient({
           : showOwnerSavedNotice(setDefinition.title, data.show.status),
       );
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "The saved official list could not be checked.");
+      if (operationStillOwned(operation)) {
+        setNotice(error instanceof Error ? error.message : "The saved official list could not be checked.");
+      }
     } finally {
       window.clearTimeout(deadline);
-      setCheckingSet(null);
+      if (ownerOperation.current === operation) {
+        ownerOperation.current = null;
+        if (mounted.current) setCheckingSet(null);
+      }
     }
+  }
+
+  function chooseReviewedSet(choice: "saved" | "draft") {
+    const candidate = setReviews[activeSet];
+    if (!candidate || ownerOperation.current || reviewReadFailed[activeSet]
+      || candidate.showId !== activeShow.id || candidate.showSlug !== activeShowSlug || candidate.setSlug !== activeSet
+      || !readReviewedVersion(candidate.reviewedVersion)
+      || officialSetRevision(candidate.songs) !== candidate.reviewedBase) return;
+    let songs = candidate.songs;
+    let stillDirty = false;
+    if (choice === "draft") {
+      const staged = stageReviewedOwnerDraft(songsBySetRef.current[activeSet], candidate.songs, activeShow.id, activeSet, () => {
+        draftIdCounter.current += 1;
+        return `draft-${draftIdPrefix}-${draftIdCounter.current}`;
+      });
+      if (!staged) { setNotice("The draft identities could not be staged safely. Keep your draft and check the saved list again."); return; }
+      const reconciled = reconcileCheckedOfficialSet({ draftSongs: staged, officialSongs: candidate.songs, reviewedVersion: candidate.reviewedVersion });
+      if (!reconciled) return;
+      songs = reconciled.songs; stillDirty = reconciled.stillDirty;
+    }
+    setSongsBySet((current) => ({ ...current, [activeSet]: songs }));
+    adoptSetAuthority(activeSet, candidate.reviewedBase, candidate.reviewedVersion);
+    setDirtySets((current) => { const next = new Set(current); if (stillDirty) next.add(activeSet); else next.delete(activeSet); return next; });
+    clearSaveHold(activeSet); setDeleted(null);
+    setNotice(stillDirty ? showOwnerCheckedKeptDraftNotice(activeDefinition.title)
+      : `Using the checked saved ${activeDefinition.title} list. No write was made.`);
   }
 
   async function saveActiveSet() {
@@ -561,26 +717,32 @@ export default function ShowControlClient({
   }
 
   async function switchShow(slug: string) {
+    if (ownerOperation.current) return;
     if (dirtySets.size && !window.confirm("Switch shows and discard unsaved changes?")) return;
     setLoading(true);
     setNotice("");
     setCoach(null);
     try {
-      const response = await fetch(`/api/show?show=${encodeURIComponent(slug)}`, {
+      const response = await fetch(`/api/show?show=${encodeURIComponent(slug)}&scope=owner`, {
         cache: "no-store",
       });
-      if (!response.ok) throw new Error("Could not load that show.");
+      if (!verifiedOwnerResponse(response)) throw new Error("Could not verify that show's current owner data.");
       const data = (await response.json()) as {
         songs: ShowSong[];
         show: ManagedShow;
         sets?: ShowSetDefinition[];
+        setWriteVersions?: unknown;
       };
       if (!showPayloadBelongsToShow(data, slug)) {
         throw new Error("That show's set could not be verified.");
       }
-      const grouped = groupSongs(data.songs);
+      const grouped = readOwnerShowSongs(data.songs, data.show.id);
+      const versions = readSetWriteVersions(data.setWriteVersions);
+      if (!grouped || !versions) throw new Error("That show's official lists and write versions could not be verified.");
       setSongsBySet(grouped);
       setReviewedBases(revisionsFromOfficialSets(grouped));
+      setReviewedVersions(versions); retiredVersions.current = {};
+      setSetReviews({}); setReviewReadFailed({});
       setSaveHolds({});
       setDeleted(null);
       setActiveShowSlug(data.show.slug);
@@ -630,6 +792,10 @@ export default function ShowControlClient({
   }
 
   async function changeShowStatus(status: ManagedShow["status"]) {
+    if (ownerOperation.current || saving || checkingSet || Object.keys(saveHolds).length || Object.keys(setReviews).length) {
+      setNotice("Finish the saved-list check or review before changing this show's public link. No lifecycle change was made.");
+      return;
+    }
     const blocker = showStatusChangeBlockReason({
       currentStatus: activeShow.status,
       targetStatus: status,
@@ -720,13 +886,15 @@ export default function ShowControlClient({
     );
   }
 
-  const publishBlock = showStatusChangeBlockReason({
+  const recoveryLifecycleBlock = saving || checkingSet || Object.keys(saveHolds).length || Object.keys(setReviews).length
+    ? "Finish the saved-list check or review before changing this show's public link." : null;
+  const publishBlock = recoveryLifecycleBlock || showStatusChangeBlockReason({
     currentStatus: activeShow.status,
     targetStatus: "published",
     isDefault: activeShow.isDefault,
     dirtySetCount: dirtySets.size,
   });
-  const archiveBlock = showStatusChangeBlockReason({
+  const archiveBlock = recoveryLifecycleBlock || showStatusChangeBlockReason({
     currentStatus: activeShow.status,
     targetStatus: "archived",
     isDefault: activeShow.isDefault,
@@ -751,10 +919,24 @@ export default function ShowControlClient({
     heldSetSlugs: (Object.keys(saveHolds) as SetSlug[]).filter((slug) => saveHolds[slug]),
   });
   const activeSaveHold = saveHolds[activeSet] ?? null;
+  const activeReview = setReviews[activeSet];
+  const removedRows = activeReview ? removedDraftSongs(activeSongs, activeReview.songs) : [];
   const runShowHref = `${shareHref}&practice=1#official-sets`;
+
+  function reviewActionLabel(action: ShowControlNextAction | ShowControlLeftoverAction) {
+    return action.kind === "check-saved-set" && action.setSlug && setReviews[action.setSlug]
+      && !reviewReadFailed[action.setSlug]
+      ? `Review saved ${SET_DEFINITIONS.find((set) => set.slug === action.setSlug)?.title ?? "set"}`
+      : action.label;
+  }
 
   function runControlAction(action: ShowControlNextAction | ShowControlLeftoverAction) {
     if (action.kind === "check-saved-set" && action.setSlug) {
+      if (setReviews[action.setSlug] && !reviewReadFailed[action.setSlug]) {
+        setActiveSet(action.setSlug);
+        window.requestAnimationFrame(() => { reviewRef.current?.focus({ preventScroll: true }); reviewRef.current?.scrollIntoView({ block: "start" }); });
+        return;
+      }
       void checkSavedSet(action.setSlug);
       return;
     }
@@ -920,7 +1102,7 @@ export default function ShowControlClient({
                     ? "Checking..."
                     : saving && controlPosture.nextAction.kind === "save-set"
                       ? "Saving..."
-                      : controlPosture.nextAction.label}
+                      : reviewActionLabel(controlPosture.nextAction)}
                 </button>
               )}
               {controlPosture.nextAction.kind !== "none" ? (
@@ -965,7 +1147,7 @@ export default function ShowControlClient({
                                   ? "Checking leftover..."
                                   : saving && action.kind === "save-set"
                                     ? "Saving leftover..."
-                                    : action.label}
+                                    : reviewActionLabel(action)}
                               </button>
                             )}
                           </li>
@@ -1047,6 +1229,36 @@ export default function ShowControlClient({
                 })}
               </span>
             </header>
+
+            {activeReview ? (
+              <section className={styles.setReview} aria-label="Saved set comparison" tabIndex={-1}
+                ref={reviewRef} data-testid="owner-set-review" data-review-set={activeSet}>
+                <h3>Review saved {activeDefinition.title}</h3>
+                <p className={styles.reviewIntro}>
+                  The saved list differs from your browser draft. Both are shown in order; differing cues and resources appear below each song.
+                  Nothing has been overwritten. Your edits below stay in this browser until a separate Save.
+                </p>
+                {reviewReadFailed[activeSet] ? <p className={styles.reviewWarning} role="alert">The latest check was not verified. This earlier comparison is not current. Check again before choosing.</p> : null}
+                <div className={styles.reviewColumns}>
+                  <ReviewSongList label="Checked saved list" songs={activeReview.songs} otherSongs={activeSongs} />
+                  <ReviewSongList label="Your browser draft" songs={activeSongs} otherSongs={activeReview.songs} />
+                </div>
+                <p className={styles.reviewWarning}>
+                  <strong>Keep my draft is a whole-set replacement, not a merge.</strong> A later Save replaces the checked saved order and removes songs that are only in that saved list.
+                  {activeShow.status === "published" ? " This show is published, so that later Save changes its public set." : " This show remains private unless separately published."}
+                </p>
+                {removedRows.length ? <p className={styles.reviewWarning} data-testid="owner-recreate-warning">
+                  These draft songs no longer exist in the saved list: <strong>{removedRows.map((song) => song.title).join("; ")}</strong>.
+                  Keeping your draft will stage them as new songs for the later Save. Their old song identities and run positions cannot be restored.
+                </p> : null}
+                <p className={styles.reviewHint}>Use saved list discards this set&apos;s browser edits. Neither choice writes anything; keeping a different draft still requires Save.</p>
+                <div className={styles.reviewActions}>
+                  <button type="button" disabled={Boolean(checkingSet) || saving || Boolean(reviewReadFailed[activeSet])} onClick={() => chooseReviewedSet("saved")}>Use saved list</button>
+                  <button type="button" disabled={Boolean(checkingSet) || saving || Boolean(reviewReadFailed[activeSet])} onClick={() => chooseReviewedSet("draft")}>Keep my draft</button>
+                  <button type="button" disabled={Boolean(checkingSet) || saving} onClick={() => void checkSavedSet(activeSet)}>{checkingSet === activeSet ? "Checking..." : `Check saved ${activeDefinition.title}`}</button>
+                </div>
+              </section>
+            ) : null}
 
             <form className={styles.composer} onSubmit={addFromComposer}>
               <div className={styles.composerTitle}>
@@ -1308,11 +1520,17 @@ export default function ShowControlClient({
   );
 }
 
-function groupSongs(songs: ShowSong[]): SongMap {
-  const grouped = emptySongMap();
-  for (const song of songs) grouped[song.setSlug].push(song);
-  for (const key of Object.keys(grouped) as SetSlug[]) {
-    grouped[key].sort((a, b) => a.position - b.position);
-  }
-  return grouped;
+function ReviewSongList({ label, songs, otherSongs }: { label: string; songs: ShowSong[]; otherSongs: ShowSong[] }) {
+  return <section className={styles.reviewList} aria-label={label}>
+    <h4>{label}</h4>
+    {!songs.length ? <p>No songs in this list.</p> : <ol>{songs.map((song) => {
+      const other = otherSongs.find((row) => row.id === song.id);
+      const details = ownerSongReviewDetails(song, other);
+      return <li key={song.id}>
+        <strong>{song.title}</strong><span>{song.artist || "Artist not recorded"}</span>
+        {!other ? <small>Only in this list</small> : null}
+        {details.length ? <dl>{details.map(({ label: fieldLabel, text }) => <div key={fieldLabel}><dt>{fieldLabel}</dt><dd>{text}</dd></div>)}</dl> : <small>Other details match</small>}
+      </li>;
+    })}</ol>}
+  </section>;
 }

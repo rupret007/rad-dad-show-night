@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import * as identity from "../lib/official-set-identity.ts";
-import { officialSetRevision } from "../lib/owner-set-save.ts";
+import { INITIAL_OFFICIAL_SET_VERSION, officialSetRevision } from "../lib/owner-set-save.ts";
 import { loadOfficialSetRoute } from "./fixtures/official-set-route.mjs";
 const SHOW = { id: "fixture-show", slug: "fixture-night", status: "draft" };
 const SET = "rad-dad";
@@ -46,6 +46,7 @@ function routeFixture(options = {}) {
     storedSong(44, { show_id: "foreign-show", title: "Another night" }),
   ]);
   let sequence = 90;
+  let version = options.version ?? null;
   const calls = { seeded: 0, scope: [], reads: [], batches: [], savedReads: 0 };
   const db = {
     prepare(sql) {
@@ -71,33 +72,75 @@ function routeFixture(options = {}) {
       calls.batches.push(statements.map(({ sql, bindings }) => clone({ sql, bindings })));
       let staged = clone(rows);
       let stagedSequence = sequence;
+      let stagedVersion = version;
+      let won = false;
+      const results = [];
       for (const [index, statement] of statements.entries()) {
         const { sql, bindings } = statement;
         if (index === 0) {
-          assert.equal(sql, "DELETE FROM songs WHERE show_id = ? AND set_slug = ?");
-          assert.deepEqual(bindings, [SHOW.id, SET]);
-          staged = staged.filter((row) => row.show_id !== bindings[0] || row.set_slug !== bindings[1]);
+          const initial = sql.startsWith("INSERT INTO official_set_revisions");
+          assert.match(sql, /json_each\(\?\)/);
+          assert.match(sql, /songs\.id = json_extract\(expected\.value, '\$\.id'\)/);
+          assert.match(sql, /songs\.updated_at = json_extract\(expected\.value, '\$\.updated_at'\)/);
+          assert.match(sql, /SELECT COUNT\(\*\) FROM songs WHERE show_id = \? AND set_slug = \?/);
+          const offset = initial ? 5 : 4;
+          const [showId, setSlug, count, repeatedShow, repeatedSet, serialized] = bindings.slice(offset);
+          assert.deepEqual([showId, setSlug, repeatedShow, repeatedSet], [SHOW.id, SET, SHOW.id, SET]);
+          if (initial) assert.deepEqual(bindings.slice(0, 2), [SHOW.id, SET]);
+          else assert.deepEqual(bindings.slice(1, 3), [SHOW.id, SET]);
+          const expected = JSON.parse(serialized);
+          const actual = staged.filter((row) => row.show_id === showId && row.set_slug === setSlug);
+          const receiptMatches = actual.length === count && actual.every((row) => expected.some((item) => item.id === row.id && item.updated_at === row.updated_at));
+          won = receiptMatches && (initial ? stagedVersion === null : stagedVersion === bindings[3]);
+          if (won) stagedVersion = initial ? bindings[2] : bindings[0];
+          results.push({ success: true, meta: { changes: won ? 1 : 0 }, results: [] });
           continue;
         }
-        const match = /^INSERT INTO songs \( (.+) \) VALUES \((.+)\)$/.exec(sql);
+        if (index === 1) {
+          assert.equal(sql, "DELETE FROM songs WHERE show_id = ? AND set_slug = ? AND EXISTS (SELECT 1 FROM official_set_revisions WHERE show_id = ? AND set_slug = ? AND version = ?)");
+          assert.deepEqual(bindings.slice(0, 4), [SHOW.id, SET, SHOW.id, SET]);
+          assert.equal(bindings[4], initialToken(statements[0]));
+          if (won) staged = staged.filter((row) => row.show_id !== bindings[0] || row.set_slug !== bindings[1]);
+          results.push({ success: true, results: [] });
+          continue;
+        }
+        if (index === statements.length - 2) {
+          assert.equal(sql, "SELECT version FROM official_set_revisions WHERE show_id = ? AND set_slug = ?");
+          assert.deepEqual(bindings, [SHOW.id, SET]);
+          results.push({ success: true, results: stagedVersion ? [{ version: stagedVersion }] : [] });
+          continue;
+        }
+        if (index === statements.length - 1) {
+          assert.match(sql, /^SELECT id, show_id AS showId/);
+          assert.match(sql, /WHERE show_id = \? AND set_slug = \? ORDER BY position, id$/);
+          assert.deepEqual(bindings, [SHOW.id, SET]);
+          calls.savedReads += 1;
+          results.push({ success: true, results: options.savedReadFailure ? null : staged.filter((row) => row.show_id === SHOW.id && row.set_slug === SET).sort((a, b) => a.position - b.position).map(songPayload) });
+          continue;
+        }
+        const match = /^INSERT INTO songs \( (.+) \) SELECT (.+) WHERE EXISTS \(SELECT 1 FROM official_set_revisions WHERE show_id = \? AND set_slug = \? AND version = \?\)$/.exec(sql);
         assert.ok(match, `Unexpected SQL: ${sql}`);
         const names = match[1].split(",").map((name) => name.trim());
         const placeholders = match[2].split(",").map((value) => value.trim());
         const reusing = names[0] === "id";
         assert.deepEqual(names, reusing ? ["id", ...columns] : columns);
         assert.equal(placeholders.every((value) => value === "?"), true);
-        assert.equal(bindings.length, names.length);
+        assert.equal(bindings.length, names.length + 3);
+        assert.deepEqual(bindings.slice(-3), [SHOW.id, SET, initialToken(statements[0])]);
         assert.equal(placeholders.length, names.length);
+        if (!won) { results.push({ success: true, results: [] }); continue; }
         const row = Object.fromEntries(names.map((name, item) => [name, bindings[item]]));
         if (!reusing) row.id = ++stagedSequence;
         else stagedSequence = Math.max(stagedSequence, row.id);
         assert.equal(staged.some((stored) => stored.id === row.id), false, "An existing row outside the selected set must never be replaced");
-        if (options.failInsertAt === index) throw new Error("Fixture batch insert failed");
+        if (options.failInsertAt === index - 1) throw new Error("Fixture batch insert failed");
         staged.push(row);
+        results.push({ success: true, results: [] });
       }
       rows = staged;
       sequence = stagedSequence;
-      return statements.map(() => ({ success: true }));
+      version = stagedVersion;
+      return results;
     }
   };
   const route = loadOfficialSetRoute({
@@ -110,15 +153,13 @@ function routeFixture(options = {}) {
           if (slug !== SHOW.slug) throw Object.assign(new Error("Show not found."), { name: "ShowNotFoundError" });
           return SHOW;
         },
-        getOfficialSongs: async (showId) => {
-          calls.savedReads += 1;
-          assert.equal(showId, SHOW.id);
-          if (options.savedReadFailure) throw new Error("Fixture official readback unavailable");
-          return rows.filter((row) => row.show_id === showId).sort((a, b) => a.position - b.position).map(songPayload);
-        },
     },
   });
-  return { POST: route.POST, calls, get rows() { return clone(rows); } };
+  return { POST: route.POST, calls, get rows() { return clone(rows); }, get version() { return version; } };
+}
+
+function initialToken(statement) {
+  return statement.sql.startsWith("INSERT INTO official_set_revisions") ? statement.bindings[2] : statement.bindings[0];
 }
 
 const DEFAULT_BASE = officialSetRevision([
@@ -130,7 +171,7 @@ function request(songs, extra = {}) {
   return new Request("https://fixture.invalid/api/show", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      showSlug: SHOW.slug, setSlug: SET, songs, reviewedBase: DEFAULT_BASE, ...extra,
+      showSlug: SHOW.slug, setSlug: SET, songs, reviewedBase: DEFAULT_BASE, reviewedVersion: INITIAL_OFFICIAL_SET_VERSION, ...extra,
     }),
   });
 }
@@ -174,7 +215,7 @@ test("the actual owner save preserves IDs through metadata edits and reordering"
   assert.deepEqual(h.calls.scope, [[SHOW.slug, "owner"]]);
   assert.deepEqual(h.calls.reads, [[SHOW.id, SET]]);
   assert.equal(h.calls.batches.length, 1);
-  assert.equal(h.calls.batches[0].slice(1).every((statement) => statement.sql.includes("( id, show_id")), true);
+  assert.equal(h.calls.batches[0].slice(2, -2).every((statement) => statement.sql.includes("( id, show_id")), true);
 });
 
 test("new UI drafts and legacy omitted IDs get database identities without inheriting deleted IDs", async () => {
@@ -188,12 +229,12 @@ test("new UI drafts and legacy omitted IDs get database identities without inher
   const result = await response.json();
   assert.deepEqual(result.songs.map((song) => song.id), [91, 22, 92]);
   assert.equal(h.rows.some((row) => row.id === 11), false);
-  const inserts = h.calls.batches[0].slice(1);
+  const inserts = h.calls.batches[0].slice(2, -2);
   assert.equal(inserts[0].sql.includes("( id,"), false);
   assert.equal(inserts[1].sql.includes("( id,"), true);
   assert.equal(inserts[2].sql.includes("( id,"), false);
   assert.equal(typeof result.reviewedBase, "string");
-  const saved = await h.POST(request(result.songs, { reviewedBase: result.reviewedBase }));
+  const saved = await h.POST(request(result.songs, { reviewedBase: result.reviewedBase, reviewedVersion: result.reviewedVersion }));
   assert.equal(saved.status, 200);
   assert.deepEqual((await saved.json()).songs.map((song) => song.id), [91, 22, 92]);
 });
@@ -273,7 +314,7 @@ test("an explicit empty set removes only that show's selected set", async () => 
   assert.deepEqual((await response.json()).songs, []);
   assert.deepEqual(h.rows, untouched);
   assert.equal(h.calls.batches.length, 1);
-  assert.equal(h.calls.batches[0].length, 1);
+  assert.equal(h.calls.batches[0].length, 4);
 });
 
 test("a failed insert does not commit the fake's partial delete or earlier retained rows", async () => {

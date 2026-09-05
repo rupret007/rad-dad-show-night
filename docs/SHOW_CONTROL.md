@@ -232,8 +232,21 @@ The status bar at the bottom explains whether the active set is saved, and
 whether this show's public share link is open.
 
 - **Save [set name]** writes only the active set for this show.
-- The editor sends the last verified official-set receipt with that write. A
-  newer saved list refuses the write until **Check saved [set]** reloads it.
+- The editor sends the last verified official-set receipt and persistent write
+  version. Two tabs cannot replace the same reviewed version, even for an empty
+  set. The losing draft remains here until **Check saved [set]** reads the winner.
+- When that list differs, Check displays **Saved list** beside **Your browser
+  draft**, including changed cues and notes. Save remains blocked until you
+  choose. **Use saved list** replaces only the browser draft. **Keep my draft**
+  stages the whole browser list as a replacement; it does not merge by title.
+  Songs removed by the other save are named before this choice recreates them
+  as new draft rows. Neither choice sends a save request. Review, choose, then
+  press Save separately if you kept the draft.
+- If someone saves again before your replacement, Check is required again.
+  A failed or malformed Check never authorizes another write.
+- Owner checks require a current authenticated response; an offline copy is
+  not enough. Publish and Archive stay blocked during an unresolved save,
+  check, or comparison, including when the set has no other unsaved edits.
 - Edits typed while Save is in flight stay in this browser. The sent list can
   still write; later edits stay unsaved.
 - If the write may have landed without a verified official list, Save stays
@@ -245,6 +258,11 @@ whether this show's public share link is open.
 - Leaving the page with unsaved changes triggers a browser warning.
 - The public page checks for updates every 30 seconds and whenever it becomes
   visible again.
+
+The conflict-safe save/review change is source-only until an approved deployment
+includes migration `0003_official_set_revisions.sql`. An older page must reload
+to obtain the new write version. Missing database migration or owner write
+metadata fails closed; it never falls back to a repository list for editing.
 
 ## Troubleshooting
 

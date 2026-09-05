@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   index,
   integer,
+  primaryKey,
   sqliteTable,
   text,
   uniqueIndex,
@@ -92,3 +93,10 @@ export const siteSettings = sqliteTable("site_settings", {
   value: text("value").notNull(),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+/** A revision remains after the last song is removed; an empty set has history. */
+export const officialSetRevisions = sqliteTable("official_set_revisions", {
+  showId: text("show_id").notNull(),
+  setSlug: text("set_slug").notNull(),
+  version: text("version").notNull(),
+}, (table) => [primaryKey({ columns: [table.showId, table.setSlug] })]);

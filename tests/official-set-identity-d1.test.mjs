@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { after, before, beforeEach, test } from "node:test";
 import { Miniflare } from "miniflare";
-import { officialSetRevision } from "../lib/owner-set-save.ts";
-import { loadOfficialSetRoute } from "./fixtures/official-set-route.mjs";
+import { INITIAL_OFFICIAL_SET_VERSION, officialSetRevision } from "../lib/owner-set-save.ts";
+import { loadOfficialSetRoute, loadOfficialShowStore } from "./fixtures/official-set-route.mjs";
 
 const SHOW = { id: "identity-fixture-show", slug: "identity-fixture-night", status: "draft" };
 const SET = "rad-dad";
@@ -24,7 +24,7 @@ before(async () => {
   db = await runtime.getD1Database("DB");
   // Use the repository's exact DDL, but never insert the migration's real show
   // plan or invoke ensureShowSeeded. Every row below is synthetic and ephemeral.
-  for (const filename of ["0000_show_control.sql", "0001_original_song_resources.sql", "0002_multi_show_manager.sql"]) {
+  for (const filename of ["0000_show_control.sql", "0001_original_song_resources.sql", "0002_multi_show_manager.sql", "0003_official_set_revisions.sql"]) {
     const migration = await readFile(new URL(`../drizzle/${filename}`, import.meta.url), "utf8");
     for (const statement of migration.split("--> statement-breakpoint").map((value) => value.trim()).filter(Boolean)) {
       if (/^(?:CREATE|ALTER|DROP)\s/.test(statement)) await db.prepare(statement).run();
@@ -40,8 +40,10 @@ after(async () => {
 beforeEach(async () => {
   await db.batch([
     db.prepare("DROP TRIGGER IF EXISTS reject_fixture_song"),
+    db.prepare("DELETE FROM official_set_revisions"),
     db.prepare("DELETE FROM songs"),
     db.prepare("DELETE FROM shows"),
+    db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES ('show-control-seed-v1', 'synthetic fixture skips official seed')"),
     db.prepare("INSERT INTO shows (id, slug, title, venue, show_date, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(SHOW.id, SHOW.slug, "Synthetic fixture night", "Synthetic venue", "2026-10-01", "7 PM", "9 PM"),
     db.prepare("INSERT INTO shows (id, slug, title, venue, show_date, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?, ?)").bind("identity-foreign-show", "identity-foreign-night", "Another synthetic night", "Another synthetic venue", "2026-10-02", "7 PM", "9 PM"),
     ...[
@@ -59,14 +61,21 @@ async function allRows() {
   return (await db.prepare("SELECT * FROM songs ORDER BY id").all()).results;
 }
 
-function fixtureRoute({ owner = true } = {}) {
+function fixtureRoute({ owner = true, beforeBatch, afterBatch, clock, storage = db } = {}) {
   const calls = { prepares: 0, batches: 0, scope: [] };
   const observedDb = {
-    prepare(sql) { calls.prepares += 1; return db.prepare(sql); },
-    batch(statements) { calls.batches += 1; return db.batch(statements); },
+    prepare(sql) { calls.prepares += 1; return storage.prepare(sql); },
+    async batch(statements) {
+      calls.batches += 1;
+      await beforeBatch?.(statements);
+      const result = await storage.batch(statements);
+      await afterBatch?.(result);
+      return result;
+    },
   };
   const route = loadOfficialSetRoute({
     db: observedDb,
+    clock,
     getAdminUser: async () => owner ? { email: "synthetic-owner@test.invalid" } : null,
     store: {
       ensureShowSeeded: async () => { /* No real official seed is loaded. */ },
@@ -77,14 +86,6 @@ function fixtureRoute({ owner = true } = {}) {
         if (!row) throw Object.assign(new Error("Show not found."), { name: "ShowNotFoundError" });
         return row;
       },
-      getOfficialSongs: async (showId) => (await db.prepare(`SELECT
-        id, show_id AS showId, set_slug AS setSlug, position, title, artist,
-        transition, is_original AS isOriginal, duration_seconds AS durationSeconds,
-        performance_note AS performanceNote, song_key AS songKey, tuning,
-        youtube_url AS youtubeUrl, youtube_video_id AS youtubeVideoId,
-        chords_url AS chordsUrl, lyrics_url AS lyricsUrl,
-        rehearsal_notes AS rehearsalNotes, updated_at AS updatedAt
-        FROM songs WHERE show_id = ? ORDER BY set_slug, position, id`).bind(showId).all()).results,
     },
   });
   return { ...route, calls };
@@ -99,7 +100,9 @@ function request(songs, extra = {}) {
   return new Request("https://fixture.invalid/api/show", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      showSlug: SHOW.slug, setSlug: SET, songs, reviewedBase: DEFAULT_BASE, ...extra,
+      showSlug: SHOW.slug, setSlug: SET, reviewedBase: DEFAULT_BASE,
+      reviewedVersion: INITIAL_OFFICIAL_SET_VERSION, ...extra,
+      songs,
     }),
   });
 }
@@ -139,7 +142,7 @@ test("local D1: new and legacy additions use AUTOINCREMENT, then keep their assi
   const rows = await allRows();
   assert.equal(rows.some((row) => row.id === 11 || row.id === 90), false);
   assert.notEqual(rows.find((row) => row.id === songs[0].id).created_at, CREATED);
-  const savedAgain = await route.POST(request(songs, { reviewedBase: savedPayload.reviewedBase }));
+  const savedAgain = await route.POST(request(songs, { reviewedBase: savedPayload.reviewedBase, reviewedVersion: savedPayload.reviewedVersion }));
   assert.equal(savedAgain.status, 200);
   assert.deepEqual((await savedAgain.json()).songs.map((song) => song.id), songs.map((song) => song.id));
 });
@@ -173,6 +176,7 @@ test("local D1: actual batch rollback preserves all rows if a later insertion fa
   assert.equal(response.status, 500);
   assert.equal(route.calls.batches, 1);
   assert.deepEqual(await allRows(), beforeRows);
+  assert.deepEqual((await db.prepare("SELECT * FROM official_set_revisions").all()).results, []);
 });
 
 test("local D1: owner-only empty saves affect only the selected set and unknown shows never fall back", async () => {
@@ -203,4 +207,212 @@ test("local D1: a stale reviewed-base receipt performs no replacement batch", as
   assert.equal(response.status, 409);
   assert.equal(route.calls.batches, 0);
   assert.deepEqual(await allRows(), beforeRows);
+});
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+async function currentReceipt(setSlug = SET, showId = SHOW.id) {
+  const snapshot = await loadOfficialShowStore(db).getOwnerOfficialSnapshot(showId);
+  const songs = JSON.parse(JSON.stringify(snapshot.songs.filter((song) => song.setSlug === setSlug)));
+  return { songs, reviewedBase: officialSetRevision(songs), reviewedVersion: snapshot.setWriteVersions[setSlug] };
+}
+
+for (const initiallyEmpty of [true, false]) {
+  test(`local D1: two ${initiallyEmpty ? "empty first" : "populated"} saves reaching the batch together have exactly one winner`, async () => {
+    if (initiallyEmpty) await db.prepare("DELETE FROM songs WHERE show_id = ? AND set_slug = ?").bind(SHOW.id, SET).run();
+    const base = await currentReceipt();
+    const gates = [deferred(), deferred()];
+    const arrived = deferred();
+    let arrivals = 0;
+    const make = (index) => fixtureRoute({ beforeBatch: async () => {
+      arrivals += 1;
+      if (arrivals === 2) arrived.resolve();
+      await gates[index].promise;
+    } });
+    const first = make(0).POST(request([{ ...(initiallyEmpty ? {} : { id: 11 }), title: "First reviewed winner" }], base));
+    const second = make(1).POST(request([{ ...(initiallyEmpty ? {} : { id: 11 }), title: "Must remain unsaved" }], base));
+    await arrived.promise;
+    gates[0].resolve();
+    const won = await first;
+    assert.equal(won.status, 200);
+    const wonPayload = await won.json();
+    assert.equal(wonPayload.songs.length, 1);
+    assert.equal(wonPayload.songs[0].title, "First reviewed winner");
+    if (initiallyEmpty) assert.ok(wonPayload.songs[0].id > 90);
+    gates[1].resolve();
+    assert.equal((await second).status, 409);
+    assert.deepEqual((await currentReceipt()).songs, wonPayload.songs);
+    assert.equal((await currentReceipt()).reviewedVersion, wonPayload.reviewedVersion);
+  });
+}
+
+test("local D1: empty-to-populated-to-empty never restores initial write authority", async () => {
+  await db.prepare("DELETE FROM songs WHERE show_id = ? AND set_slug = ?").bind(SHOW.id, SET).run();
+  const initial = await currentReceipt();
+  assert.equal(initial.reviewedVersion, INITIAL_OFFICIAL_SET_VERSION);
+  const route = fixtureRoute();
+  const first = await (await route.POST(request([{ title: "Temporary fixture song" }], initial))).json();
+  assert.equal(first.songs.length, 1);
+  assert.equal(first.songs[0].title, "Temporary fixture song");
+  assert.ok(first.songs[0].id > 90);
+  assert.notEqual(first.reviewedBase, initial.reviewedBase);
+  assert.notEqual(first.reviewedVersion, initial.reviewedVersion);
+  const emptyResponse = await route.POST(request([], { reviewedBase: first.reviewedBase, reviewedVersion: first.reviewedVersion }));
+  assert.equal(emptyResponse.status, 200);
+  const empty = await emptyResponse.json();
+  assert.equal(empty.reviewedBase, initial.reviewedBase);
+  assert.notEqual(empty.reviewedVersion, initial.reviewedVersion);
+  assert.equal((await route.POST(request([{ title: "Stale initial draft" }], initial))).status, 409);
+  assert.deepEqual((await currentReceipt()).songs, []);
+  assert.equal((await currentReceipt()).reviewedVersion, empty.reviewedVersion);
+});
+
+test("local D1: same-millisecond row receipts cannot bypass a newer write version", async () => {
+  class FrozenDate extends Date { constructor(value) { super(value ?? "2026-09-05T23:00:00.000Z"); } }
+  const route = fixtureRoute({ clock: FrozenDate });
+  const first = await (await route.POST(request([{ id: 11, title: "First fixed-clock save" }]))).json();
+  const second = await (await route.POST(request([{ id: 11, title: "Second fixed-clock save" }], {
+    reviewedBase: first.reviewedBase, reviewedVersion: first.reviewedVersion,
+  }))).json();
+  assert.equal(second.reviewedBase, first.reviewedBase);
+  assert.notEqual(second.reviewedVersion, first.reviewedVersion);
+  const stale = await route.POST(request([{ id: 11, title: "Stale fixed-clock save" }], {
+    reviewedBase: first.reviewedBase, reviewedVersion: first.reviewedVersion,
+  }));
+  assert.equal(stale.status, 409);
+  assert.equal((await currentReceipt()).songs[0].title, "Second fixed-clock save");
+});
+
+test("local D1: delayed response contains its own transaction snapshot, never a later save", async () => {
+  const committed = deferred();
+  const releaseResponse = deferred();
+  const firstRoute = fixtureRoute({ afterBatch: async () => { committed.resolve(); await releaseResponse.promise; } });
+  const first = firstRoute.POST(request([{ id: 11, title: "First exact snapshot" }]));
+  await committed.promise;
+  const firstReceipt = await currentReceipt();
+  const later = await fixtureRoute().POST(request([{ id: 11, title: "Later exact snapshot" }], {
+    reviewedBase: firstReceipt.reviewedBase, reviewedVersion: firstReceipt.reviewedVersion,
+  }));
+  assert.equal(later.status, 200);
+  releaseResponse.resolve();
+  const originalResponse = await first;
+  assert.equal(originalResponse.status, 200);
+  const original = await originalResponse.json();
+  assert.deepEqual(original.songs, firstReceipt.songs);
+  assert.equal(original.reviewedVersion, firstReceipt.reviewedVersion);
+  assert.equal((await currentReceipt()).songs[0].title, "Later exact snapshot");
+});
+
+test("local D1: row receipt is rechecked in transaction even when version is unchanged", async () => {
+  const beforeRows = await allRows();
+  const route = fixtureRoute({ beforeBatch: async () => {
+    await db.prepare("UPDATE songs SET title = ?, updated_at = ? WHERE id = 11").bind("Concurrent direct fixture edit", "2026-09-05T23:30:00.000Z").run();
+  } });
+  assert.equal((await route.POST(request([{ id: 11, title: "Stale preflight" }]))).status, 409);
+  assert.equal((await allRows()).find((row) => row.id === 11).title, "Concurrent direct fixture edit");
+  assert.deepEqual((await allRows()).filter((row) => row.id !== 11), beforeRows.filter((row) => row.id !== 11));
+  assert.deepEqual((await db.prepare("SELECT * FROM official_set_revisions").all()).results, []);
+});
+
+test("local D1: versions are scoped to the exact set and show; unrelated sets remain independently writable", async () => {
+  const original = await currentReceipt();
+  const first = await (await fixtureRoute().POST(request([{ id: 11, title: "First set" }]))).json();
+  const otherSet = await currentReceipt("stalemate");
+  const otherSave = await fixtureRoute().POST(request([{ id: 33, title: "Independent set" }], {
+    setSlug: "stalemate", reviewedBase: otherSet.reviewedBase, reviewedVersion: otherSet.reviewedVersion,
+  }));
+  assert.equal(otherSave.status, 200);
+  const foreign = await currentReceipt(SET, "identity-foreign-show");
+  assert.equal((await fixtureRoute().POST(request([{ id: 44, title: "Wrong authority" }], {
+    showSlug: "identity-foreign-night", reviewedBase: foreign.reviewedBase, reviewedVersion: first.reviewedVersion,
+  }))).status, 409);
+  assert.equal((await fixtureRoute().POST(request([{ id: 11, title: "Stale own set" }], original))).status, 409);
+  assert.equal((await currentReceipt()).songs[0].title, "First set");
+  assert.equal((await currentReceipt("stalemate")).songs[0].title, "Independent set");
+  assert.equal((await currentReceipt(SET, "identity-foreign-show")).songs[0].title, "Fixture other night");
+});
+
+test("local D1: owner GET delivers coherent complete versions; public GET omits write authority", async () => {
+  const owner = fixtureRoute();
+  const initialResponse = await owner.GET(new Request(`https://fixture.invalid/api/show?scope=owner&show=${SHOW.slug}`));
+  assert.equal(initialResponse.status, 200);
+  assert.equal(initialResponse.headers.get("X-Rad-Dad-Data-Source"), "owner-database");
+  assert.equal(initialResponse.headers.get("X-Rad-Dad-Read-Scope"), "owner");
+  assert.equal(initialResponse.headers.get("Cache-Control"), "private, no-store");
+  const initial = await initialResponse.json();
+  assert.deepEqual(initial.setWriteVersions, { "jeff-story-friends": "initial:0", stalemate: "initial:0", "rad-dad": "initial:0" });
+  assert.deepEqual((await db.prepare("SELECT * FROM official_set_revisions").all()).results, []);
+  const saved = await (await owner.POST(request([{ id: 11, title: "Verified owner snapshot" }]))).json();
+  const loaded = await (await owner.GET(new Request(`https://fixture.invalid/api/show?scope=owner&show=${SHOW.slug}`))).json();
+  assert.equal(loaded.setWriteVersions[SET], saved.reviewedVersion);
+  assert.equal(officialSetRevision(loaded.songs.filter((song) => song.setSlug === SET)), saved.reviewedBase);
+  await db.prepare("UPDATE shows SET status = 'published' WHERE id = ?").bind(SHOW.id).run();
+  const publicResponse = await fixtureRoute({ owner: false }).GET(new Request(`https://fixture.invalid/api/show?show=${SHOW.slug}`));
+  assert.equal(publicResponse.status, 200);
+  const publicPayload = await publicResponse.json();
+  assert.equal(Object.hasOwn(publicPayload, "setWriteVersions"), false);
+  assert.ok(publicPayload.songs.every((song) => song.rehearsalNotes === ""));
+  const cookieOwnerPublic = await owner.GET(new Request(`https://fixture.invalid/api/show?show=${SHOW.slug}`));
+  assert.equal(cookieOwnerPublic.headers.get("X-Rad-Dad-Read-Scope"), "public");
+  assert.equal(Object.hasOwn(await cookieOwnerPublic.json(), "setWriteVersions"), false);
+  const denied = fixtureRoute({ owner: false });
+  assert.equal((await denied.GET(new Request(`https://fixture.invalid/api/show?scope=owner&show=${SHOW.slug}`))).status, 401);
+  assert.equal(denied.calls.prepares, 0);
+});
+
+test("local D1: missing or malformed version refuses before any identity read or batch", async () => {
+  const beforeRows = await allRows();
+  for (const reviewedVersion of [undefined, null, "", "empty:0", "initial:0\n", "not-a-version"]) {
+    const route = fixtureRoute();
+    assert.equal((await route.POST(request([{ id: 11, title: "No authority" }], { reviewedVersion }))).status, 400);
+    assert.equal(route.calls.prepares, 0);
+    assert.equal(route.calls.batches, 0);
+  }
+  assert.deepEqual(await allRows(), beforeRows);
+});
+
+test("local D1: malformed revision data fails owner read closed", async () => {
+  await db.prepare("INSERT INTO official_set_revisions (show_id, set_slug, version) VALUES (?, ?, ?)").bind(SHOW.id, SET, "corrupt-fixture-version").run();
+  const response = await fixtureRoute().GET(new Request(`https://fixture.invalid/api/show?scope=owner&show=${SHOW.slug}`));
+  assert.equal(response.status, 503);
+  assert.equal(Object.hasOwn(await response.json(), "setWriteVersions"), false);
+});
+
+test("local D1: missing revision storage fails owner reads and writes closed, including the canonical event", async () => {
+  const canonicalSlug = "guitars-growlers-2026-09-19";
+  await db.prepare("UPDATE shows SET slug = ?, status = 'published' WHERE id = ?").bind(canonicalSlug, SHOW.id).run();
+  const beforeRows = await allRows();
+  const storage = {
+    prepare(sql) {
+      if (sql.includes("official_set_revisions")) throw new Error("Isolated fixture: required migration absent");
+      return db.prepare(sql);
+    },
+    batch(statements) { return db.batch(statements); },
+  };
+  const route = fixtureRoute({ storage });
+  const owner = await route.GET(new Request(`https://fixture.invalid/api/show?scope=owner&show=${canonicalSlug}`));
+  assert.equal(owner.status, 503);
+  assert.equal(Object.hasOwn(await owner.json(), "songs"), false);
+  assert.equal((await route.POST(request([{ id: 11, title: "Must not write" }], { showSlug: canonicalSlug }))).status, 500);
+  assert.equal((await route.GET(new Request(`https://fixture.invalid/api/show?show=${canonicalSlug}`))).status, 200);
+  assert.deepEqual(await allRows(), beforeRows);
+});
+
+test("local D1: insertion failure restores an existing revision together with its exact rows", async () => {
+  const route = fixtureRoute();
+  const first = await (await route.POST(request([{ id: 11, title: "Previously saved" }]))).json();
+  const beforeRows = await allRows();
+  await db.prepare(`CREATE TRIGGER reject_fixture_song BEFORE INSERT ON songs
+    WHEN NEW.title = 'Reject this fixture insertion'
+    BEGIN SELECT RAISE(ABORT, 'Deliberate isolated batch failure'); END`).run();
+  const response = await route.POST(request([
+    { id: 11, title: "Must roll back" }, { title: "Reject this fixture insertion" },
+  ], { reviewedBase: first.reviewedBase, reviewedVersion: first.reviewedVersion }));
+  assert.equal(response.status, 500);
+  assert.deepEqual(await allRows(), beforeRows);
+  assert.equal((await currentReceipt()).reviewedVersion, first.reviewedVersion);
 });

@@ -1,4 +1,47 @@
+import type { ShowSong } from "./show-data";
+
 const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+
+/** The owner write's existing normalization, shared with its receipt check. */
+export function normalizeOfficialSongContent(song: Partial<ShowSong>) {
+  const title = cleanOwnerText(song.title, 140);
+  const youtubeUrl = cleanOwnerUrl(song.youtubeUrl);
+  const youtubeVideoId = getYouTubeVideoId(youtubeUrl) || cleanOwnerText(song.youtubeVideoId, 20);
+  return hydrateOfficialSongMedia({
+    title,
+    artist: cleanOwnerText(song.artist, 140),
+    transition: Boolean(song.transition),
+    isOriginal: Boolean(song.isOriginal),
+    durationSeconds: clampOwnerNumber(song.durationSeconds, 30, 1200, 180),
+    performanceNote: cleanOwnerText(song.performanceNote, 300),
+    songKey: cleanOwnerText(song.songKey, 40),
+    tuning: cleanOwnerText(song.tuning, 80),
+    youtubeUrl: youtubeUrl || (youtubeVideoId ? `https://www.youtube.com/watch?v=${youtubeVideoId}` : ""),
+    youtubeVideoId,
+    chordsUrl: cleanOwnerUrl(song.chordsUrl),
+    lyricsUrl: cleanOwnerUrl(song.lyricsUrl),
+    rehearsalNotes: cleanOwnerText(song.rehearsalNotes, 2500),
+  });
+}
+
+function cleanOwnerText(value: unknown, maxLength: number): string {
+  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function cleanOwnerUrl(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "";
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function clampOwnerNumber(value: unknown, minimum: number, maximum: number, fallback: number) {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? Math.min(maximum, Math.max(minimum, Math.round(number))) : fallback;
+}
 
 type SongResourceInput = {
   title: string;

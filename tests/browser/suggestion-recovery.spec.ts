@@ -305,7 +305,10 @@ async function ownerFixture(page: Page) {
   const writes: string[] = [];
   await page.route((url) => url.pathname === "/api/show", async (route) => {
     if (route.request().method() !== "GET") writes.push(route.request().method());
-    await route.fulfill({ json: { show, sets, songs: [] } });
+    await route.fulfill({
+      headers: { "X-Rad-Dad-Read-Scope": "owner", "X-Rad-Dad-Data-Source": "owner-database", "Cache-Control": "private, no-store" },
+      json: { show, sets, songs: [], setWriteVersions: { "jeff-story-friends": "initial:0", stalemate: "initial:0", "rad-dad": "initial:0" } },
+    });
   });
   await page.route((url) => url.pathname === "/api/shows", (route) => route.fulfill({ json: { shows: [show] } }));
   return { writes, url: `/?surface=owner&show=${show.slug}` };

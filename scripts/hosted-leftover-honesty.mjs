@@ -132,6 +132,10 @@ async function proveIsolation() {
   assert(api.response.ok, `canonical API returned ${api.response.status}`);
   const payload = JSON.parse(api.text);
   assert(
+    !Object.hasOwn(payload, "setWriteVersions") && !Object.hasOwn(payload, "reviewedVersion"),
+    "public API leaked owner write-version metadata",
+  );
+  assert(
     payload.show?.slug === CANONICAL_SLUG,
     `canonical API served ${payload.show?.slug}`,
   );
@@ -179,6 +183,7 @@ async function proveIsolation() {
 
   if (cloneApi.response.status === 200) {
     const clonePayload = JSON.parse(cloneApi.text);
+    assert(!Object.hasOwn(clonePayload, "setWriteVersions"), "public clone leaked owner write versions");
     assert(clonePayload.show?.slug === CLONE_SLUG, "clone API served another slug");
     assert(clonePayload.dataSource === "database", "empty clone must come from its own D1 rows");
     assert(Array.isArray(clonePayload.songs) && clonePayload.songs.length === 0, "empty clone inherited songs");

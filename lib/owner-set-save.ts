@@ -1,7 +1,30 @@
 import type { SetSlug, ShowSong } from "./show-data";
 
 export const EMPTY_OFFICIAL_SET_REVISION = "empty:0";
+export const INITIAL_OFFICIAL_SET_VERSION = "initial:0";
 export const OWNER_SAVE_DEADLINE_MS = 10_000;
+
+export type SetWriteVersions = Record<SetSlug, string>;
+
+/** An initial token is authority only when returned by a verified owner read. */
+export function readReviewedVersion(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  if (value === INITIAL_OFFICIAL_SET_VERSION) return value;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.exec(value)?.[0] === value
+    ? value : null;
+}
+
+export function readSetWriteVersions(value: unknown): SetWriteVersions | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const versions = {} as SetWriteVersions;
+  for (const slug of ["jeff-story-friends", "stalemate", "rad-dad"] as const) {
+    const version = Object.hasOwn(record, slug) ? readReviewedVersion(record[slug]) : null;
+    if (!version) return null;
+    versions[slug] = version;
+  }
+  return versions;
+}
 
 export type OwnerSaveHold = "uncertain" | "conflict";
 
@@ -13,7 +36,7 @@ export type BoundUndoRemove = {
 };
 
 export type OwnerSaveClassification =
-  | { kind: "saved"; songs: ShowSong[]; reviewedBase: string }
+  | { kind: "saved"; songs: ShowSong[]; reviewedBase: string; reviewedVersion: string }
   | { kind: "refused"; status: number; message: string }
   | { kind: "conflict"; message: string }
   | { kind: "uncertain"; message: string };
@@ -155,20 +178,31 @@ export function applySuccessfulOfficialSave<T extends ShowSong>({
   currentSongs,
   sentSongs,
   savedSongs,
+  expectedSavedSongs,
+  reviewedVersion: suppliedVersion,
 }: {
   currentSongs: readonly T[];
   sentSongs: readonly T[];
   savedSongs: readonly T[];
-}): { songs: T[]; stillDirty: boolean; reviewedBase: string } | null {
+  expectedSavedSongs: readonly Pick<ShowSong, (typeof CONTENT_FIELDS)[number]>[];
+  reviewedVersion: string;
+}): { songs: T[]; stillDirty: boolean; reviewedBase: string; reviewedVersion: string } | null {
   const reviewedBase = officialSetRevision(savedSongs);
-  if (!reviewedBase || savedSongs.length !== sentSongs.length) return null;
+  const reviewedVersion = readReviewedVersion(suppliedVersion);
+  if (!reviewedBase || !reviewedVersion || reviewedVersion === INITIAL_OFFICIAL_SET_VERSION || savedSongs.length !== sentSongs.length) return null;
+  if (!ownerSetContentEquals(expectedSavedSongs, savedSongs) || savedSongs.some((saved, index) => {
+    const sent = sentSongs[index];
+    return saved.position !== index + 1 || saved.showId !== sent.showId || saved.setSlug !== sent.setSlug
+      || (typeof sent.id === "number" && saved.id !== sent.id);
+  })) return null;
   if (ownerSetDraftEquals(currentSongs, sentSongs)) {
-    return { songs: [...savedSongs], stillDirty: false, reviewedBase };
+    return { songs: [...savedSongs], stillDirty: false, reviewedBase, reviewedVersion };
   }
   return {
     songs: remapSavedOfficialIdentities(currentSongs, sentSongs, savedSongs),
     stillDirty: true,
     reviewedBase,
+    reviewedVersion,
   };
 }
 
@@ -234,15 +268,15 @@ export function classifyOwnerSaveResult({
 
   if (ok && status === 200) {
     const songs = record.songs;
-    const reviewedBase =
-      readReviewedBase(record.reviewedBase) ??
-      (Array.isArray(songs) ? officialSetRevision(songs) : null);
+    const reviewedBase = readReviewedBase(record.reviewedBase);
+    const reviewedVersion = readReviewedVersion(record.reviewedVersion);
     if (
       Array.isArray(songs) &&
-      reviewedBase &&
+      reviewedBase && reviewedBase === officialSetRevision(songs) &&
+      reviewedVersion && reviewedVersion !== INITIAL_OFFICIAL_SET_VERSION &&
       (songs.length === 0 || songsBelongToOfficialSet(songs, showId, setSlug))
     ) {
-      return { kind: "saved", songs: songs as ShowSong[], reviewedBase };
+      return { kind: "saved", songs: songs as ShowSong[], reviewedBase, reviewedVersion };
     }
     return {
       kind: "uncertain",
@@ -262,16 +296,19 @@ export function classifyOwnerSaveResult({
 export function reconcileCheckedOfficialSet<T extends ShowSong>({
   draftSongs,
   officialSongs,
+  reviewedVersion: suppliedVersion,
 }: {
   draftSongs: readonly T[];
   officialSongs: readonly T[];
-}): { songs: T[]; stillDirty: boolean; reviewedBase: string } | null {
+  reviewedVersion: string;
+}): { songs: T[]; stillDirty: boolean; reviewedBase: string; reviewedVersion: string } | null {
   const reviewedBase = officialSetRevision(officialSongs);
-  if (!reviewedBase) return null;
+  const reviewedVersion = readReviewedVersion(suppliedVersion);
+  if (!reviewedBase || !reviewedVersion) return null;
   if (ownerSetContentEquals(draftSongs, officialSongs)) {
-    return { songs: [...officialSongs], stillDirty: false, reviewedBase };
+    return { songs: [...officialSongs], stillDirty: false, reviewedBase, reviewedVersion };
   }
-  return { songs: [...draftSongs], stillDirty: true, reviewedBase };
+  return { songs: [...draftSongs], stillDirty: true, reviewedBase, reviewedVersion };
 }
 
 export function bindUndoRemove(

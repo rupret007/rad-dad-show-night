@@ -36,7 +36,8 @@ media fails closed. The public band site stays at
 | `lib/show-night-use.ts` | First-open next action, leftover public actions, and practice resume |
 | `lib/run-position.ts` | Exact-identity current/previous/next resolution; no title/index guessing |
 | `lib/official-set-identity.ts` | Validate retained versus new IDs against the exact show/set |
-| `lib/owner-set-save.ts` | Official-set receipt, in-flight edit keep, uncertain/conflict save hold |
+| `lib/owner-set-save.ts` | Row receipt and persistent write-version validation, in-flight edit keep, save holds |
+| `lib/owner-set-review.ts` | Validated competing lists and explicit replacement staging; no title-based merge |
 | `lib/show-lifecycle.ts` | Shared owner/UI and API lifecycle guards and confirmation copy |
 | `lib/show-control-posture.ts` | Owner status deck, one-next-step priority, and leftover owner work |
 | `lib/admin-access.ts` | Owner email authorization |
@@ -46,6 +47,7 @@ media fails closed. The public band site stays at
 | `app/show-flyer.tsx` | Fail-closed public flyer |
 | `db/schema.ts` | Drizzle schema |
 | `drizzle/0000_show_control.sql` | Initial D1 migration |
+| `drizzle/0003_official_set_revisions.sql` | Persistent exact-show/set write versions, including empty sets |
 | `.openai/hosting.json` | Sites project and logical storage bindings |
 
 ## Runtime architecture
@@ -61,6 +63,17 @@ offline-preparation flow only after the rendered page identifies a database
 source; ordinary network-first fallback responses cannot overwrite the saved
 show page. The ready indicator is versioned with the cache and turns on only
 after the full show page, practice page, and verified show API are all stored.
+
+The owner editor explicitly requests `scope=owner`; the default show-read URL
+always serves public data, even for a signed-in owner. Owner reads require
+authorization and carry `private, no-store`, `X-Rad-Dad-Read-Scope: owner`, and
+`X-Rad-Dad-Data-Source: owner-database`. They are never offline write authority.
+The service worker bypasses scoped API reads. Public cache preparation omits
+credentials and validates public scope, show ownership, and absence of owner
+notes/receipts before caching or returning an offline API copy. Cache/readiness
+version 3 replaces the older Rad Dad cache namespace, which could retain an
+owner response under a public URL. This cleanup occurs only when the new source
+is separately deployed and its service worker activates.
 
 The public list renders YouTube and lyrics actions for songs not marked
 original only when the official set has a saved direct URL. A local covers
@@ -106,8 +119,14 @@ official-set writes verify the authenticated email on the server. Client-side
 buttons are convenience controls, not the authorization boundary.
 
 The editor keeps changes in browser state until the owner saves the active set.
-`POST /api/show` validates the payload, replaces that set in one D1 batch, and
-returns the canonical saved rows.
+`POST /api/show` validates the payload, atomically claims the reviewed version,
+replaces only that set in one D1 batch, and returns that transaction's canonical
+saved rows. Owner GET reads rows and write versions together in one D1 batch.
+These versions never appear on anonymous/public payloads. Owner database failure
+does not grant editing authority from the confirmed repository fallback.
+The editor rejects offline-marked responses and missing/wrong owner headers for
+initial load, Check, and show switches. Unresolved save/check/review state also
+blocks lifecycle actions, even when no song has been marked dirty.
 
 Show Control can switch between D1-backed show records and clone an existing
 show into a new draft. Cloning can copy the timeline and show-specific songs,
@@ -220,22 +239,45 @@ default published show. A non-default show whose rows cannot be verified returns
 
 ### `POST /api/show`
 
-Owner-only. Accepts one set slug, its full ordered song array, and the last
-verified official-set receipt (`reviewedBase`). Positions are recalculated
+Owner-only. Accepts one set slug, its full ordered song array, and both the last
+verified row receipt (`reviewedBase`) and write version (`reviewedVersion`).
+Positions are recalculated
 server-side. The supplied show slug must resolve exactly; it never falls back
 to the default show. Text lengths, known set slugs, URLs, and maximum set size
-are validated before the D1 batch runs. A missing receipt returns `400`. A
-receipt that does not match the current official identities and `updated_at`
-values returns `409` and performs no write.
+are validated before the D1 batch runs. Missing or malformed receipts/versions
+return `400`. A stale row receipt or write version returns `409`, without
+replacing songs. Row identity/timestamp preflight remains, but no longer acts as
+the concurrent-write lock.
+
+Migration `0003_official_set_revisions.sql` adds a small existing-D1 table keyed
+by `(show_id, set_slug)`. A verified owner read returns `initial:0` only when
+that table has no record for this set. Each successful write claims a fresh
+UUID version; the row remains after the last song is removed. The claim checks
+the expected version and row receipt inside the transaction. Every song delete
+and insert is gated by that exact operation's winning token. Concurrent first
+saves, empty/filled/empty cycles, and identical wall-clock timestamps therefore
+cannot authorize an old draft. Failed statements roll back rows and version
+together. The canonical result and version are read inside the same batch, so
+a later owner's list cannot masquerade as this save's result.
 
 Existing positive integer song IDs are retained only after exact show/set
 membership validation. Omitted IDs and valid editor draft tokens create new
 rows; numeric strings, duplicate IDs/tokens, and foreign or unknown saved IDs
-are rejected rather than silently remapped. The batch remains atomic and no
-schema change is needed. A committed write whose official readback cannot be
+are rejected rather than silently remapped. The comparison UI may stage removed
+rows as new draft tokens only after the explicit, explained full-replacement
+choice. It does not send a write or infer song identity from titles.
+A committed write whose official readback cannot be
 verified returns `202` with `written: true` and no songs, so the editor must
 check the saved list instead of retrying blindly. See
-[owner-save recovery handoff](OWNER_SAVE_RECOVERY_HANDOFF.md).
+[conflict-safe save/review handoff](OWNER_SET_CONFLICT_REVIEW_HANDOFF.md).
+
+This source must not be deployed without the additive `0003` migration. No live
+migration is part of the draft. An old owner page without `reviewedVersion` must
+reload; missing schema or malformed owner metadata fails closed. Do not delete
+revision rows to reset a conflict, and do not revert to the old unconditional
+save route while treating concurrent-save protection as present. This is
+optimistic conflict review, not simultaneous collaborative editing or a lock
+on another owner's browser.
 
 ### `POST /api/enrich`
 
