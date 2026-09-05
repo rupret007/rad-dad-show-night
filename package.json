@@ -11,7 +11,7 @@
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "npm run build && npm run test:isolation && npm run test:d1",
     "test:d1": "node --experimental-strip-types --test tests/official-set-identity-d1.test.mjs",
-    "test:isolation": "node --experimental-strip-types --test tests/official-set-identity.test.mjs tests/run-position.test.mjs tests/suggestion-cannot-mutate-set.test.mjs tests/suggestion-recovery.test.mjs tests/live-set-surface.test.mjs tests/official-set-resource-honesty.test.mjs tests/official-set-first-paint.test.mjs tests/official-set-missing-media.test.mjs tests/show-read-integrity.test.mjs tests/show-set-isolation.test.mjs tests/show-night-use.test.mjs tests/show-public-isolation.test.mjs tests/show-lifecycle-guard.test.mjs tests/show-control-posture.test.mjs tests/show-control-leftover.test.mjs",
+    "test:isolation": "node --experimental-strip-types --test tests/official-set-identity.test.mjs tests/run-position.test.mjs tests/suggestion-cannot-mutate-set.test.mjs tests/suggestion-recovery.test.mjs tests/live-set-surface.test.mjs tests/official-set-resource-honesty.test.mjs tests/official-set-first-paint.test.mjs tests/official-set-missing-media.test.mjs tests/show-read-integrity.test.mjs tests/show-set-isolation.test.mjs tests/show-night-use.test.mjs tests/show-public-isolation.test.mjs tests/show-lifecycle-guard.test.mjs tests/show-control-posture.test.mjs tests/show-control-leftover.test.mjs tests/owner-set-save.test.mjs",
     "test:browser": "playwright test",
     "typecheck:suggestions": "tsc --project tsconfig.suggestions.json",
     "leftover:hosted": "node scripts/hosted-leftover-honesty.mjs",

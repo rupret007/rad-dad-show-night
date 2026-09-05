@@ -18,10 +18,13 @@ import {
 } from "../../lib/song-resources";
 import {
   showEditorLiveState,
+  showOwnerCheckedKeptDraftNotice,
   showOwnerDirtyNotice,
   showOwnerLifecycleHint,
   showOwnerReadyNotice,
   showOwnerSavedNotice,
+  showOwnerSavedWithLaterEditsNotice,
+  showOwnerSaveHoldNotice,
   showOwnerSavingNotice,
   showShareLinkLabel,
   showStatusBadge,
@@ -34,12 +37,23 @@ import {
   type ShowControlLeftoverAction,
   type ShowControlNextAction,
 } from "../../lib/show-control-posture";
+import {
+  applySuccessfulOfficialSave,
+  bindUndoRemove,
+  canApplyUndoRemove,
+  classifyOwnerSaveResult,
+  OWNER_SAVE_DEADLINE_MS,
+  reconcileCheckedOfficialSet,
+  revisionsFromOfficialSets,
+  type BoundUndoRemove,
+  type OwnerSaveHold,
+} from "../../lib/owner-set-save";
 import type { Suggestion } from "../song-board";
 import { parseSuggestionFeedPayload } from "../../lib/suggestion-board";
 import styles from "./show-control.module.css";
 
 type SongMap = Record<SetSlug, ShowSong[]>;
-type DeletedSong = { song: ShowSong; index: number } | null;
+type DeletedSong = BoundUndoRemove | null;
 type CoachResult = {
   source: "smart-check" | "openai";
   score: number;
@@ -80,6 +94,17 @@ export default function ShowControlClient({
   const [enriching, setEnriching] = useState<string | null>(null);
   const [preview, setPreview] = useState<ShowSong | null>(null);
   const [deleted, setDeleted] = useState<DeletedSong>(null);
+  const [reviewedBases, setReviewedBases] = useState<Record<SetSlug, string | null>>({
+    "jeff-story-friends": null,
+    stalemate: null,
+    "rad-dad": null,
+  });
+  const [saveHolds, setSaveHolds] = useState<Partial<Record<SetSlug, OwnerSaveHold>>>({});
+  const [checkingSet, setCheckingSet] = useState<SetSlug | null>(null);
+  const songsBySetRef = useRef<SongMap>(emptySongMap());
+  useEffect(() => {
+    songsBySetRef.current = songsBySet;
+  }, [songsBySet]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
   const [suggestionsVerified, setSuggestionsVerified] = useState(false);
@@ -120,7 +145,11 @@ export default function ShowControlClient({
         if (!showPayloadBelongsToShow(showData, requestedShow)) {
           throw new Error("That show's set could not be verified.");
         }
-        setSongsBySet(groupSongs(showData.songs));
+        const grouped = groupSongs(showData.songs);
+        setSongsBySet(grouped);
+        setReviewedBases(revisionsFromOfficialSets(grouped));
+        setSaveHolds({});
+        setDeleted(null);
         setShows(showList.shows ?? [showData.show]);
         setActiveShowSlug(showData.show.slug);
         if (showData.sets?.length) setShowSets(showData.sets);
@@ -332,7 +361,7 @@ export default function ShowControlClient({
   function removeSong(index: number) {
     const song = activeSongs[index];
     if (!window.confirm(`Remove "${song.title}" from ${activeDefinition.title}?`)) return;
-    setDeleted({ song, index });
+    setDeleted(bindUndoRemove(activeShowSlug, activeSet, song, index));
     replaceSet(
       activeSet,
       activeSongs.filter((_, songIndex) => songIndex !== index),
@@ -340,45 +369,172 @@ export default function ShowControlClient({
   }
 
   function undoDelete() {
-    if (!deleted) return;
+    if (!canApplyUndoRemove(deleted, activeShowSlug, activeSet)) {
+      setDeleted(null);
+      return;
+    }
     const restored = [...activeSongs];
     restored.splice(Math.min(deleted.index, restored.length), 0, deleted.song);
     replaceSet(activeSet, restored);
     setDeleted(null);
   }
 
+  function holdSave(setSlug: SetSlug, kind: OwnerSaveHold, message: string) {
+    setSaveHolds((current) => ({ ...current, [setSlug]: kind }));
+    setNotice(message);
+  }
+
+  function clearSaveHold(setSlug: SetSlug) {
+    setSaveHolds((current) => {
+      if (!current[setSlug]) return current;
+      const next = { ...current };
+      delete next[setSlug];
+      return next;
+    });
+  }
+
   async function saveSet(setSlug: SetSlug) {
+    if (saveHolds[setSlug] || checkingSet) return;
     const setDefinition =
       showSets.find((set) => set.slug === setSlug) ??
       SET_DEFINITIONS.find((set) => set.slug === setSlug)!;
+    const sentSongs = songsBySet[setSlug];
+    const reviewedBase = reviewedBases[setSlug];
+    if (!reviewedBase) {
+      setNotice("This official set could not be verified. Retry the verified load before saving.");
+      return;
+    }
     setSaving(true);
     setNotice(showOwnerSavingNotice(setDefinition.title, activeShow.status));
+    const controller = new AbortController();
+    const deadline = window.setTimeout(() => controller.abort(), OWNER_SAVE_DEADLINE_MS);
     try {
-      const response = await fetch("/api/show", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          showSlug: activeShowSlug,
-          setSlug,
-          songs: songsBySet[setSlug],
-        }),
-      });
-      const result = (await response.json()) as { error?: string; songs?: ShowSong[] };
-      if (!response.ok || !result.songs) {
-        throw new Error(result.error || "The set could not be saved.");
+      let response: Response;
+      try {
+        response = await fetch("/api/show", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            showSlug: activeShowSlug,
+            setSlug,
+            songs: sentSongs,
+            reviewedBase,
+          }),
+        });
+      } catch {
+        holdSave(setSlug, "uncertain", showOwnerSaveHoldNotice("uncertain", setDefinition.title));
+        return;
       }
-      setSongsBySet((current) => ({ ...current, [setSlug]: result.songs! }));
+      let body: unknown = null;
+      try {
+        body = await response.json();
+      } catch {
+        holdSave(setSlug, "uncertain", showOwnerSaveHoldNotice("uncertain", setDefinition.title));
+        return;
+      }
+      const classified = classifyOwnerSaveResult({
+        ok: response.ok,
+        status: response.status,
+        body,
+        showId: activeShow.id,
+        setSlug,
+      });
+      if (classified.kind === "refused") {
+        setNotice(classified.message);
+        return;
+      }
+      if (classified.kind === "conflict") {
+        holdSave(setSlug, "conflict", showOwnerSaveHoldNotice("conflict", setDefinition.title));
+        return;
+      }
+      if (classified.kind === "uncertain") {
+        holdSave(setSlug, "uncertain", classified.message);
+        return;
+      }
+      const applied = applySuccessfulOfficialSave({
+        currentSongs: songsBySetRef.current[setSlug],
+        sentSongs,
+        savedSongs: classified.songs,
+      });
+      if (!applied) {
+        holdSave(setSlug, "uncertain", showOwnerSaveHoldNotice("uncertain", setDefinition.title));
+        return;
+      }
+      setSongsBySet((current) => ({ ...current, [setSlug]: applied.songs }));
+      setReviewedBases((current) => ({ ...current, [setSlug]: applied.reviewedBase }));
+      clearSaveHold(setSlug);
       setDirtySets((current) => {
         const next = new Set(current);
-        next.delete(setSlug);
+        if (applied.stillDirty) next.add(setSlug);
+        else next.delete(setSlug);
         return next;
       });
-      if (setSlug === activeSet) setDeleted(null);
-      setNotice(showOwnerSavedNotice(setDefinition.title, activeShow.status));
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "The set could not be saved.");
+      if (setSlug === activeSet && !applied.stillDirty) setDeleted(null);
+      setNotice(
+        applied.stillDirty
+          ? showOwnerSavedWithLaterEditsNotice(setDefinition.title, activeShow.status)
+          : showOwnerSavedNotice(setDefinition.title, activeShow.status),
+      );
     } finally {
+      window.clearTimeout(deadline);
       setSaving(false);
+    }
+  }
+
+  async function checkSavedSet(setSlug: SetSlug) {
+    if (saving || checkingSet) return;
+    const setDefinition =
+      showSets.find((set) => set.slug === setSlug) ??
+      SET_DEFINITIONS.find((set) => set.slug === setSlug)!;
+    setCheckingSet(setSlug);
+    setNotice(`Checking the saved ${setDefinition.title} list...`);
+    const controller = new AbortController();
+    const deadline = window.setTimeout(() => controller.abort(), OWNER_SAVE_DEADLINE_MS);
+    try {
+      const response = await fetch(`/api/show?show=${encodeURIComponent(activeShowSlug)}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("The saved official list could not be checked.");
+      const data = (await response.json()) as {
+        songs: ShowSong[];
+        show: ManagedShow;
+      };
+      if (!showPayloadBelongsToShow(data, activeShowSlug)) {
+        throw new Error("The saved official list could not be verified.");
+      }
+      const official = groupSongs(data.songs)[setSlug];
+      const reconciled = reconcileCheckedOfficialSet({
+        draftSongs: songsBySetRef.current[setSlug],
+        officialSongs: official,
+      });
+      if (!reconciled) {
+        setNotice("The saved official list could not be verified. Try checking again.");
+        return;
+      }
+      setReviewedBases((current) => ({ ...current, [setSlug]: reconciled.reviewedBase }));
+      if (!reconciled.stillDirty) {
+        setSongsBySet((current) => ({ ...current, [setSlug]: reconciled.songs }));
+      }
+      setDirtySets((current) => {
+        const next = new Set(current);
+        if (reconciled.stillDirty) next.add(setSlug);
+        else next.delete(setSlug);
+        return next;
+      });
+      clearSaveHold(setSlug);
+      if (setSlug === activeSet && !reconciled.stillDirty) setDeleted(null);
+      setNotice(
+        reconciled.stillDirty
+          ? showOwnerCheckedKeptDraftNotice(setDefinition.title)
+          : showOwnerSavedNotice(setDefinition.title, data.show.status),
+      );
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "The saved official list could not be checked.");
+    } finally {
+      window.clearTimeout(deadline);
+      setCheckingSet(null);
     }
   }
 
@@ -422,7 +578,11 @@ export default function ShowControlClient({
       if (!showPayloadBelongsToShow(data, slug)) {
         throw new Error("That show's set could not be verified.");
       }
-      setSongsBySet(groupSongs(data.songs));
+      const grouped = groupSongs(data.songs);
+      setSongsBySet(grouped);
+      setReviewedBases(revisionsFromOfficialSets(grouped));
+      setSaveHolds({});
+      setDeleted(null);
       setActiveShowSlug(data.show.slug);
       setShowSets(data.sets?.length ? data.sets : [...SET_DEFINITIONS]);
       setDirtySets(new Set());
@@ -588,10 +748,16 @@ export default function ShowControlClient({
       songCount: songsBySet[set.slug].length,
     })),
     dirtySetSlugs: [...dirtySets],
+    heldSetSlugs: (Object.keys(saveHolds) as SetSlug[]).filter((slug) => saveHolds[slug]),
   });
+  const activeSaveHold = saveHolds[activeSet] ?? null;
   const runShowHref = `${shareHref}&practice=1#official-sets`;
 
   function runControlAction(action: ShowControlNextAction | ShowControlLeftoverAction) {
+    if (action.kind === "check-saved-set" && action.setSlug) {
+      void checkSavedSet(action.setSlug);
+      return;
+    }
     if (action.kind === "save-set" && action.setSlug) {
       void saveSet(action.setSlug);
       return;
@@ -651,7 +817,7 @@ export default function ShowControlClient({
             <select
               id="show-picker"
               value={activeShowSlug}
-              disabled={Boolean(statusChanging) || saving}
+              disabled={Boolean(statusChanging) || saving || Boolean(checkingSet)}
               onChange={(event) => void switchShow(event.target.value)}
             >
               {shows.map((show) => (
@@ -745,13 +911,16 @@ export default function ShowControlClient({
                   onClick={() => runControlAction(controlPosture.nextAction)}
                   disabled={
                     saving ||
+                    Boolean(checkingSet) ||
                     Boolean(statusChanging) ||
                     (controlPosture.nextAction.kind === "publish-show" && Boolean(publishBlock))
                   }
                 >
-                  {saving && controlPosture.nextAction.kind === "save-set"
-                    ? "Saving..."
-                    : controlPosture.nextAction.label}
+                  {checkingSet && controlPosture.nextAction.kind === "check-saved-set"
+                    ? "Checking..."
+                    : saving && controlPosture.nextAction.kind === "save-set"
+                      ? "Saving..."
+                      : controlPosture.nextAction.label}
                 </button>
               )}
               {controlPosture.nextAction.kind !== "none" ? (
@@ -790,11 +959,13 @@ export default function ShowControlClient({
                                 className={styles.leftoverControl}
                                 type="button"
                                 onClick={() => runControlAction(action)}
-                                disabled={saving || Boolean(statusChanging)}
+                                disabled={saving || Boolean(checkingSet) || Boolean(statusChanging)}
                               >
-                                {saving && action.kind === "save-set"
-                                  ? "Saving leftover..."
-                                  : action.label}
+                                {checkingSet === action.setSlug && action.kind === "check-saved-set"
+                                  ? "Checking leftover..."
+                                  : saving && action.kind === "save-set"
+                                    ? "Saving leftover..."
+                                    : action.label}
                               </button>
                             )}
                           </li>
@@ -842,7 +1013,7 @@ export default function ShowControlClient({
                     : undefined
               }
               type="button"
-              disabled={saving}
+              disabled={saving || Boolean(checkingSet)}
               key={set.slug}
               onClick={() => {
                 setActiveSet(set.slug);
@@ -1091,14 +1262,35 @@ export default function ShowControlClient({
         </div>
       </div>
 
-      <div className={styles.saveDock}>
+      <div
+        className={styles.saveDock}
+        data-save-hold={activeSaveHold ?? ""}
+        data-save-hold-set={activeSaveHold ? activeSet : ""}
+      >
         <div>
-          <span className={dirtySets.has(activeSet) ? styles.unsavedDot : styles.savedDot} />
+          <span className={dirtySets.has(activeSet) || activeSaveHold ? styles.unsavedDot : styles.savedDot} />
           <p>{notice || showOwnerReadyNotice(activeShow.status)}</p>
         </div>
         <div className={styles.saveActions}>
-          {deleted ? <button type="button" onClick={undoDelete}>Undo remove</button> : null}
-          <button className={styles.saveButton} type="button" onClick={saveActiveSet} disabled={saving || !dirtySets.has(activeSet)}>
+          {canApplyUndoRemove(deleted, activeShowSlug, activeSet) ? (
+            <button type="button" onClick={undoDelete}>Undo remove</button>
+          ) : null}
+          {activeSaveHold ? (
+            <button
+              className={styles.checkSavedButton}
+              type="button"
+              onClick={() => void checkSavedSet(activeSet)}
+              disabled={Boolean(checkingSet) || saving}
+            >
+              {checkingSet === activeSet ? "Checking..." : `Check saved ${activeDefinition.title}`}
+            </button>
+          ) : null}
+          <button
+            className={styles.saveButton}
+            type="button"
+            onClick={saveActiveSet}
+            disabled={saving || Boolean(checkingSet) || Boolean(activeSaveHold) || !dirtySets.has(activeSet)}
+          >
             {saving ? "Saving..." : `Save ${activeDefinition.title}`}
           </button>
         </div>

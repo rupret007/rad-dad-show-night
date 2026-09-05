@@ -70,11 +70,13 @@ Show Control. The app never pitches, posts, or sends on his behalf.
 
 The highlighted **One next step** follows a fixed order instead of guessing:
 
-1. Save the first set with unsaved changes.
-2. If this show has no verified songs, focus the first set's Add Song field.
-3. If saved songs belong to a draft or archived show, offer the existing
+1. Check the first set whose last Save did not come back with a verified
+   official list.
+2. Save the first set with unsaved changes.
+3. If this show has no verified songs, focus the first set's Add Song field.
+4. If saved songs belong to a draft or archived show, offer the existing
    confirmed **Publish saved show** action.
-4. If the saved show is already public, open its phone-friendly band run mode.
+5. If the saved show is already public, open its phone-friendly band run mode.
 
 If the set definitions do not verify, the card offers no action. An empty show
 stays empty and never borrows another night's songs or set times.
@@ -87,12 +89,14 @@ booking, outreach, or send path.
 
 Leftover order is fixed:
 
-1. Leftover unsaved sets after the first leftover save. Each leftover save
+1. Leftover unverified saves after the first leftover check. Each leftover
+   check reloads that leftover set's official list before another write.
+2. Leftover unsaved sets after the first leftover save. Each leftover save
    writes that leftover set through the existing authenticated save path.
-2. Leftover empty sets on this show. Each leftover start focuses that leftover
+3. Leftover empty sets on this show. Each leftover start focuses that leftover
    set's Add Song field. The leftover set stays empty until the owner adds a
    song here.
-3. Leftover share-link proof: **See closed public link** on a draft or archive,
+4. Leftover share-link proof: **See closed public link** on a draft or archive,
    **See last saved public list** when leftover unsaved work is still private
    on a published show, or **See live empty public list** when this leftover
    public night is open and empty.
@@ -228,10 +232,16 @@ The status bar at the bottom explains whether the active set is saved, and
 whether this show's public share link is open.
 
 - **Save [set name]** writes only the active set for this show.
+- The editor sends the last verified official-set receipt with that write. A
+  newer saved list refuses the write until **Check saved [set]** reloads it.
+- Edits typed while Save is in flight stay in this browser. The sent list can
+  still write; later edits stay unsaved.
+- If the write may have landed without a verified official list, Save stays
+  blocked until **Check saved [set]** runs. Nothing auto-retries.
 - On a published show, that save updates the public share link.
 - On a draft or archived show, that save stays private until **Publish saved show**.
 - Other sets with unsaved edits remain unsaved.
-- **Undo Remove** restores the most recently removed song before saving.
+- **Undo Remove** restores a song only on the show and set that removed it.
 - Leaving the page with unsaved changes triggers a browser warning.
 - The public page checks for updates every 30 seconds and whenever it becomes
   visible again.

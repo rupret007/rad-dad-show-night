@@ -118,6 +118,19 @@ test("a saved private show offers publish while missing set definitions fail clo
   assert.deepEqual(unknown.leftoverActions, []);
 });
 
+test("an uncertain save becomes the one next check before another write", () => {
+  const posture = buildShowControlPosture({
+    status: "published",
+    sets,
+    dirtySetSlugs: ["rad-dad"],
+    heldSetSlugs: ["rad-dad"],
+  });
+  assert.equal(posture.nextAction.kind, "check-saved-set");
+  assert.equal(posture.nextAction.setSlug, "rad-dad");
+  assert.equal(posture.nextAction.label, "Check saved Rad Dad");
+  assert.match(posture.nextAction.detail, /verified official list/);
+});
+
 test("Show Control renders the posture and its one real action on phones", async () => {
   const [control, styles, readme, guide, technical] = await Promise.all([
     readFile(controlUrl, "utf8"),

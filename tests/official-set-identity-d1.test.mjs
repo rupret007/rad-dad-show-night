@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { after, before, beforeEach, test } from "node:test";
 import { Miniflare } from "miniflare";
+import { officialSetRevision } from "../lib/owner-set-save.ts";
 import { loadOfficialSetRoute } from "./fixtures/official-set-route.mjs";
 
 const SHOW = { id: "identity-fixture-show", slug: "identity-fixture-night", status: "draft" };
@@ -89,10 +90,17 @@ function fixtureRoute({ owner = true } = {}) {
   return { ...route, calls };
 }
 
+const DEFAULT_BASE = officialSetRevision([
+  { id: 11, updatedAt: CREATED },
+  { id: 22, updatedAt: CREATED },
+]);
+
 function request(songs, extra = {}) {
   return new Request("https://fixture.invalid/api/show", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ showSlug: SHOW.slug, setSlug: SET, songs, ...extra }),
+    body: JSON.stringify({
+      showSlug: SHOW.slug, setSlug: SET, songs, reviewedBase: DEFAULT_BASE, ...extra,
+    }),
   });
 }
 
@@ -122,14 +130,16 @@ test("local D1: new and legacy additions use AUTOINCREMENT, then keep their assi
     { title: "Legacy new fixture song" },
   ]));
   assert.equal(response.status, 200);
-  const songs = (await response.json()).songs;
+  const savedPayload = await response.json();
+  const songs = savedPayload.songs;
   assert.equal(songs[1].id, 22);
   assert.ok(Number.isSafeInteger(songs[0].id) && songs[0].id > 90);
   assert.ok(Number.isSafeInteger(songs[2].id) && songs[2].id > songs[0].id);
+  assert.equal(typeof savedPayload.reviewedBase, "string");
   const rows = await allRows();
   assert.equal(rows.some((row) => row.id === 11 || row.id === 90), false);
   assert.notEqual(rows.find((row) => row.id === songs[0].id).created_at, CREATED);
-  const savedAgain = await route.POST(request(songs));
+  const savedAgain = await route.POST(request(songs, { reviewedBase: savedPayload.reviewedBase }));
   assert.equal(savedAgain.status, 200);
   assert.deepEqual((await savedAgain.json()).songs.map((song) => song.id), songs.map((song) => song.id));
 });
@@ -177,6 +187,20 @@ test("local D1: owner-only empty saves affect only the selected set and unknown 
   const route = fixtureRoute();
   const response = await route.POST(request([]));
   assert.equal(response.status, 200);
-  assert.deepEqual((await response.json()).songs, []);
+  const emptied = await response.json();
+  assert.deepEqual(emptied.songs, []);
+  assert.equal(emptied.reviewedBase, officialSetRevision([]));
   assert.deepEqual(await allRows(), beforeRows.filter((row) => row.id === 33 || row.id === 44));
+});
+
+test("local D1: a stale reviewed-base receipt performs no replacement batch", async () => {
+  const beforeRows = await allRows();
+  const route = fixtureRoute();
+  const response = await route.POST(request(
+    [{ id: 11, title: "Should not replace" }],
+    { reviewedBase: officialSetRevision([{ id: 11, updatedAt: "1999-01-01 00:00:00" }]) },
+  ));
+  assert.equal(response.status, 409);
+  assert.equal(route.calls.batches, 0);
+  assert.deepEqual(await allRows(), beforeRows);
 });

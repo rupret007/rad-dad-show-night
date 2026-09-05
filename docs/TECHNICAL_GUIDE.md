@@ -36,6 +36,7 @@ media fails closed. The public band site stays at
 | `lib/show-night-use.ts` | First-open next action, leftover public actions, and practice resume |
 | `lib/run-position.ts` | Exact-identity current/previous/next resolution; no title/index guessing |
 | `lib/official-set-identity.ts` | Validate retained versus new IDs against the exact show/set |
+| `lib/owner-set-save.ts` | Official-set receipt, in-flight edit keep, uncertain/conflict save hold |
 | `lib/show-lifecycle.ts` | Shared owner/UI and API lifecycle guards and confirmation copy |
 | `lib/show-control-posture.ts` | Owner status deck, one-next-step priority, and leftover owner work |
 | `lib/admin-access.ts` | Owner email authorization |
@@ -128,11 +129,12 @@ Unknown, draft, and archived slugs share `app/not-found.tsx` and the same
 or inherit another event.
 
 `lib/show-control-posture.ts` derives the phone status deck only from the
-currently verified show payload and in-browser dirty-set state. Its one next
-step prioritizes saving changed sets, starting a verified empty show, publishing
-saved private sets, then opening band run mode. Leftover on this show after that
-step is also derived here: leftover unsaved sets, leftover empty sets on this
-show, and leftover share-link proof. Leftover empty copy never names another
+currently verified show payload, in-browser dirty-set state, and any unverified
+save hold. Its one next step prioritizes checking an unverified save, saving
+changed sets, starting a verified empty show, publishing saved private sets,
+then opening band run mode. Leftover on this show after that step is also
+derived here: leftover unverified checks, leftover unsaved sets, leftover empty
+sets on this show, and leftover share-link proof. Leftover empty copy never names another
 night's songs or times. Missing set definitions fail closed with no action and
 no leftover list. The deck also says that Travis owns booking; it adds no
 booking, outreach, posting, or alternate write path. Its Save, leftover save,
@@ -218,19 +220,22 @@ default published show. A non-default show whose rows cannot be verified returns
 
 ### `POST /api/show`
 
-Owner-only. Accepts one set slug and its full ordered song array. Positions are
-recalculated server-side. The supplied show slug must resolve exactly; it never
-falls back to the default show. Text lengths, known set slugs, URLs, and maximum
-set size are validated before the D1 batch runs.
+Owner-only. Accepts one set slug, its full ordered song array, and the last
+verified official-set receipt (`reviewedBase`). Positions are recalculated
+server-side. The supplied show slug must resolve exactly; it never falls back
+to the default show. Text lengths, known set slugs, URLs, and maximum set size
+are validated before the D1 batch runs. A missing receipt returns `400`. A
+receipt that does not match the current official identities and `updated_at`
+values returns `409` and performs no write.
 
 Existing positive integer song IDs are retained only after exact show/set
 membership validation. Omitted IDs and valid editor draft tokens create new
 rows; numeric strings, duplicate IDs/tokens, and foreign or unknown saved IDs
 are rejected rather than silently remapped. The batch remains atomic and no
-schema change is needed. Stable identity keeps each performer's selected song
-through metadata edits and reorders, but is not a reviewed-base version check
-between two owner tabs. See [run-position handoff](RUN_POSITION_HANDOFF.md) for
-recovery behavior, test scope, and the separate owner-save issues.
+schema change is needed. A committed write whose official readback cannot be
+verified returns `202` with `written: true` and no songs, so the editor must
+check the saved list instead of retrying blindly. See
+[owner-save recovery handoff](OWNER_SAVE_RECOVERY_HANDOFF.md).
 
 ### `POST /api/enrich`
 

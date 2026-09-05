@@ -29,11 +29,11 @@ commit. A save updates the public page only when that show is already published.
 
 - Manages multiple shows from one owner dashboard.
 - Puts the public-link state, official set posture, and booking boundary in one
-  phone-friendly status deck. It derives one next step: save unsaved work, start
-  an empty list, publish a saved private show, or open band run mode. Leftover
-  work on this verified show stays listed and tappable: leftover unsaved sets,
-  leftover empty sets, and leftover share-link proof. Another night is never
-  borrowed.
+  phone-friendly status deck. It derives one next step: check an unverified
+  save, save unsaved work, start an empty list, publish a saved private show, or
+  open band run mode. Leftover work on this verified show stays listed and
+  tappable: leftover unverified saves, leftover unsaved sets, leftover empty
+  sets, and leftover share-link proof. Another night is never borrowed.
 - Stops at a retry screen when the owner show payload cannot be verified. Add,
   Save, Publish, and Archive never appear from fallback editor state.
 - Clones a complete show into a new private draft.
@@ -47,6 +47,8 @@ commit. A save updates the public page only when that show is already published.
 - Keeps a performer's current song through official key/cue corrections and
   reorders by preserving that song's identity. If it is removed, run mode asks
   for a new place instead of advancing automatically.
+- Keeps later Show Control edits typed during Save, requires a checked official
+  list after an unverified write, and will not apply Undo remove on another show.
 - Stores keys, tunings, endings, and private rehearsal notes per song.
 - Shows YouTube and lyrics for covers only when the official set has a saved
   direct URL; originals hide both.
@@ -88,6 +90,7 @@ covers table is not the set.
 - [Technical, data, security, and deployment guide](docs/TECHNICAL_GUIDE.md)
 - [Suggestion recovery product handoff](docs/SUGGESTION_RECOVERY_HANDOFF.md)
 - [Band-run position product handoff](docs/RUN_POSITION_HANDOFF.md)
+- [Owner save recovery product handoff](docs/OWNER_SAVE_RECOVERY_HANDOFF.md)
 
 ## Quick owner workflow
 

@@ -62,16 +62,10 @@ guess is made. A removed song that is added again is a new record, not the old
 performance position. Clients omitting IDs still create new rows; the existing
 owner editor sends IDs for saved songs and temporary draft tokens for additions.
 
-This is identity continuity, **not concurrency control**. Two owner tabs can
-still replace a set without a reviewed-base receipt. Also still separate:
-
-1. Owner Save can replace edits entered while that request was pending.
-2. A committed write followed by failed readback needs explicit uncertain-save
-   reconciliation, rather than an unreviewed retry.
-3. Undo Remove should be cleared/bound when changing shows.
-
-Those findings need a dedicated owner draft/version-recovery slice. Do not claim
-they are solved by retaining song IDs. A durable revision cannot simply be the
+Identity continuity is **not** the later owner-save recovery work. That dedicated
+slice now lives in [OWNER_SAVE_RECOVERY_HANDOFF.md](OWNER_SAVE_RECOVERY_HANDOFF.md):
+reviewed-base receipts, in-flight edit keep, uncertain readback, and bound Undo.
+Do not claim song-ID retention solved those. A durable revision is still not a
 maximum song timestamp: removing songs can move that value backward or empty it.
 
 Standalone full TypeScript has the documented pre-existing Worker/show-store
