@@ -164,7 +164,12 @@ test("draft and archived show slugs fail closed outside authenticated Show Contr
   assert.match(store, /return mapShow\(requireVisibleShow\(row, scope\)\)/);
   assert.match(store, /getShowRecord\(slug, scope\)/);
   assert.match(store, /if \(isShowNotFoundError\(error\)\) throw error/);
-  assert.match(route, /user \? "owner" : "public"/);
+  assert.match(route, /query\.get\("scope"\) === "owner" \? "owner" : "public"/);
+  assert.match(route, /scope === "owner" && !await getAdminUser\(\)/);
+  assert.match(route, /status: 401, headers/);
+  assert.match(route, /getShowPayload\(slug, scope\)/);
+  assert.match(route, /"X-Rad-Dad-Read-Scope": scope/);
+  assert.doesNotMatch(route, /user \? "owner" : "public"/);
   assert.match(route, /getShowRecord\(payload\.showSlug, "owner"\)/);
   assert.match(route, /if \(!payload\.showSlug\?\.trim\(\)\)/);
   assert.match(page, /getShowPayload\(params\.show, "public"\)/);

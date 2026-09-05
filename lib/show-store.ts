@@ -4,11 +4,13 @@ import { getDb } from "../db";
 import { showBlocks, shows, songs } from "../db/schema";
 import {
   DEFAULT_SONGS,
+  EDITABLE_SET_SLUGS,
   RUN_OF_SHOW,
   SHOW_DETAILS,
   type ManagedShow,
   type RunOfShowBlock,
   type ShowSong,
+  type SetSlug,
 } from "./show-data";
 import { hydrateOfficialSongMedia } from "./song-resources";
 import {
@@ -24,8 +26,63 @@ import {
   ShowDataUnavailableError,
 } from "./show-read-integrity";
 import { toPublicShowSongs } from "./show-public";
+import { INITIAL_OFFICIAL_SET_VERSION, officialSetRevision, readReviewedVersion, type SetWriteVersions } from "./owner-set-save";
 
 const SEED_KEY = "show-control-seed-v1";
+
+/** Shared SQL projection for a transaction's own canonical readback. */
+export const OFFICIAL_SONG_COLUMNS = `id, show_id AS showId, set_slug AS setSlug,
+  position, title, artist, transition, is_original AS isOriginal,
+  duration_seconds AS durationSeconds, performance_note AS performanceNote,
+  song_key AS songKey, tuning, youtube_url AS youtubeUrl,
+  youtube_video_id AS youtubeVideoId, chords_url AS chordsUrl,
+  lyrics_url AS lyricsUrl, rehearsal_notes AS rehearsalNotes, updated_at AS updatedAt`;
+
+export function readOfficialSongRows(value: unknown, showId: string, setSlug?: SetSlug): ShowSong[] {
+  if (!Array.isArray(value) || value.length > 180 || !officialSetRevision(value)) {
+    throw new ShowDataUnavailableError();
+  }
+  const positions = new Set<string>();
+  return value.map((item: unknown) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new ShowDataUnavailableError();
+    const row = item as Record<string, unknown>;
+    if (row.showId !== showId || !EDITABLE_SET_SLUGS.includes(row.setSlug as SetSlug) ||
+      (setSlug !== undefined && row.setSlug !== setSlug) ||
+      !Number.isSafeInteger(row.position) || (row.position as number) < 1 || (row.position as number) > 60 ||
+      positions.has(`${row.setSlug}:${row.position}`) ||
+      !Number.isSafeInteger(row.durationSeconds) || (row.durationSeconds as number) < 30 || (row.durationSeconds as number) > 1200 ||
+      ![true, false, 0, 1].includes(row.transition as boolean | number) ||
+      ![true, false, 0, 1].includes(row.isOriginal as boolean | number) ||
+      ["title", "artist", "performanceNote", "songKey", "tuning", "youtubeUrl", "youtubeVideoId", "chordsUrl", "lyricsUrl", "rehearsalNotes", "updatedAt"].some((field) => typeof row[field] !== "string")) {
+      throw new ShowDataUnavailableError();
+    }
+    positions.add(`${row.setSlug}:${row.position}`);
+    const textLimits: Record<string, number> = { title: 140, artist: 140, performanceNote: 300, songKey: 40, tuning: 80, youtubeVideoId: 20, rehearsalNotes: 2500 };
+    if (!(row.title as string).trim() || Object.entries(textLimits).some(([field, limit]) => (row[field] as string).length > limit)) throw new ShowDataUnavailableError();
+    return hydrateSong({ ...row, transition: Boolean(row.transition), isOriginal: Boolean(row.isOriginal) } as ShowSong);
+  });
+}
+
+/** Read-only: absence is initial authority; malformed or failed reads are not. */
+export async function getOwnerOfficialSnapshot(showId: string): Promise<{ songs: ShowSong[]; setWriteVersions: SetWriteVersions }> {
+  const result = await env.DB.batch([
+    env.DB.prepare(`SELECT ${OFFICIAL_SONG_COLUMNS} FROM songs WHERE show_id = ? ORDER BY set_slug, position, id`).bind(showId),
+    env.DB.prepare("SELECT show_id, set_slug, version FROM official_set_revisions WHERE show_id = ?").bind(showId),
+  ]);
+  if (!Array.isArray(result) || result.length !== 2 || result.some((part: { success?: boolean; results?: unknown }) => part.success !== true || !Array.isArray(part.results))) {
+    throw new ShowDataUnavailableError();
+  }
+  const setWriteVersions = Object.fromEntries(EDITABLE_SET_SLUGS.map((slug) => [slug, INITIAL_OFFICIAL_SET_VERSION])) as SetWriteVersions;
+  const seen = new Set<string>();
+  for (const item of result[1].results as Array<Record<string, unknown>>) {
+    if (!item || item.show_id !== showId || !EDITABLE_SET_SLUGS.includes(item.set_slug as SetSlug) || seen.has(item.set_slug as string)) throw new ShowDataUnavailableError();
+    const version = readReviewedVersion(item.version);
+    if (!version || version === INITIAL_OFFICIAL_SET_VERSION) throw new ShowDataUnavailableError();
+    seen.add(item.set_slug as string);
+    setWriteVersions[item.set_slug as SetSlug] = version;
+  }
+  return { songs: readOfficialSongRows(result[0].results, showId), setWriteVersions };
+}
 
 export async function ensureShowSeeded() {
   if (!env.DB) throw new Error("The show database is not connected.");
@@ -181,14 +238,15 @@ export async function getShowPayload(
     await ensureShowSeeded();
     const show = await getShowRecord(slug, scope);
     resolvedShowSlug = show.slug;
-    const [officialSongs, blocks] = await Promise.all([
-      getOfficialSongs(show.id),
+    const [officialSnapshot, blocks] = await Promise.all([
+      scope === "owner" ? getOwnerOfficialSnapshot(show.id) : getOfficialSongs(show.id).then((songs) => ({ songs, setWriteVersions: undefined })),
       getDb()
         .select()
         .from(showBlocks)
         .where(eq(showBlocks.showId, show.id))
         .orderBy(asc(showBlocks.position)),
     ]);
+    const officialSongs = officialSnapshot.songs;
     const mappedTimeline = blocks.map((block) => ({
       time: `${block.startTime}-${block.endTime}`,
       duration: block.duration,
@@ -219,10 +277,13 @@ export async function getShowPayload(
       songs: songsForScope,
       updatedAt,
       dataSource: "database" as const,
+      ...(scope === "owner" ? { setWriteVersions: officialSnapshot.setWriteVersions } : {}),
     };
   } catch (error) {
     if (isShowNotFoundError(error)) throw error;
     if (isShowDataUnavailableError(error)) throw error;
+    // Owner editing can never acquire write authority from a repository fallback.
+    if (scope === "owner") throw new ShowDataUnavailableError({ cause: error });
     if (!canUseConfirmedShowFallback(slug, resolvedShowSlug)) {
       throw new ShowDataUnavailableError({ cause: error });
     }

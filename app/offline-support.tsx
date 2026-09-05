@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { offlineReadyKey } from "../lib/show-read-integrity";
+import { canConfirmOfflineReady, offlineReadyKey } from "../lib/show-read-integrity";
 
 const READY_EVENT = "rad-dad-offline-ready";
 
@@ -81,7 +81,7 @@ function sendCacheMessage(worker: ServiceWorker, urls: string[]) {
     const timeout = window.setTimeout(() => resolve({ ready: false }), 15000);
     channel.port1.onmessage = (event) => {
       window.clearTimeout(timeout);
-      resolve({ ready: Boolean(event.data?.ready) });
+      resolve({ ready: canConfirmOfflineReady(event.data) });
     };
     worker.postMessage({ type: "CACHE_SHOW", urls }, [channel.port2]);
   });

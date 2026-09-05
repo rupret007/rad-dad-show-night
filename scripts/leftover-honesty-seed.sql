@@ -18,6 +18,12 @@ CREATE TABLE IF NOT EXISTS shows (
   updated_at text DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_shows_slug ON shows (slug);
+CREATE TABLE IF NOT EXISTS official_set_revisions (
+  show_id text NOT NULL,
+  set_slug text NOT NULL,
+  version text NOT NULL,
+  PRIMARY KEY (show_id, set_slug)
+);
 CREATE TABLE IF NOT EXISTS show_blocks (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   show_id text NOT NULL,

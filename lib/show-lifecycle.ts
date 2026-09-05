@@ -161,7 +161,7 @@ export function showOwnerSavedWithLaterEditsNotice(
 
 export function showOwnerCheckedKeptDraftNotice(setTitle: string): string {
   const title = setTitle.trim() || "this set";
-  return `The saved ${title} list is loaded. Your unsaved draft is still here. Saving now writes this draft.`;
+  return `Your unsaved ${title} draft is staged against the checked saved list. Saving now writes this draft as a whole-set replacement. No write was made by your review choice.`;
 }
 
 export function showOwnerSavedNotice(

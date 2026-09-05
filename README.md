@@ -49,6 +49,10 @@ commit. A save updates the public page only when that show is already published.
   for a new place instead of advancing automatically.
 - Keeps later Show Control edits typed during Save, requires a checked official
   list after an unverified write, and will not apply Undo remove on another show.
+- Protects concurrent owner saves with a persistent per-set write version.
+  A conflicting draft stays in the browser; Check shows the saved list beside
+  it before an explicit choice and a separate Save. This source change requires
+  migration `0003` before a future approved deployment; it is not a live-site claim.
 - Stores keys, tunings, endings, and private rehearsal notes per song.
 - Shows YouTube and lyrics for covers only when the official set has a saved
   direct URL; originals hide both.
@@ -91,6 +95,7 @@ covers table is not the set.
 - [Suggestion recovery product handoff](docs/SUGGESTION_RECOVERY_HANDOFF.md)
 - [Band-run position product handoff](docs/RUN_POSITION_HANDOFF.md)
 - [Owner save recovery product handoff](docs/OWNER_SAVE_RECOVERY_HANDOFF.md)
+- [Conflict-safe owner saves and review handoff](docs/OWNER_SET_CONFLICT_REVIEW_HANDOFF.md)
 
 ## Quick owner workflow
 
@@ -103,6 +108,13 @@ covers table is not the set.
 7. Turn on **Flows to next** when the transition arrow is intentional.
 8. Press **Save** for that set. If the show is published, its public list updates;
    if it is a draft or archived, the saved set stays private.
+
+If another owner tab saved first, use **Check saved [set]**. Review **Saved list**
+and **Your browser draft**, then choose **Use saved list** or **Keep my draft**.
+Neither choice writes. Keeping the draft stages a complete replacement for a
+later, separate Save—not an automatic merge. Rows removed by the other save are
+identified before they can be staged as new songs. Another intervening save
+requires another check.
 
 Unsaved changes remain private in the browser. Public suggestions also remain
 separate until the owner deliberately adds one to a draft and saves it.
@@ -261,7 +273,8 @@ database updates and appear publicly without a GitHub deployment.
 - Show records and cloned timelines: Sites D1 database
 - Initial confirmed set data: `lib/show-data.ts`
 - Database schema: `db/schema.ts`
-- Database migration: `drizzle/0000_show_control.sql`
+- Database migrations: `drizzle/0000_show_control.sql` through
+  `drizzle/0003_official_set_revisions.sql`
 - Public suggestions: connected Google Form and response Sheet
 - Canonical human-readable plan: [docs/SHOW_PLAN.md](docs/SHOW_PLAN.md)
 - Public band site: [raddadband.com](https://www.raddadband.com)

@@ -1,4 +1,5 @@
-const CACHE_NAME = "rad-dad-show-offline-v2";
+// v2 could cache an authenticated owner response under a public show URL.
+const CACHE_NAME = "rad-dad-show-offline-v3";
 const APP_SHELL = [
   "/offline.html",
   "/manifest.webmanifest",
@@ -35,7 +36,7 @@ self.addEventListener("message", (event) => {
   if (event.data?.type !== "CACHE_SHOW" || !Array.isArray(event.data.urls)) return;
   event.waitUntil(
     cacheShowResources(event.data.urls).then((result) => {
-      event.ports[0]?.postMessage(result);
+      event.ports[0]?.postMessage({ ...result, cacheVersion: 3 });
     }),
   );
 });
@@ -47,6 +48,9 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/show-control")) return;
   if (url.pathname.startsWith("/api/") && url.pathname !== "/api/show") return;
+  // Owner reads must reach the authenticated network. Never open a cache or
+  // manufacture an offline response that could be mistaken for write authority.
+  if (url.pathname === "/api/show" && !isPublicShowUrl(url)) return;
 
   if (request.mode === "navigate") {
     event.respondWith(networkFirst(request, 4000, true));
@@ -69,7 +73,7 @@ async function cacheShowResources(values) {
       return (
         url.origin === self.location.origin &&
         !url.pathname.startsWith("/show-control") &&
-        (!url.pathname.startsWith("/api/") || url.pathname === "/api/show")
+        (!url.pathname.startsWith("/api/") || isPublicShowUrl(url))
       );
     } catch {
       return false;
@@ -81,12 +85,8 @@ async function cacheShowResources(values) {
   if (!showApiUrl) return { ready: false, cached: 0 };
 
   try {
-    const showResponse = await fetch(showApiUrl, { cache: "no-store" });
-    if (
-      !showResponse.ok ||
-      showResponse.headers.get("X-Rad-Dad-Data-Source") !== "database" ||
-      !(await showApiMatchesRequest(showApiUrl, showResponse))
-    ) {
+    const showResponse = await fetch(showApiUrl, { cache: "no-store", credentials: "omit" });
+    if (!(await showApiMatchesRequest(showApiUrl, showResponse))) {
       return { ready: false, cached: 0 };
     }
     await cache.put(showApiUrl, showResponse.clone());
@@ -98,8 +98,10 @@ async function cacheShowResources(values) {
   const results = await Promise.all(
     urls.filter((url) => url !== showApiUrl).map(async (url) => {
       try {
-        const response = await fetch(url, { cache: "no-store" });
+        const response = await fetch(url, { cache: "no-store", credentials: "omit" });
         if (!response.ok) return null;
+        if (new URL(url, self.location.origin).pathname === "/api/show" &&
+            !(await showApiMatchesRequest(url, response))) return null;
         await cache.put(url, response.clone());
         return url;
       } catch {
@@ -125,11 +127,16 @@ async function cacheShowResources(values) {
 
 async function networkFirst(request, timeoutMs, navigation) {
   const cache = await caches.open(CACHE_NAME);
-  const network = fetch(request).then(async (response) => {
+  const isShowApi = new URL(request.url).pathname === "/api/show";
+  const networkRequest = isShowApi ? new Request(request, { credentials: "omit" }) : request;
+  const network = fetch(networkRequest).then(async (response) => {
     const verifiedShowApi =
-      new URL(request.url).pathname !== "/api/show" ||
-      (response.headers.get("X-Rad-Dad-Data-Source") === "database" &&
-        (await showApiMatchesRequest(request.url, response)));
+      !isShowApi || (await showApiMatchesRequest(request.url, response));
+    if (isShowApi && (response.headers.get("X-Rad-Dad-Read-Scope") !== "public" ||
+        response.headers.get("X-Rad-Dad-Data-Source") === "owner-database" ||
+        (response.ok && !verifiedShowApi && !(await showApiMatchesRequest(request.url, response, true))))) {
+      throw new Error("Unverified public show response");
+    }
     // Navigations are cached only by CACHE_SHOW after the rendered page proves
     // it came from D1. A transient fallback must never replace that copy.
     if (response.ok && !navigation && verifiedShowApi) {
@@ -141,7 +148,10 @@ async function networkFirst(request, timeoutMs, navigation) {
     return await withTimeout(network, timeoutMs);
   } catch {
     const exact = await cache.match(request);
-    if (exact) return markOfflineResponse(exact);
+    if (exact && (!isShowApi || await showApiMatchesRequest(request.url, exact))) {
+      return markOfflineResponse(exact);
+    }
+    if (exact && isShowApi) await cache.delete(request);
     if (navigation) {
       const related = await findRelatedShowPage(cache, new URL(request.url));
       if (related) return markOfflineResponse(related);
@@ -149,7 +159,7 @@ async function networkFirst(request, timeoutMs, navigation) {
     }
     return new Response(
       JSON.stringify({ error: "Offline and no saved show data is available." }),
-      { status: 503, headers: { "Content-Type": "application/json" } },
+      { status: 503, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } },
     );
   }
 }
@@ -186,18 +196,32 @@ function withTimeout(promise, timeoutMs) {
   ]);
 }
 
-async function showApiMatchesRequest(requestUrl, response) {
-  const requestedSlug = new URL(requestUrl, self.location.origin).searchParams.get(
-    "show",
-  );
+function isPublicShowUrl(url) {
+  return url.origin === self.location.origin && url.pathname === "/api/show" &&
+    !url.searchParams.has("scope");
+}
+
+async function showApiMatchesRequest(requestUrl, response, allowConfirmedFallback = false) {
+  const url = new URL(requestUrl, self.location.origin);
+  const dataSource = response.headers.get("X-Rad-Dad-Data-Source");
+  if (!isPublicShowUrl(url) || !response.ok ||
+      (dataSource !== "database" && !(allowConfirmedFallback && dataSource === "confirmed-fallback")) ||
+      response.headers.get("X-Rad-Dad-Read-Scope") !== "public" ||
+      response.headers.get("X-Rad-Dad-Offline") === "1") return false;
+  const requestedSlug = url.searchParams.get("show");
   try {
     const payload = await response.clone().json();
-    if (!payload?.show?.slug) return false;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload) ||
+        payload.dataSource !== dataSource || payload.show?.status !== "published" ||
+        typeof payload.show?.id !== "string" || !payload.show.id ||
+        typeof payload.show?.slug !== "string" || !payload.show.slug ||
+        !Array.isArray(payload.songs) || payload.songs.length > 180 ||
+        ["setWriteVersions", "reviewedVersion", "reviewedBase"].some((key) =>
+          Object.prototype.hasOwnProperty.call(payload, key))) return false;
     if (requestedSlug && payload.show.slug !== requestedSlug) return false;
     if (
-      payload.show.id &&
-      Array.isArray(payload.songs) &&
-      payload.songs.some((song) => song.showId && song.showId !== payload.show.id)
+      payload.songs.some((song) => !song || typeof song !== "object" || Array.isArray(song) ||
+        song.showId !== payload.show.id || song.rehearsalNotes !== "")
     ) {
       return false;
     }

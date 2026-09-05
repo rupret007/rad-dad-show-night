@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { normalizeOfficialSongContent } from "../lib/song-resources.ts";
 
 import {
   applySuccessfulOfficialSave,
@@ -9,6 +10,9 @@ import {
   classifyOwnerSaveResult,
   EMPTY_OFFICIAL_SET_REVISION,
   officialSetRevision,
+  INITIAL_OFFICIAL_SET_VERSION,
+  readReviewedVersion,
+  readSetWriteVersions,
   ownerSetDraftEquals,
   readReviewedBase,
   reconcileCheckedOfficialSet,
@@ -24,6 +28,20 @@ const controlUrl = new URL("../app/show-control/show-control.tsx", import.meta.u
 const routeUrl = new URL("../app/api/show/route.ts", import.meta.url);
 const leftoverHostedUrl = new URL("../scripts/hosted-leftover-honesty.mjs", import.meta.url);
 const pageUrl = new URL("../app/page.tsx", import.meta.url);
+const VERSION = "d2f7c5b2-1c2a-41b2-8ca5-8143b590b05b";
+
+test("write versions are exact, complete, opaque authority and never invented from row receipts", () => {
+  assert.equal(readReviewedVersion(INITIAL_OFFICIAL_SET_VERSION), INITIAL_OFFICIAL_SET_VERSION);
+  assert.equal(readReviewedVersion(VERSION), VERSION);
+  for (const value of [null, undefined, 0, {}, "", "empty:0", `${VERSION}\n`, ` ${VERSION}`, VERSION.toUpperCase(), "initial:1"]) {
+    assert.equal(readReviewedVersion(value), null);
+  }
+  const all = { "rad-dad": VERSION, stalemate: "initial:0", "jeff-story-friends": "initial:0" };
+  assert.deepEqual(readSetWriteVersions(all), all);
+  for (const value of [null, [], {}, { "rad-dad": VERSION }, { ...all, stalemate: null }, Object.create(all)]) {
+    assert.equal(readSetWriteVersions(value), null);
+  }
+});
 
 const song = (id, extra = {}) => ({
   id,
@@ -73,6 +91,8 @@ test("a successful save keeps later edits and remaps only the sent identities", 
     currentSongs: [song(11, { performanceNote: "Hold the ending" })],
     sentSongs: sent,
     savedSongs: saved,
+    expectedSavedSongs: sent.map(normalizeOfficialSongContent),
+    reviewedVersion: VERSION,
   });
   assert.equal(applied.stillDirty, true);
   assert.equal(applied.songs[0].performanceNote, "Hold the ending");
@@ -83,6 +103,8 @@ test("a successful save keeps later edits and remaps only the sent identities", 
     currentSongs: sent,
     sentSongs: sent,
     savedSongs: saved,
+    expectedSavedSongs: sent.map(normalizeOfficialSongContent),
+    reviewedVersion: VERSION,
   });
   assert.equal(clean.stillDirty, false);
   assert.deepEqual(clean.songs, saved);
@@ -97,12 +119,58 @@ test("a successful save keeps later edits and remaps only the sent identities", 
   assert.equal(remapped[1].id, "draft-r0-2");
 });
 
+test("a successful response must match the submitted canonical content and ordered retained IDs before any remap", () => {
+  const sent = [song(11), song(22, { position: 2 })];
+  const expected = sent.map(normalizeOfficialSongContent);
+  const saved = sent.map((row) => ({ ...row, updatedAt: "2026-09-05T01:00:00.000Z" }));
+  const apply = (rows) => applySuccessfulOfficialSave({ currentSongs: sent, sentSongs: sent, savedSongs: rows, expectedSavedSongs: expected, reviewedVersion: VERSION });
+  assert.equal(apply(saved).stillDirty, false);
+  for (const [field, value] of [
+    ["title", "Different same-count title"], ["artist", "Different band"], ["transition", true],
+    ["isOriginal", true], ["durationSeconds", 240], ["performanceNote", "Different cue"],
+    ["songKey", "F#"], ["tuning", "Drop D"], ["youtubeUrl", "https://youtu.be/4ReFoSZHL7o"],
+    ["youtubeVideoId", "4ReFoSZHL7o"], ["chordsUrl", "https://fixture.invalid/chords"],
+    ["lyricsUrl", "https://fixture.invalid/lyrics"], ["rehearsalNotes", "Different private note"],
+  ]) {
+    assert.equal(apply([{ ...saved[0], [field]: value }, saved[1]]), null, field);
+  }
+  assert.equal(apply([{ ...saved[0], id: 22 }, { ...saved[1], id: 11 }]), null);
+  assert.equal(apply([{ ...saved[0], showId: "foreign" }, saved[1]]), null);
+  assert.equal(apply([{ ...saved[0], position: 2 }, { ...saved[1], position: 1 }]), null);
+});
+
+test("legitimate server trims, duration clamp and direct URL normalization retain the existing successful flow", () => {
+  const sent = [song(11, {
+    title: "  Canonical fixture title  ", artist: "  Fixture artist  ",
+    durationSeconds: 9000, performanceNote: "  Count in  ", songKey: "  G  ",
+    youtubeUrl: " https://youtu.be/4ReFoSZHL7o ",
+    lyricsUrl: "https://fixture.invalid/lyrics with space", rehearsalNotes: "  Private fixture note  ",
+  })];
+  const expected = sent.map(normalizeOfficialSongContent);
+  assert.equal(expected[0].title, "Canonical fixture title");
+  assert.equal(expected[0].durationSeconds, 1200);
+  assert.equal(expected[0].youtubeVideoId, "4ReFoSZHL7o");
+  assert.equal(expected[0].lyricsUrl, "https://fixture.invalid/lyrics%20with%20space");
+  const saved = [{ ...sent[0], ...expected[0], updatedAt: "2026-09-05T01:00:00.000Z" }];
+  const result = applySuccessfulOfficialSave({ currentSongs: sent, sentSongs: sent, savedSongs: saved, expectedSavedSongs: expected, reviewedVersion: VERSION });
+  assert.equal(result.stillDirty, false);
+  assert.deepEqual(result.songs, saved);
+});
+
 test("save results distinguish refused, conflict, uncertain, and verified readback", () => {
   const saved = [song(11, { updatedAt: "2026-09-05T01:00:00.000Z" })];
   assert.equal(classifyOwnerSaveResult({
     ok: true, status: 200, showId: "fixture-show", setSlug: "rad-dad",
-    body: { songs: saved, reviewedBase: officialSetRevision(saved) },
+    body: { songs: saved, reviewedBase: officialSetRevision(saved), reviewedVersion: VERSION },
   }).kind, "saved");
+  for (const body of [
+    { songs: saved, reviewedBase: officialSetRevision(saved) },
+    { songs: saved, reviewedBase: "empty:0", reviewedVersion: VERSION },
+    { songs: saved, reviewedBase: officialSetRevision(saved), reviewedVersion: "initial:0" },
+    { songs: saved, reviewedVersion: VERSION },
+  ]) {
+    assert.equal(classifyOwnerSaveResult({ ok: true, status: 200, showId: "fixture-show", setSlug: "rad-dad", body }).kind, "uncertain");
+  }
   assert.equal(classifyOwnerSaveResult({
     ok: false, status: 409, showId: "fixture-show", setSlug: "rad-dad",
     body: { error: "This set changed since you last loaded it." },
@@ -130,6 +198,7 @@ test("checking a saved list keeps a diverged draft and binds undo to one show an
   const kept = reconcileCheckedOfficialSet({
     draftSongs: [song(11, { performanceNote: "Later cue" })],
     officialSongs: official,
+    reviewedVersion: VERSION,
   });
   assert.equal(kept.stillDirty, true);
   assert.equal(kept.songs[0].performanceNote, "Later cue");
@@ -138,6 +207,7 @@ test("checking a saved list keeps a diverged draft and binds undo to one show an
   const matched = reconcileCheckedOfficialSet({
     draftSongs: [song("draft-r0-1", { title: official[0].title, performanceNote: "Saved cue" })],
     officialSongs: official,
+    reviewedVersion: VERSION,
   });
   assert.equal(matched.stillDirty, false);
   assert.equal(matched.songs[0].id, 11);

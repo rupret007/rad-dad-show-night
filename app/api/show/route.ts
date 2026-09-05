@@ -7,9 +7,10 @@ import {
 } from "../../../lib/show-data";
 import {
   ensureShowSeeded,
-  getOfficialSongs,
   getShowPayload,
   getShowRecord,
+  OFFICIAL_SONG_COLUMNS,
+  readOfficialSongRows,
 } from "../../../lib/show-store";
 import { isShowDataUnavailableError } from "../../../lib/show-read-integrity";
 import { isShowNotFoundError } from "../../../lib/show-visibility";
@@ -20,41 +21,45 @@ import {
 import {
   officialSetRevision,
   readReviewedBase,
+  INITIAL_OFFICIAL_SET_VERSION,
+  readReviewedVersion,
 } from "../../../lib/owner-set-save";
-import {
-  getYouTubeVideoId,
-  hydrateOfficialSongMedia,
-} from "../../../lib/song-resources";
+import { normalizeOfficialSongContent } from "../../../lib/song-resources";
 
 export const dynamic = "force-dynamic";
 
 type StoredSongIdentity = { id: number; created_at: string; updated_at: string };
 
 export async function GET(request: Request) {
-  const slug = new URL(request.url).searchParams.get("show");
-  const user = await getAdminUser();
+  const query = new URL(request.url).searchParams;
+  const slug = query.get("show");
+  const scope = query.get("scope") === "owner" ? "owner" : "public";
+  const headers = { "Cache-Control": scope === "owner" ? "private, no-store" : "no-store", "X-Rad-Dad-Read-Scope": scope };
+  if (scope === "owner" && !await getAdminUser()) {
+    return Response.json({ error: "Owner access required." }, { status: 401, headers });
+  }
   try {
-    const payload = await getShowPayload(slug, user ? "owner" : "public");
+    const payload = await getShowPayload(slug, scope);
     return Response.json(payload, {
       headers: {
-        "Cache-Control": "no-store",
-        "X-Rad-Dad-Data-Source": payload.dataSource,
+        ...headers,
+        "X-Rad-Dad-Data-Source": scope === "owner" ? "owner-database" : payload.dataSource,
       },
     });
   } catch (error) {
     if (isShowNotFoundError(error)) {
-      return Response.json({ error: "Show not found." }, { status: 404 });
+      return Response.json({ error: "Show not found." }, { status: 404, headers });
     }
     if (isShowDataUnavailableError(error)) {
       return Response.json(
         { error: "This show's verified set data is temporarily unavailable." },
         {
           status: 503,
-          headers: { "Cache-Control": "no-store", "Retry-After": "30" },
+          headers: { ...headers, "Retry-After": "30" },
         },
       );
     }
-    return Response.json({ error: "Could not load the show." }, { status: 500 });
+    return Response.json({ error: "Could not load the show." }, { status: 500, headers });
   }
 }
 
@@ -70,9 +75,11 @@ export async function POST(request: Request) {
       setSlug?: string;
       songs?: Partial<ShowSong>[];
       reviewedBase?: unknown;
+      reviewedVersion?: unknown;
     };
     const reviewedBase = readReviewedBase(payload.reviewedBase);
-    if (!reviewedBase) {
+    const reviewedVersion = readReviewedVersion(payload.reviewedVersion);
+    if (!reviewedBase || !reviewedVersion) {
       return Response.json(
         { error: "Reload the official set before saving." },
         { status: 400 },
@@ -121,40 +128,45 @@ export async function POST(request: Request) {
     const createdAtById = new Map<number, string>(existing.results.map((row: StoredSongIdentity) => [row.id, row.created_at]));
     const normalized = payload.songs.map((song, index) => {
       const retainedId = retainedIds[index];
-      const title = cleanText(song.title, 140);
-      if (!title) throw new Error(`Song ${index + 1} needs a title.`);
-      const youtubeUrl = cleanUrl(song.youtubeUrl);
-      const youtubeVideoId =
-        getYouTubeVideoId(youtubeUrl) || cleanText(song.youtubeVideoId, 20);
-      return hydrateOfficialSongMedia({
+      const content = normalizeOfficialSongContent(song);
+      if (!content.title) throw new Error(`Song ${index + 1} needs a title.`);
+      return {
+        ...content,
         id: retainedId,
         createdAt: retainedId === null ? null : createdAtById.get(retainedId)!,
         position: index + 1,
-        title,
-        artist: cleanText(song.artist, 140),
-        transition: Boolean(song.transition),
-        isOriginal: Boolean(song.isOriginal),
-        durationSeconds: clampNumber(song.durationSeconds, 30, 1200, 180),
-        performanceNote: cleanText(song.performanceNote, 300),
-        songKey: cleanText(song.songKey, 40),
-        tuning: cleanText(song.tuning, 80),
-        youtubeUrl:
-          youtubeUrl ||
-          (youtubeVideoId
-            ? `https://www.youtube.com/watch?v=${youtubeVideoId}`
-            : ""),
-        youtubeVideoId,
-        chordsUrl: cleanUrl(song.chordsUrl),
-        lyricsUrl: cleanUrl(song.lyricsUrl),
-        rehearsalNotes: cleanText(song.rehearsalNotes, 2500),
-      });
+      };
     });
 
     const now = new Date().toISOString();
+    const writeVersion = crypto.randomUUID();
+    // Claim the exact reviewed version AND rows inside the replacement batch.
+    // The read above gives useful early feedback, but grants no write authority.
+    const rowGuard = `(SELECT COUNT(*) FROM songs WHERE show_id = ? AND set_slug = ?) = ?
+      AND NOT EXISTS (
+        SELECT 1 FROM songs WHERE show_id = ? AND set_slug = ?
+        AND NOT EXISTS (SELECT 1 FROM json_each(?) AS expected
+          WHERE songs.id = json_extract(expected.value, '$.id')
+          AND songs.updated_at = json_extract(expected.value, '$.updated_at'))
+      )`;
+    const rowGuardValues = [show.id, setSlug, existing.results.length, show.id, setSlug,
+      JSON.stringify(existing.results.map((row: StoredSongIdentity) => ({ id: row.id, updated_at: row.updated_at })))];
+    const wonGuard = "EXISTS (SELECT 1 FROM official_set_revisions WHERE show_id = ? AND set_slug = ? AND version = ?)";
+    const wonValues = [show.id, setSlug, writeVersion];
+    const claim = reviewedVersion === INITIAL_OFFICIAL_SET_VERSION
+      ? env.DB.prepare(`INSERT INTO official_set_revisions (show_id, set_slug, version)
+          SELECT ?, ?, ? WHERE NOT EXISTS (
+            SELECT 1 FROM official_set_revisions WHERE show_id = ? AND set_slug = ?
+          ) AND ${rowGuard} ON CONFLICT (show_id, set_slug) DO NOTHING`)
+          .bind(show.id, setSlug, writeVersion, show.id, setSlug, ...rowGuardValues)
+      : env.DB.prepare(`UPDATE official_set_revisions SET version = ?
+          WHERE show_id = ? AND set_slug = ? AND version = ? AND ${rowGuard}`)
+          .bind(writeVersion, show.id, setSlug, reviewedVersion, ...rowGuardValues);
     const statements = [
+      claim,
       env.DB.prepare(
-        "DELETE FROM songs WHERE show_id = ? AND set_slug = ?",
-      ).bind(show.id, setSlug),
+        `DELETE FROM songs WHERE show_id = ? AND set_slug = ? AND ${wonGuard}`,
+      ).bind(show.id, setSlug, ...wonValues),
     ];
     for (const song of normalized) {
       // Only an exact-show/set ID proved above may be reused. New rows omit id
@@ -167,7 +179,7 @@ export async function POST(request: Request) {
             duration_seconds, performance_note, song_key, tuning, youtube_url,
             youtube_video_id, chords_url, lyrics_url, rehearsal_notes,
             updated_by, created_at, updated_at
-          ) VALUES (${song.id === null ? "" : "?,"} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) SELECT ${song.id === null ? "" : "?,"} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ${wonGuard}`,
         ).bind(
           ...(song.id === null ? [] : [song.id]),
           show.id,
@@ -189,15 +201,33 @@ export async function POST(request: Request) {
           user.email,
           song.createdAt ?? now,
           now,
+          ...wonValues,
         ),
       );
     }
-    await env.DB.batch(statements);
+    // D1 returns this transaction's read snapshot, never a later writer's rows.
+    statements.push(
+      env.DB.prepare("SELECT version FROM official_set_revisions WHERE show_id = ? AND set_slug = ?").bind(show.id, setSlug),
+      env.DB.prepare(`SELECT ${OFFICIAL_SONG_COLUMNS} FROM songs WHERE show_id = ? AND set_slug = ? ORDER BY position, id`).bind(show.id, setSlug),
+    );
+    const result = await env.DB.batch(statements);
+    if (!Array.isArray(result) || result.length !== statements.length || result.some((part: { success?: boolean }) => part.success !== true)) {
+      throw new Error("The save could not be confirmed. Check the saved list before trying again.");
+    }
+    if (result[0].meta?.changes === 0) {
+      return Response.json({ error: "This set changed since you last loaded it. Check the saved list before writing this draft over it." }, { status: 409 });
+    }
+    if (result[0].meta?.changes !== 1) {
+      throw new Error("The save could not be confirmed. Check the saved list before trying again.");
+    }
     try {
-      const officialSongs = await getOfficialSongs(show.id);
-      const saved = officialSongs.filter((song) => song.setSlug === setSlug);
+      const versions = result[result.length - 2].results;
+      if (!Array.isArray(versions) || versions.length !== 1 || versions[0].version !== writeVersion) {
+        throw new Error("The written version could not be verified.");
+      }
+      const saved = readOfficialSongRows(result[result.length - 1].results, show.id, setSlug);
       const savedBase = officialSetRevision(saved);
-      if (!savedBase) {
+      if (!savedBase || saved.length !== normalized.length) {
         return Response.json(
           {
             error: "The set was written, but the official list could not be verified. Check the saved list before saving again.",
@@ -210,6 +240,7 @@ export async function POST(request: Request) {
         songs: saved,
         updatedAt: now,
         reviewedBase: savedBase,
+        reviewedVersion: writeVersion,
       });
     } catch {
       return Response.json(
@@ -232,32 +263,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
-
-function cleanText(value: unknown, maxLength: number): string {
-  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
-}
-
-function cleanUrl(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "";
-  try {
-    const url = new URL(value.trim());
-    return url.protocol === "https:" || url.protocol === "http:"
-      ? url.toString()
-      : "";
-  } catch {
-    return "";
-  }
-}
-
-function clampNumber(
-  value: unknown,
-  minimum: number,
-  maximum: number,
-  fallback: number,
-) {
-  const number = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(number)
-    ? Math.min(maximum, Math.max(minimum, Math.round(number)))
-    : fallback;
 }
