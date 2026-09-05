@@ -26,6 +26,7 @@ import {
   type ShowSetDefinition,
 } from "../lib/show-read-integrity";
 import { practicePositionKey } from "../lib/show-night-use";
+import { resolveRunPosition } from "../lib/run-position";
 import { visibleOfficialSets } from "../lib/show-public";
 import styles from "./show-page.module.css";
 
@@ -67,24 +68,51 @@ export function SharePageButton({
   );
 }
 
-export default function LiveSetLists({
-  initialSongs,
-  initialSets,
-  initialDataSource,
-  showSlug,
-  showId,
-  practiceMode = false,
-}: {
+type LiveSetListsProps = {
   initialSongs: ShowSong[];
   initialSets: ShowSetDefinition[];
   initialDataSource: ShowDataSource;
   showSlug: string;
   showId?: string;
   practiceMode?: boolean;
-}) {
+};
+
+// A client navigation to another night must retire the old read and position,
+// including when the router reuses this component without supplying a key.
+export default function LiveSetLists(props: LiveSetListsProps) {
+  return <ShowLiveSetLists key={JSON.stringify([props.showSlug, props.showId ?? null])} {...props} />;
+}
+
+const LIVE_READ_DEADLINE_MS = 10_000;
+
+async function readBeforeAbort<T>(signal: AbortSignal, read: () => Promise<T>): Promise<T> {
+  if (signal.aborted) throw new Error("Read interrupted");
+  let onAbort: (() => void) | undefined;
+  const interrupted = new Promise<never>((_resolve, reject) => {
+    onAbort = () => reject(new Error("Read interrupted"));
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    // Includes the response body. An ignored abort cannot leave the UI stuck
+    // or allow its eventual completion to replace a later verified list.
+    return await Promise.race([read(), interrupted]);
+  } finally {
+    if (onAbort) signal.removeEventListener("abort", onAbort);
+  }
+}
+
+function ShowLiveSetLists({
+  initialSongs,
+  initialSets,
+  initialDataSource,
+  showSlug,
+  showId,
+  practiceMode = false,
+}: LiveSetListsProps) {
   const [songs, setSongs] = useState(initialSongs);
   const [sets, setSets] = useState(initialSets);
   const [currentSongId, setCurrentSongId] = useState<string | null>(null);
+  const [requiresManualChoice, setRequiresManualChoice] = useState(false);
   const [wakeStatus, setWakeStatus] = useState<"off" | "on" | "unsupported">("off");
   const [isOnline, setIsOnline] = useState(true);
   const [offlineReady, setOfflineReady] = useState(false);
@@ -96,6 +124,10 @@ export default function LiveSetLists({
     useState<ShowDisplaySource>(initialDataSource);
   const [resourceNotice, setResourceNotice] = useState("");
   const [showInstallHint, setShowInstallHint] = useState(false);
+  const [storageUnavailable, setStorageUnavailable] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshSavedList = useRef<() => void>(() => undefined);
+  const verifiedReadReceived = useRef(initialDataSource === "database");
   const wakeLockRef = useRef<WakeLockHandle | null>(null);
   const [updatedAt, setUpdatedAt] = useState(
     initialSongs.reduce(
@@ -106,6 +138,7 @@ export default function LiveSetLists({
 
   useEffect(() => {
     let active = true;
+    let inFlight: { controller: AbortController; deadline: ReturnType<typeof setTimeout> } | null = null;
 
     function markLiveDataUnavailable() {
       if (!active) return;
@@ -116,45 +149,81 @@ export default function LiveSetLists({
     }
 
     async function refresh() {
+      if (!active || inFlight) return;
+      const controller = new AbortController();
+      const request = {
+        controller,
+        deadline: setTimeout(() => controller.abort(), LIVE_READ_DEADLINE_MS),
+      };
+      inFlight = request;
+      setRefreshing(true);
       try {
-        const response = await fetch(
-          `/api/show?show=${encodeURIComponent(showSlug)}`,
-          { cache: "no-store" },
-        );
-        if (!response.ok) {
+        const { data, servedOffline } = await readBeforeAbort(controller.signal, async () => {
+          const response = await fetch(
+            `/api/show?show=${encodeURIComponent(showSlug)}`,
+            { cache: "no-store", signal: controller.signal },
+          );
+          if (!response.ok) throw new Error("The saved set is unavailable");
+          const data = (await response.json()) as {
+            songs?: ShowSong[];
+            updatedAt?: string;
+            dataSource?: ShowDataSource;
+            show?: { slug?: string; id?: string };
+            sets?: unknown;
+          };
+          return { data, servedOffline: response.headers.get("x-rad-dad-offline") === "1" };
+        });
+        if (!active || inFlight !== request || controller.signal.aborted) return;
+
+        setIsOnline(navigator.onLine && !servedOffline);
+        const responseShowId = typeof data?.show?.id === "string" ? data.show.id : "";
+        const nextSets = parseShowSets(data?.sets);
+        const normalized = data && Array.isArray(data.songs)
+          && data.songs.every((song) => song && typeof song === "object"
+            && typeof song.isOriginal === "boolean" && typeof song.transition === "boolean")
+          && responseShowId
+          && (!showId || responseShowId === showId)
+          && canAcceptVerifiedShowPayload(data, showSlug)
+          ? parseStoredShowSnapshot(JSON.stringify(createStoredShowSnapshot(
+            showSlug, data.songs, data.updatedAt ?? "", new Date().toISOString(), responseShowId,
+          )), showSlug)
+          : null;
+        const setSlugs = new Set(nextSets?.map((set) => set.slug));
+        if (!normalized || !nextSets || setSlugs.size !== nextSets.length
+          || normalized.showId !== responseShowId
+          || normalized.songs.some((song) => song.showId !== responseShowId || !setSlugs.has(song.setSlug))) {
           markLiveDataUnavailable();
           return;
         }
-        const data = (await response.json()) as {
-          songs?: ShowSong[];
-          updatedAt?: string;
-          dataSource?: ShowDataSource;
-          show?: { slug?: string; id?: string };
-          sets?: unknown;
-        };
-        if (!active) return;
-
-        const servedOffline = response.headers.get("x-rad-dad-offline") === "1";
-        setIsOnline(navigator.onLine && !servedOffline);
-        if (data.songs && canAcceptVerifiedShowPayload(data, showSlug)) {
-          const nextSets = parseShowSets(data.sets);
-          setSongs(data.songs);
-          if (nextSets) setSets(nextSets);
-          setUpdatedAt(data.updatedAt ?? "");
-          setLiveDataAvailable(!servedOffline);
-          setDisplaySource(servedOffline ? "saved-snapshot" : "database");
-        } else {
+        if (servedOffline && verifiedReadReceived.current) {
+          // A cached response is useful at first open, but must never rewind
+          // a fresher live list already accepted in this page session.
           markLiveDataUnavailable();
+          return;
         }
+        if (!servedOffline) verifiedReadReceived.current = true;
+        setSongs(normalized.songs);
+        setSets(nextSets);
+        setUpdatedAt(normalized.updatedAt);
+        setLiveDataAvailable(!servedOffline);
+        setDisplaySource(servedOffline ? "saved-snapshot" : "database");
       } catch {
         // Keep the last verified set visible if a refresh is interrupted.
-        if (active) {
+        if (active && inFlight === request) {
           setIsOnline(navigator.onLine);
           markLiveDataUnavailable();
+        }
+      } finally {
+        clearTimeout(request.deadline);
+        if (inFlight === request) {
+          inFlight = null;
+          if (active) setRefreshing(false);
         }
       }
     }
 
+    const manualRefresh = () => { void refresh(); };
+    refreshSavedList.current = manualRefresh;
     const firstRefresh = window.setTimeout(() => void refresh(), 0);
     const interval = window.setInterval(refresh, 30000);
     const onVisibility = () => {
@@ -165,12 +234,18 @@ export default function LiveSetLists({
     window.addEventListener("online", onOnline);
     return () => {
       active = false;
+      if (inFlight) {
+        clearTimeout(inFlight.deadline);
+        inFlight.controller.abort();
+        inFlight = null;
+      }
+      if (refreshSavedList.current === manualRefresh) refreshSavedList.current = () => undefined;
       window.clearTimeout(firstRefresh);
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("online", onOnline);
     };
-  }, [showSlug]);
+  }, [showId, showSlug]);
 
   useEffect(() => {
     const positionKey = practicePositionKey(showSlug);
@@ -183,14 +258,20 @@ export default function LiveSetLists({
       setShowInstallHint(
         /iPhone|iPad|iPod/i.test(navigator.userAgent) && !standalone,
       );
-      setOfflineReady(
-        Boolean(localStorage.getItem(offlineReadyKey(showSlug))),
-      );
-      const savedPosition = localStorage.getItem(positionKey);
+      const readStorage = (key: string) => {
+        try {
+          return localStorage.getItem(key);
+        } catch {
+          setStorageUnavailable(true);
+          return null;
+        }
+      };
+      setOfflineReady(Boolean(readStorage(offlineReadyKey(showSlug))));
+      const savedPosition = readStorage(positionKey);
       if (savedPosition) setCurrentSongId(savedPosition);
 
       const snapshot = parseStoredShowSnapshot(
-        localStorage.getItem(showSnapshotKey(showSlug)),
+        readStorage(showSnapshotKey(showSlug)),
         showSlug,
       );
       const snapshotBelongs = Boolean(
@@ -202,6 +283,7 @@ export default function LiveSetLists({
       if (
         snapshotBelongs &&
         snapshot &&
+        !verifiedReadReceived.current &&
         (!online || initialDataSource === "confirmed-fallback")
       ) {
         setSongs(snapshot.songs);
@@ -245,20 +327,22 @@ export default function LiveSetLists({
     if (!clientReady || !liveDataAvailable || displaySource !== "database") return;
     if (showId && !songsBelongToShow(songs, { id: showId })) return;
     try {
-      localStorage.setItem(
-        showSnapshotKey(showSlug),
-        JSON.stringify(
-          createStoredShowSnapshot(
+      const publicSnapshot = parseStoredShowSnapshot(
+        JSON.stringify(createStoredShowSnapshot(
             showSlug,
             songs,
             updatedAt,
             new Date().toISOString(),
             showId,
-          ),
-        ),
+          )),
+        showSlug,
       );
+      if (!publicSnapshot) return;
+      localStorage.setItem(showSnapshotKey(showSlug), JSON.stringify(publicSnapshot));
     } catch {
       // Safari can evict storage under pressure; the service worker remains primary.
+      const reportStorageFailure = window.setTimeout(() => setStorageUnavailable(true), 0);
+      return () => window.clearTimeout(reportStorageFailure);
     }
   }, [clientReady, displaySource, liveDataAvailable, showId, showSlug, songs, updatedAt]);
 
@@ -280,14 +364,16 @@ export default function LiveSetLists({
       sets.flatMap((set) => grouped[set.slug] ?? []),
     [grouped, sets],
   );
-  const currentSongIndex = orderedSongs.findIndex(
-    (song) => String(song.id) === currentSongId,
-  );
-  const currentSong = currentSongIndex >= 0 ? orderedSongs[currentSongIndex] : null;
-  const nextSong =
-    currentSongIndex >= 0 && currentSongIndex < orderedSongs.length - 1
-      ? orderedSongs[currentSongIndex + 1]
-      : null;
+  const resolvedPosition = resolveRunPosition(orderedSongs, currentSongId);
+  // React retries this component before committing the render. Once a missing
+  // identity is observed, replaying an older list cannot silently resume it.
+  // Only a deliberate song tap below clears this page-local hold.
+  if (resolvedPosition.kind === "missing" && displaySource === "database" && !requiresManualChoice) setRequiresManualChoice(true);
+  const runPosition = requiresManualChoice && resolvedPosition.kind === "selected"
+    ? { ...resolvedPosition, kind: "missing" as const, currentIndex: -1, currentSong: null, previousSong: null, nextSong: null }
+    : resolvedPosition;
+  const { currentIndex: currentSongIndex, currentSong, nextSong } = runPosition;
+  const placeLost = runPosition.kind === "missing" || runPosition.kind === "ambiguous";
   const hasVerifiedList = orderedSongs.length > 0;
   const listedSets = visibleOfficialSets(sets, songs);
 
@@ -298,11 +384,14 @@ export default function LiveSetLists({
   }, []);
 
   function selectSong(songId: string, scroll = false) {
+    if (resolveRunPosition(orderedSongs, songId).kind !== "selected") return;
     setCurrentSongId(songId);
+    setRequiresManualChoice(false);
     try {
       localStorage.setItem(practicePositionKey(showSlug), songId);
     } catch {
       // Remembering position is a convenience, not required for rehearsal.
+      setStorageUnavailable(true);
     }
     if (scroll) {
       window.requestAnimationFrame(() => {
@@ -315,11 +404,9 @@ export default function LiveSetLists({
   }
 
   function moveCurrent(offset: number) {
-    if (!orderedSongs.length) return;
-    const nextIndex = Math.min(
-      orderedSongs.length - 1,
-      Math.max(0, (currentSongIndex >= 0 ? currentSongIndex : 0) + offset),
-    );
+    if (runPosition.kind !== "selected") return;
+    const nextIndex = currentSongIndex + offset;
+    if (nextIndex < 0 || nextIndex >= orderedSongs.length) return;
     selectSong(String(orderedSongs[nextIndex].id), true);
   }
 
@@ -360,7 +447,7 @@ export default function LiveSetLists({
 
   return (
     <div className={`${styles.livePanel} ${practiceMode ? styles.practiceLivePanel : ""}`}>
-      {practiceMode && hasVerifiedList ? (
+      {practiceMode && (hasVerifiedList || placeLost) ? (
         <div className={styles.practiceToolbar} aria-label="Practice controls">
           <div className={styles.practiceSetNav} aria-label="Jump to a set">
             {sets
@@ -371,17 +458,21 @@ export default function LiveSetLists({
               </a>
             ))}
           </div>
-          <div className={styles.nowPlaying} aria-live="polite">
+          <div className={styles.nowPlaying} aria-live="polite" data-testid="run-position-status" data-run-position={runPosition.kind}>
             <div className={styles.nowPlayingCopy}>
               <span>
                 {currentSong
                   ? `Song ${currentSongIndex + 1} of ${orderedSongs.length}`
-                  : "Choose your place"}
+                  : placeLost ? "Choose your place again" : "Choose your place"}
               </span>
               <strong>
                 {currentSong
                   ? `${String(currentSong.position).padStart(2, "0")} / ${currentSong.title}`
-                  : "Tap any song below"}
+                  : runPosition.kind === "missing"
+                    ? "Your place is no longer in this saved set"
+                    : runPosition.kind === "ambiguous"
+                      ? "Song identities need verification"
+                      : "Tap any song below"}
               </strong>
               {nextSong ? (
                 <small className={styles.practiceNextLine}>
@@ -393,7 +484,7 @@ export default function LiveSetLists({
               <button
                 type="button"
                 onClick={() => moveCurrent(-1)}
-                disabled={currentSongIndex <= 0}
+                disabled={runPosition.kind !== "selected" || !runPosition.previousSong}
                 aria-label="Previous song"
               >
                 Previous
@@ -401,7 +492,7 @@ export default function LiveSetLists({
               <button
                 type="button"
                 onClick={() => moveCurrent(1)}
-                disabled={currentSongIndex < 0 || currentSongIndex >= orderedSongs.length - 1}
+                disabled={runPosition.kind !== "selected" || !nextSong}
                 aria-label="Next song"
               >
                 Next
@@ -419,6 +510,17 @@ export default function LiveSetLists({
               </button>
             </div>
           </div>
+          {placeLost ? <div className={styles.runRecovery} role="status">
+            <p>{runPosition.kind === "ambiguous"
+              ? "This saved list has conflicting song identities. Refresh before choosing your place."
+              : !hasVerifiedList
+                ? "This saved list is empty. Refresh after the owner adds a song, then choose your place. We won’t advance for you."
+              : "The selected song was removed or replaced. Choose a song below to continue; we won’t advance for you."}</p>
+            <button type="button" onClick={() => refreshSavedList.current()} disabled={refreshing}>Refresh saved list</button>
+          </div> : null}
+          <p className={styles.runLocalNote}>{storageUnavailable
+            ? "Device storage is unavailable. Your place works in this open page but may not return after reload."
+            : "Your place on this device — not a shared stage cue."}</p>
         </div>
       ) : null}
 
@@ -457,6 +559,8 @@ export default function LiveSetLists({
               ? displaySource === "confirmed-fallback"
                 ? "This reviewed baseline belongs to this event, but it is not a live database response."
                 : "The last verified official set stays visible and will not be replaced by fallback data."
+            : storageUnavailable
+              ? "The set and your place work in this open page. Device storage could not be verified; don’t rely on them after reload."
             : showInstallHint
               ? "For best iPhone reliability: tap Share, then Add to Home Screen."
               : "Open this page once before practice and it can reload without service."}
@@ -517,7 +621,7 @@ export default function LiveSetLists({
               </p>
             ) : (
             <ol className={styles.songList}>
-              {setSongs.map((song) => {
+              {setSongs.map((song, songIndex) => {
                 const resources = publicSongResourceActions(song);
                 const chordsUrl =
                   practiceMode && song.chordsUrl && !isSearchResourceUrl(song.chordsUrl)
@@ -527,9 +631,9 @@ export default function LiveSetLists({
                   <li
                     className={`${styles.songRow} ${
                       song.transition ? styles.flowSong : ""
-                    } ${currentSongId === String(song.id) ? styles.currentSong : ""}`}
-                    id={practiceMode ? `practice-song-${song.id}` : undefined}
-                    key={song.id}
+                    } ${runPosition.kind === "selected" && currentSongId === String(song.id) ? styles.currentSong : ""}`}
+                    id={practiceMode && runPosition.kind !== "ambiguous" ? `practice-song-${song.id}` : undefined}
+                    key={runPosition.kind === "ambiguous" ? `${set.slug}:${songIndex}` : song.id}
                   >
                     <span className={styles.songNumber}>
                       {String(song.position).padStart(2, "0")}
@@ -538,13 +642,14 @@ export default function LiveSetLists({
                       className={`${styles.songMain} ${styles.songPick}`}
                       type="button"
                       onClick={() => practiceMode && selectSong(String(song.id))}
-                      aria-pressed={practiceMode ? currentSongId === String(song.id) : undefined}
+                      disabled={practiceMode && runPosition.kind === "ambiguous"}
+                      aria-pressed={practiceMode ? runPosition.kind === "selected" && currentSongId === String(song.id) : undefined}
                       aria-label={practiceMode ? `Mark ${song.title} as current song` : undefined}
                       tabIndex={practiceMode ? 0 : -1}
                     >
                       <div className={styles.songTitleLine}>
                         <strong className={styles.songTitle}>{song.title}</strong>
-                        {practiceMode && currentSongId === String(song.id) ? (
+                        {practiceMode && runPosition.kind === "selected" && currentSongId === String(song.id) ? (
                           <span className={styles.currentFlag}>Current</span>
                         ) : null}
                         {song.transition ? (

@@ -1,6 +1,7 @@
 import { test as base, expect } from "@playwright/test";
+import { OFFLINE_ORIGIN, OFFLINE_WEBSOCKET_ORIGIN } from "./fixture-origin";
 
-export const OFFLINE_ORIGIN = "http://127.0.0.1:4317";
+export { OFFLINE_ORIGIN };
 
 // Every browser spec must import this test instead of the unguarded base test.
 // page.route handlers run before these context routes, so specs can fulfill or
@@ -29,7 +30,7 @@ export const test = base.extend<{ offlineNetwork: void }>({
         // Vite's local client opens its own socket even with file HMR disabled.
         // Permit only that exact loopback endpoint, never a provider socket.
         const url = new URL(socket.url());
-        if (url.origin === "ws://127.0.0.1:4317" && url.pathname === "/") {
+        if (url.origin === OFFLINE_WEBSOCKET_ORIGIN && url.pathname === "/") {
           socket.connectToServer();
           return;
         }

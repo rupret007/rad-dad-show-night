@@ -148,6 +148,14 @@ On desktop, drag a song using the `||` handle. On desktop or mobile, use
 Position numbers are recalculated automatically. Press **Save** after the order
 is correct.
 
+Saving an existing song now keeps its identity, including when you change its
+position, key, or cue. A performer using band run mode stays on that song after
+the public refresh, and Next follows the updated order. New additions get new
+identities. If you remove the selected song, the performer must choose a new
+place; the site never advances for them. Each person's marker is local to their
+device, not a shared live-stage command. This does not protect two owner tabs
+from overwriting each other's set; see the [handoff limits](RUN_POSITION_HANDOFF.md).
+
 ## Preserve a transition
 
 Enable **Flows to next** when one song should continue directly into the next.

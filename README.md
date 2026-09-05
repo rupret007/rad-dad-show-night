@@ -44,6 +44,9 @@ commit. A save updates the public page only when that show is already published.
 - Stores the official set lists in a shared production database.
 - Lets the owner reorder songs by dragging or using Move Up and Move Down.
 - Preserves intentional song-flow arrows and performer cues.
+- Keeps a performer's current song through official key/cue corrections and
+  reorders by preserving that song's identity. If it is removed, run mode asks
+  for a new place instead of advancing automatically.
 - Stores keys, tunings, endings, and private rehearsal notes per song.
 - Shows YouTube and lyrics for covers only when the official set has a saved
   direct URL; originals hide both.
@@ -84,6 +87,7 @@ covers table is not the set.
 - [Canonical show plan and set lists](docs/SHOW_PLAN.md)
 - [Technical, data, security, and deployment guide](docs/TECHNICAL_GUIDE.md)
 - [Suggestion recovery product handoff](docs/SUGGESTION_RECOVERY_HANDOFF.md)
+- [Band-run position product handoff](docs/RUN_POSITION_HANDOFF.md)
 
 ## Quick owner workflow
 
