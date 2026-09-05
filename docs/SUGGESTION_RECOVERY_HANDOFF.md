@@ -84,7 +84,7 @@ Before a later approved live check, account for the existing Sheet schema and
 possible response lag instead of submitting repeat test ideas.
 
 `lib/show-data.ts` remains blob `7ff0a69708ccfac79aa9b35878670f31bbb83b64`.
-Travis still books; never auto-post or auto-pitch. Official-set data, media,
+Travis still books; automated outreach and public posting stay prohibited. Official-set data, media,
 owner-write gates, empty-clone behavior, and #19's first-open next action are
 unchanged. No merge, tag, release, deploy, spend, live submission, or credential
 change belongs to this handoff.
