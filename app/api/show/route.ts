@@ -18,13 +18,17 @@ import {
   resolveOfficialSetSongIds,
 } from "../../../lib/official-set-identity";
 import {
+  officialSetRevision,
+  readReviewedBase,
+} from "../../../lib/owner-set-save";
+import {
   getYouTubeVideoId,
   hydrateOfficialSongMedia,
 } from "../../../lib/song-resources";
 
 export const dynamic = "force-dynamic";
 
-type StoredSongIdentity = { id: number; created_at: string };
+type StoredSongIdentity = { id: number; created_at: string; updated_at: string };
 
 export async function GET(request: Request) {
   const slug = new URL(request.url).searchParams.get("show");
@@ -65,7 +69,15 @@ export async function POST(request: Request) {
       showSlug?: string;
       setSlug?: string;
       songs?: Partial<ShowSong>[];
+      reviewedBase?: unknown;
     };
+    const reviewedBase = readReviewedBase(payload.reviewedBase);
+    if (!reviewedBase) {
+      return Response.json(
+        { error: "Reload the official set before saving." },
+        { status: 400 },
+      );
+    }
     if (!payload.showSlug?.trim()) {
       return Response.json({ error: "Choose a show." }, { status: 400 });
     }
@@ -83,13 +95,25 @@ export async function POST(request: Request) {
     await ensureShowSeeded();
     const show = await getShowRecord(payload.showSlug, "owner");
     const existing = await env.DB.prepare(
-      "SELECT id, created_at FROM songs WHERE show_id = ? AND set_slug = ?",
+      "SELECT id, created_at, updated_at FROM songs WHERE show_id = ? AND set_slug = ?",
     ).bind(show.id, setSlug).all<StoredSongIdentity>();
     if (
       existing.success === false || !Array.isArray(existing.results) ||
-      existing.results.some((row: StoredSongIdentity) => !Number.isSafeInteger(row.id) || row.id <= 0 || typeof row.created_at !== "string" || !row.created_at)
+      existing.results.some((row: StoredSongIdentity) => !Number.isSafeInteger(row.id) || row.id <= 0 || typeof row.created_at !== "string" || !row.created_at || typeof row.updated_at !== "string" || !row.updated_at)
     ) {
       throw new Error("The official song identities could not be verified.");
+    }
+    const currentBase = officialSetRevision(existing.results);
+    if (!currentBase) {
+      throw new Error("The official set receipt could not be verified.");
+    }
+    if (currentBase !== reviewedBase) {
+      return Response.json(
+        {
+          error: "This set changed since you last loaded it. Check the saved list before writing this draft over it.",
+        },
+        { status: 409 },
+      );
     }
     const retainedIds = resolveOfficialSetSongIds(
       payload.songs, existing.results.map((row: StoredSongIdentity) => row.id), show.id, setSlug,
@@ -169,11 +193,33 @@ export async function POST(request: Request) {
       );
     }
     await env.DB.batch(statements);
-    const officialSongs = await getOfficialSongs(show.id);
-    return Response.json({
-      songs: officialSongs.filter((song) => song.setSlug === setSlug),
-      updatedAt: now,
-    });
+    try {
+      const officialSongs = await getOfficialSongs(show.id);
+      const saved = officialSongs.filter((song) => song.setSlug === setSlug);
+      const savedBase = officialSetRevision(saved);
+      if (!savedBase) {
+        return Response.json(
+          {
+            error: "The set was written, but the official list could not be verified. Check the saved list before saving again.",
+            written: true,
+          },
+          { status: 202 },
+        );
+      }
+      return Response.json({
+        songs: saved,
+        updatedAt: now,
+        reviewedBase: savedBase,
+      });
+    } catch {
+      return Response.json(
+        {
+          error: "The set was written, but the official list could not be verified. Check the saved list before saving again.",
+          written: true,
+        },
+        { status: 202 },
+      );
+    }
   } catch (error) {
     if (error instanceof OfficialSetIdentityError) {
       return Response.json({ error: error.message }, { status: 400 });

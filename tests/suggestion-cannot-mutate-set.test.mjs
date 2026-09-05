@@ -240,7 +240,8 @@ test("Show Control adds a suggestion only to a local draft until the owner saves
   assert.match(addSuggestion, /addSong/);
   assert.match(saveSet, /\/api\/show/);
   assert.match(saveSet, /method:\s*["']POST["']/);
-  assert.match(saveSet, /songs:\s*songsBySet\[setSlug\]/);
+  assert.match(saveSet, /songs:\s*sentSongs/);
+  assert.match(saveSet, /reviewedBase/);
   assert.match(saveActiveSet, /saveSet\(activeSet\)/);
 });
 

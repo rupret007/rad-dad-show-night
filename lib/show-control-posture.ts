@@ -9,7 +9,7 @@ export type ShowControlSetPosture = {
 };
 
 export type ShowControlNextAction = {
-  kind: "save-set" | "add-song" | "publish-show" | "run-show" | "none";
+  kind: "check-saved-set" | "save-set" | "add-song" | "publish-show" | "run-show" | "none";
   title: string;
   detail: string;
   label: string;
@@ -17,7 +17,7 @@ export type ShowControlNextAction = {
 };
 
 export type ShowControlLeftoverAction = {
-  kind: "save-set" | "add-song" | "see-share-link";
+  kind: "check-saved-set" | "save-set" | "add-song" | "see-share-link";
   title: string;
   detail: string;
   label: string;
@@ -66,6 +66,16 @@ function publicLinkPosture(
     label: "Public share link",
     value: "Closed · private draft",
     detail: "Saving sets does not open the link. Publish is a separate owner action.",
+  };
+}
+
+function leftoverCheckAction(set: ShowControlSetPosture): ShowControlLeftoverAction {
+  return {
+    kind: "check-saved-set",
+    title: `Check leftover saved ${set.title}.`,
+    detail: `The leftover ${set.title} save did not come back with a verified official list. Check that list before saving again.`,
+    label: `Check leftover saved ${set.title}`,
+    setSlug: set.slug,
   };
 }
 
@@ -133,22 +143,31 @@ export function buildLeftoverOwnerActions({
   status,
   sets,
   dirtySetSlugs,
+  heldSetSlugs,
   nextAction,
   totalSongs,
 }: {
   status: ShowLifecycleStatus;
   sets: ShowControlSetPosture[];
   dirtySetSlugs: Iterable<SetSlug>;
+  heldSetSlugs?: Iterable<SetSlug>;
   nextAction: ShowControlNextAction;
   totalSongs: number;
 }): ShowControlLeftoverAction[] {
   if (nextAction.kind === "none") return [];
 
   const dirty = new Set(dirtySetSlugs);
+  const held = new Set(heldSetSlugs ?? []);
   const leftovers: ShowControlLeftoverAction[] = [];
 
   for (const set of sets) {
-    if (!dirty.has(set.slug)) continue;
+    if (!held.has(set.slug)) continue;
+    if (nextAction.kind === "check-saved-set" && nextAction.setSlug === set.slug) continue;
+    leftovers.push(leftoverCheckAction(set));
+  }
+
+  for (const set of sets) {
+    if (!dirty.has(set.slug) || held.has(set.slug)) continue;
     if (nextAction.kind === "save-set" && nextAction.setSlug === set.slug) continue;
     leftovers.push(leftoverSaveAction(set, status));
   }
@@ -171,13 +190,17 @@ export function buildShowControlPosture({
   status,
   sets,
   dirtySetSlugs,
+  heldSetSlugs = [],
 }: {
   status: ShowLifecycleStatus;
   sets: ShowControlSetPosture[];
   dirtySetSlugs: SetSlug[];
+  heldSetSlugs?: SetSlug[];
 }): ShowControlPosture {
   const dirty = new Set(dirtySetSlugs);
-  const firstDirtySet = sets.find((set) => dirty.has(set.slug));
+  const held = new Set(heldSetSlugs);
+  const firstHeldSet = sets.find((set) => held.has(set.slug));
+  const firstDirtySet = sets.find((set) => dirty.has(set.slug) && !held.has(set.slug));
   const totalSongs = sets.reduce(
     (total, set) => total + safeSongCount(set.songCount),
     0,
@@ -186,7 +209,15 @@ export function buildShowControlPosture({
   const scheduledSets = sets.filter((set) => set.time.trim()).length;
 
   let nextAction: ShowControlNextAction;
-  if (firstDirtySet) {
+  if (firstHeldSet) {
+    nextAction = {
+      kind: "check-saved-set",
+      title: `Check saved ${firstHeldSet.title}.`,
+      detail: `The last ${firstHeldSet.title} save did not come back with a verified official list. Check that list before saving again.`,
+      label: `Check saved ${firstHeldSet.title}`,
+      setSlug: firstHeldSet.slug,
+    };
+  } else if (firstDirtySet) {
     nextAction = {
       kind: "save-set",
       title: `Finish ${firstDirtySet.title} first.`,
@@ -246,6 +277,7 @@ export function buildShowControlPosture({
       status,
       sets,
       dirtySetSlugs: dirty,
+      heldSetSlugs: held,
       nextAction,
       totalSongs,
     }),

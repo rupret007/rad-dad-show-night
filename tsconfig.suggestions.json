@@ -7,6 +7,9 @@
   "include": [
     "lib/run-position.ts",
     "lib/official-set-identity.ts",
+    "lib/owner-set-save.ts",
+    "lib/show-control-posture.ts",
+    "lib/show-lifecycle.ts",
     "app/live-set-lists.tsx",
     "lib/public-suggestion.ts",
     "lib/suggestion-board.ts",

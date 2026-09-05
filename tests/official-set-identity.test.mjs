@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import * as identity from "../lib/official-set-identity.ts";
+import { officialSetRevision } from "../lib/owner-set-save.ts";
 import { loadOfficialSetRoute } from "./fixtures/official-set-route.mjs";
 const SHOW = { id: "fixture-show", slug: "fixture-night", status: "draft" };
 const SET = "rad-dad";
@@ -55,12 +56,12 @@ function routeFixture(options = {}) {
             sql: normalizedSql,
             bindings,
             async all() {
-              assert.equal(normalizedSql, "SELECT id, created_at FROM songs WHERE show_id = ? AND set_slug = ?");
+              assert.equal(normalizedSql, "SELECT id, created_at, updated_at FROM songs WHERE show_id = ? AND set_slug = ?");
               assert.equal(bindings.length, 2);
               calls.reads.push(clone(bindings));
               if (options.readFailure) throw new Error("Fixture identity read unavailable");
               if (options.readResult) return clone(options.readResult);
-              return { success: true, results: rows.filter((row) => row.show_id === bindings[0] && row.set_slug === bindings[1]).map(({ id, created_at }) => ({ id, created_at })) };
+              return { success: true, results: rows.filter((row) => row.show_id === bindings[0] && row.set_slug === bindings[1]).map(({ id, created_at, updated_at }) => ({ id, created_at, updated_at })) };
             }
           };
         }
@@ -112,6 +113,7 @@ function routeFixture(options = {}) {
         getOfficialSongs: async (showId) => {
           calls.savedReads += 1;
           assert.equal(showId, SHOW.id);
+          if (options.savedReadFailure) throw new Error("Fixture official readback unavailable");
           return rows.filter((row) => row.show_id === showId).sort((a, b) => a.position - b.position).map(songPayload);
         },
     },
@@ -119,10 +121,17 @@ function routeFixture(options = {}) {
   return { POST: route.POST, calls, get rows() { return clone(rows); } };
 }
 
+const DEFAULT_BASE = officialSetRevision([
+  { id: 11, updatedAt: "2026-09-05T00:00:00.000Z" },
+  { id: 22, updatedAt: "2026-09-05T00:00:00.000Z" },
+]);
+
 function request(songs, extra = {}) {
   return new Request("https://fixture.invalid/api/show", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ showSlug: SHOW.slug, setSlug: SET, songs, ...extra }),
+    body: JSON.stringify({
+      showSlug: SHOW.slug, setSlug: SET, songs, reviewedBase: DEFAULT_BASE, ...extra,
+    }),
   });
 }
 
@@ -183,7 +192,8 @@ test("new UI drafts and legacy omitted IDs get database identities without inher
   assert.equal(inserts[0].sql.includes("( id,"), false);
   assert.equal(inserts[1].sql.includes("( id,"), true);
   assert.equal(inserts[2].sql.includes("( id,"), false);
-  const saved = await h.POST(request(result.songs));
+  assert.equal(typeof result.reviewedBase, "string");
+  const saved = await h.POST(request(result.songs, { reviewedBase: result.reviewedBase }));
   assert.equal(saved.status, 200);
   assert.deepEqual((await saved.json()).songs.map((song) => song.id), [91, 22, 92]);
 });
@@ -246,7 +256,7 @@ test("unknown shows and invalid set/size remain rejected before any destructive 
 });
 
 test("unavailable or malformed identity reads never become permission to recreate songs", async () => {
-  for (const options of [{ readFailure: true }, { readResult: { success: false, results: [] } }, { readResult: { success: true } }, { readResult: { success: true, results: [{ id: "11", created_at: "2026-09-05" }] } }, { readResult: { success: true, results: [{ id: 11, created_at: null }] } }]) {
+  for (const options of [{ readFailure: true }, { readResult: { success: false, results: [] } }, { readResult: { success: true } }, { readResult: { success: true, results: [{ id: "11", created_at: "2026-09-05", updated_at: "2026-09-05" }] } }, { readResult: { success: true, results: [{ id: 11, created_at: null, updated_at: "2026-09-05T00:00:00.000Z" }] } }, { readResult: { success: true, results: [{ id: 11, created_at: "2026-09-05T00:00:00.000Z", updated_at: null }] } }]) {
     const h = routeFixture(options);
     const before = h.rows;
     assert.equal((await h.POST(request([{ id: 11, title: "Known song" }]))).status, 500);
@@ -296,4 +306,40 @@ test("normalization, original flags, and owner attribution are preserved alongsi
   assert.equal(song.chordsUrl, "");
   assert.equal(song.rehearsalNotes, "Private fixture note");
   assert.equal(h.rows.find((row) => row.id === 11).updated_by, "owner-fixture@test.invalid");
+});
+
+test("a missing or stale reviewed-base receipt refuses the write before replacement", async () => {
+  const missing = routeFixture();
+  const before = missing.rows;
+  assert.equal((await missing.POST(request([{ id: 11, title: "Known song" }], { reviewedBase: null }))).status, 400);
+  assert.deepEqual(missing.calls.batches, []);
+  assert.deepEqual(missing.rows, before);
+
+  const stale = routeFixture();
+  const conflict = await stale.POST(request([{ id: 11, title: "Known song" }], {
+    reviewedBase: officialSetRevision([{ id: 11, updatedAt: "1999-01-01T00:00:00.000Z" }]),
+  }));
+  assert.equal(conflict.status, 409);
+  assert.match((await conflict.json()).error, /changed since you last loaded/i);
+  assert.deepEqual(stale.calls.batches, []);
+  assert.deepEqual(stale.rows, before);
+  assert.equal(stale.calls.savedReads, 0);
+});
+
+test("a committed write with failed official readback is written and unverified", async () => {
+  const h = routeFixture({ savedReadFailure: true });
+  const before = h.rows.filter((row) => row.id === 33 || row.id === 44);
+  const response = await h.POST(request([
+    { id: 22, title: "Retained after write" },
+    { title: "New fixture song" },
+  ]));
+  assert.equal(response.status, 202);
+  const body = await response.json();
+  assert.equal(body.written, true);
+  assert.match(body.error, /could not be verified/i);
+  assert.equal(body.songs, undefined);
+  assert.equal(h.calls.batches.length, 1);
+  assert.equal(h.calls.savedReads, 1);
+  assert.equal(h.rows.some((row) => row.title === "Retained after write"), true);
+  assert.deepEqual(h.rows.filter((row) => row.id === 33 || row.id === 44), before);
 });

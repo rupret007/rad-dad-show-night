@@ -137,6 +137,33 @@ export function showOwnerSavingNotice(
   return `Saving ${title} on this private show...`;
 }
 
+export function showOwnerSaveHoldNotice(
+  kind: "uncertain" | "conflict",
+  setTitle: string,
+): string {
+  const title = setTitle.trim() || "this set";
+  if (kind === "conflict") {
+    return `${title} changed since you last loaded it. Check the saved list before writing this browser draft over it.`;
+  }
+  return `The last ${title} save did not come back with a verified official list. Check that saved list before saving again. The earlier write may have landed.`;
+}
+
+export function showOwnerSavedWithLaterEditsNotice(
+  setTitle: string,
+  status: ShowLifecycleStatus,
+): string {
+  const title = setTitle.trim() || "this set";
+  if (status === "published") {
+    return `${title} saved the list you sent. Later edits on this set are still unsaved and not on the public share link yet.`;
+  }
+  return `${title} saved the list you sent. Later edits on this set are still unsaved on this private show.`;
+}
+
+export function showOwnerCheckedKeptDraftNotice(setTitle: string): string {
+  const title = setTitle.trim() || "this set";
+  return `The saved ${title} list is loaded. Your unsaved draft is still here. Saving now writes this draft.`;
+}
+
 export function showOwnerSavedNotice(
   setTitle: string,
   status: ShowLifecycleStatus,

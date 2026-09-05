@@ -197,6 +197,9 @@
 .saveActions button { min-height: 43px; padding: 0 16px; border: 1px solid rgba(255, 255, 255, 0.18); color: white; background: transparent; cursor: pointer; font: inherit; font-size: 0.74rem; font-weight: 900; letter-spacing: 0.07em; text-transform: uppercase; }
 .saveActions .saveButton { min-width: 190px; border: 0; color: var(--black); background: var(--lime); box-shadow: 4px 4px 0 var(--blue); }
 .saveActions .saveButton:disabled { cursor: default; opacity: 0.35; box-shadow: none; }
+.saveActions .checkSavedButton { min-height: 48px; border-color: var(--blue); color: var(--black); background: var(--blue); }
+.saveActions .checkSavedButton:hover { background: var(--lime); border-color: var(--lime); }
+.saveActions .checkSavedButton:disabled { cursor: wait; opacity: 0.45; }
 .previewBackdrop { position: fixed; inset: 0; z-index: 100; padding: 24px; display: grid; place-items: center; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px); }
 .previewModal { width: min(920px, 100%); border: 1px solid rgba(255, 255, 255, 0.25); background: #08080a; box-shadow: 12px 12px 0 var(--blue); }
 .previewTop { padding: 17px 19px; display: flex; align-items: center; justify-content: space-between; }

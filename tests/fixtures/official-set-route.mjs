@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import ts from "typescript";
 import * as identity from "../../lib/official-set-identity.ts";
+import * as ownerSetSave from "../../lib/owner-set-save.ts";
 import * as showData from "../../lib/show-data.ts";
 import * as resources from "../../lib/song-resources.ts";
 
@@ -24,6 +25,7 @@ export function loadOfficialSetRoute({ db, getAdminUser, store }) {
       if (id === "../../../lib/show-data") return showData;
       if (id === "../../../lib/song-resources") return resources;
       if (id === "../../../lib/official-set-identity") return identity;
+      if (id === "../../../lib/owner-set-save") return ownerSetSave;
       if (id === "../../../lib/show-read-integrity") return { isShowDataUnavailableError: () => false };
       if (id === "../../../lib/show-visibility") return { isShowNotFoundError: (error) => error?.name === "ShowNotFoundError" };
       if (id === "../../../lib/show-store") return store;

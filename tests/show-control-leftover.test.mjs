@@ -102,7 +102,7 @@ test("leftover unsaved sets stay private until saved and do not invent a write p
   assert.match(posture.leftoverActions[1].detail, /last saved list/);
   assert.equal(
     posture.leftoverActions.every((action) =>
-      ["save-set", "add-song", "see-share-link"].includes(action.kind),
+      ["check-saved-set", "save-set", "add-song", "see-share-link"].includes(action.kind),
     ),
     true,
   );
@@ -170,6 +170,24 @@ test("a leftover dirty empty set is a leftover save, not a borrowed add", () => 
   ]);
 });
 
+test("a leftover uncertain save is a leftover check, not another unreviewed save", () => {
+  const posture = buildShowControlPosture({
+    status: "published",
+    sets,
+    dirtySetSlugs: ["rad-dad", "stalemate"],
+    heldSetSlugs: ["stalemate"],
+  });
+
+  assert.equal(posture.nextAction.kind, "check-saved-set");
+  assert.equal(posture.nextAction.setSlug, "stalemate");
+  assert.match(posture.nextAction.detail, /before saving again/);
+  assert.deepEqual(leftoverKinds(posture), [
+    ["save-set", "rad-dad"],
+    ["see-share-link", "See last saved public list"],
+  ]);
+  assert.ok(!posture.leftoverActions.some((action) => action.kind === "save-set" && action.setSlug === "stalemate"));
+});
+
 test("unverified leftover work fails closed with no leftover actions", () => {
   const leftover = buildLeftoverOwnerActions({
     status: "draft",
@@ -207,7 +225,9 @@ test("Show Control makes leftover work clickable on phones and keeps leftover co
   assert.match(control, /data-leftover-kind=\{action\.kind\}/);
   assert.match(control, /function runControlAction/);
   assert.match(control, /Saving leftover\.\.\./);
+  assert.match(control, /Checking leftover\.\.\./);
   assert.match(control, /data-leftover=\{/);
+  assert.match(control, /check-saved-set/);
   assert.match(control, /songs or times will not be borrowed/);
   assert.match(control, /action\.kind === "see-share-link"/);
   assert.doesNotMatch(control, /action:\s*"pitch"|action:\s*"post"|action:\s*"send"/);
@@ -219,10 +239,12 @@ test("Show Control makes leftover work clickable on phones and keeps leftover co
   assert.doesNotMatch(page, /Leftover on this show/);
   assert.doesNotMatch(page, /Save leftover/);
   assert.doesNotMatch(page, /Start leftover/);
+  assert.doesNotMatch(page, /Check leftover saved/);
   assert.doesNotMatch(notFound, /Leftover on this show/);
   assert.doesNotMatch(notFound, /Save leftover/);
   assert.match(leftoverHosted, /owner leftover work/);
   assert.match(leftoverHosted, /Save leftover/);
+  assert.match(leftoverHosted, /Check leftover saved|Check saved/);
 
   assert.match(showData, /Heart-Shaped Box/);
   assert.match(showData, /First Date/);
