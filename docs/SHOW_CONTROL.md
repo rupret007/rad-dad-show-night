@@ -196,6 +196,10 @@ kept in the official song record for the band editor.
 ## Work with public suggestions
 
 The right-side **Suggestion inbox** contains songs submitted on the public page.
+It is independent of the official show load. If the public feed is unavailable,
+the owner can still work with the verified show. The inbox keeps any last
+checked ideas, labels the interruption, and blocks copying stale rows until
+**Refresh suggestions** succeeds. A failed read never means "No suggestions yet."
 
 1. Choose the destination set.
 2. Select **Add to [set name]** on the suggestion.
@@ -240,8 +244,12 @@ pages when available, and save.
 ### A suggestion is missing
 
 The suggestion board depends on its connected public Google Form and response
-Sheet. Use the backup Google Form linked on the public page if inline submission
-is temporarily unavailable.
+Sheet. A form response is not proof that the Sheet has published the idea yet.
+Use **Refresh board** on the public page or **Refresh suggestions** in the inbox.
+If a submission may already have arrived, do not immediately submit it again or
+use the backup form: a second write can create a duplicate. The public page
+keeps the draft and offers an explicit, warned retry after checking the board.
+Its draft is held only in that open page, not saved across a reload.
 
 ### The public order has not changed
 

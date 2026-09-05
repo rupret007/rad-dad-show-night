@@ -62,6 +62,8 @@ commit. A save updates the public page only when that show is already published.
   the owner editor to the footer, so public visitors get the two useful public
   actions without another menu.
 - Collects public song ideas without allowing suggestions to alter the set.
+- Lets guests find existing ideas before sending, preserves uncertain drafts,
+  and distinguishes a form response from an idea confirmed on the board.
 - Assumes suggestions are covers unless the submitter marks one original.
 - Protects all official-set changes behind owner authentication.
 - Keeps the established black, electric-blue, lime, and hot-pink Rad Dad brand.
@@ -81,6 +83,7 @@ covers table is not the set.
 - [Show Control owner guide](docs/SHOW_CONTROL.md)
 - [Canonical show plan and set lists](docs/SHOW_PLAN.md)
 - [Technical, data, security, and deployment guide](docs/TECHNICAL_GUIDE.md)
+- [Suggestion recovery product handoff](docs/SUGGESTION_RECOVERY_HANDOFF.md)
 
 ## Quick owner workflow
 
@@ -102,6 +105,23 @@ set has unsaved changes, and states whether an allowed lifecycle action opens
 or closes the public share link before it runs.
 The inline board has one application write path, `/api/suggestions`; its backup
 link opens the connected Google Form directly rather than a second API route.
+
+### Suggest a song without losing your place
+
+Use **Find a song or artist** before adding an idea. This is one shared community
+board for future shows, not a change request for the currently viewed set.
+**Refresh board** checks the response Sheet; a failed check says unavailable
+and keeps the last checked ideas instead of claiming the board is empty.
+
+Sending once retains your draft while the app waits for board confirmation.
+Only a later verified read matching the complete submission confirms arrival.
+If delivery is uncertain, refresh first: the earlier request may still arrive.
+Nothing automatically resends. A further attempt requires an explicit duplicate
+warning acknowledgement, and the backup form is not offered during uncertain
+delivery. Google Forms/Sheets cannot provide a transactional, exactly-once
+guarantee here; a successful duplicate check cannot prevent simultaneous
+submissions from different visitors. Draft recovery lasts in the current page,
+not across a page close or reload.
 
 ## Phone tester path
 
@@ -189,6 +209,23 @@ Build the production application with:
 ```bash
 npm run build
 ```
+
+Verify the source without live provider or owner writes:
+
+```bash
+npm test
+npm run lint
+npm run typecheck:suggestions
+npx playwright install chromium
+npm run test:browser
+npm run leftover:hosted
+```
+
+Browser tests render the actual suggestion and owner components with intercepted
+fixtures. They block unmocked APIs and external services; they do not verify live
+sign-in, Google Forms/Sheets, or Sites deployment. The focused typecheck covers
+the changed suggestion surfaces; the full standalone check still has existing
+Worker declarations and show-store errors described in the handoff.
 
 ## Hosting
 

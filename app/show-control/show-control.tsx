@@ -35,6 +35,7 @@ import {
   type ShowControlNextAction,
 } from "../../lib/show-control-posture";
 import type { Suggestion } from "../song-board";
+import { parseSuggestionFeedPayload } from "../../lib/suggestion-board";
 import styles from "./show-control.module.css";
 
 type SongMap = Record<SetSlug, ShowSong[]>;
@@ -81,6 +82,9 @@ export default function ShowControlClient({
   const [deleted, setDeleted] = useState<DeletedSong>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+  const [suggestionsVerified, setSuggestionsVerified] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState(false);
+  const [suggestionsRefresh, setSuggestionsRefresh] = useState(0);
   const [shows, setShows] = useState<ManagedShow[]>([]);
   const [activeShowSlug, setActiveShowSlug] = useState<string>(SHOW_DETAILS.slug);
   const [showSets, setShowSets] = useState<ShowSetDefinition[]>([...SET_DEFINITIONS]);
@@ -110,11 +114,8 @@ export default function ShowControlClient({
       fetch("/api/shows", { cache: "no-store" }).then((response) =>
         response.json() as Promise<{ shows?: ManagedShow[] }>,
       ),
-      fetch("/api/suggestions", { cache: "no-store" })
-        .then((response) => response.json() as Promise<{ suggestions?: Suggestion[] }>)
-        .catch(() => ({ suggestions: [] })),
     ])
-      .then(([showData, showList, suggestionData]) => {
+      .then(([showData, showList]) => {
         if (!active) return;
         if (!showPayloadBelongsToShow(showData, requestedShow)) {
           throw new Error("That show's set could not be verified.");
@@ -123,7 +124,6 @@ export default function ShowControlClient({
         setShows(showList.shows ?? [showData.show]);
         setActiveShowSlug(showData.show.slug);
         if (showData.sets?.length) setShowSets(showData.sets);
-        setSuggestions(suggestionData.suggestions ?? []);
         setShowVerified(true);
       })
       .catch((error) => {
@@ -132,13 +132,43 @@ export default function ShowControlClient({
       .finally(() => {
         if (active) {
           setLoading(false);
-          setSuggestionsLoading(false);
         }
       });
     return () => {
       active = false;
     };
   }, []);
+
+  // The public inbox is independent of the verified owner show. A failed feed
+  // must neither pretend to be empty nor strand otherwise usable official sets.
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    const deadline = setTimeout(() => controller.abort(), 10_000);
+    fetch("/api/suggestions", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Suggestion inbox unavailable.");
+        return parseSuggestionFeedPayload(await response.json());
+      })
+      .then((rows) => {
+        if (!active) return;
+        setSuggestions(rows);
+        setSuggestionsVerified(true);
+        setSuggestionsError(false);
+      })
+      .catch(() => {
+        if (active) setSuggestionsError(true);
+      })
+      .finally(() => {
+        clearTimeout(deadline);
+        if (active) setSuggestionsLoading(false);
+      });
+    return () => {
+      active = false;
+      clearTimeout(deadline);
+      controller.abort();
+    };
+  }, [suggestionsRefresh]);
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
@@ -1027,20 +1057,29 @@ export default function ShowControlClient({
             </div>
           </section>
 
-          <aside className={styles.suggestionInbox}>
+          <aside className={styles.suggestionInbox} aria-label="Suggestion inbox">
             <div className={styles.inboxHeader}>
               <span>Suggestion inbox</span>
-              <strong>{suggestions.length}</strong>
+              <strong>{suggestionsVerified ? suggestions.length : "—"}</strong>
             </div>
             <p>Ideas from the public board. Adding one only changes your draft until you save.</p>
             <div className={styles.inboxList}>
               {suggestionsLoading ? <span className={styles.inboxEmpty}>Loading ideas...</span> : null}
-              {!suggestionsLoading && !suggestions.length ? <span className={styles.inboxEmpty}>No suggestions yet.</span> : null}
+              {suggestionsError ? (
+                <p className={styles.inboxEmpty} role="status">
+                  Suggestion inbox unavailable. {suggestionsVerified ? "Keeping the last checked ideas. Refresh before adding one." : "We cannot check whether there are new ideas yet."}
+                </p>
+              ) : null}
+              {!suggestionsLoading && !suggestionsError && suggestionsVerified && !suggestions.length ? <span className={styles.inboxEmpty}>No suggestions yet.</span> : null}
+              <button className={styles.inboxRefresh} type="button" disabled={suggestionsLoading} onClick={() => {
+                setSuggestionsLoading(true);
+                setSuggestionsRefresh((version) => version + 1);
+              }}>Refresh suggestions</button>
               {suggestions.slice(0, 12).map((song) => (
                 <article className={styles.inboxSong} key={song.id}>
                   <div><strong>{song.title}</strong><span>{song.artist || "Artist not listed"}{song.isOriginal ? " / Original" : ""}</span></div>
                   <p>By {song.addedBy}{song.notes ? ` / ${song.notes}` : ""}</p>
-                  <button type="button" onClick={() => addSuggestion(song)}>Add to {activeDefinition.title}</button>
+                  <button type="button" disabled={suggestionsLoading || suggestionsError} onClick={() => addSuggestion(song)}>Add to {activeDefinition.title}</button>
                 </article>
               ))}
             </div>
