@@ -102,7 +102,9 @@ export default function ShowControlClient({
   const [saveHolds, setSaveHolds] = useState<Partial<Record<SetSlug, OwnerSaveHold>>>({});
   const [checkingSet, setCheckingSet] = useState<SetSlug | null>(null);
   const songsBySetRef = useRef<SongMap>(emptySongMap());
-  songsBySetRef.current = songsBySet;
+  useEffect(() => {
+    songsBySetRef.current = songsBySet;
+  }, [songsBySet]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
   const [suggestionsVerified, setSuggestionsVerified] = useState(false);
