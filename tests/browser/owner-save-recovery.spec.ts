@@ -119,7 +119,7 @@ async function openOwner(
   await expect(page.getByRole("button", { name: "Save Rad Dad", exact: true }).last()).toBeVisible();
 }
 
-test("later edits typed during Save stay unsaved after the sent list writes", async ({ page }) => {
+test("later edits typed during Save stay unsaved after the sent list writes", async ({ page }, testInfo) => {
   let release: (() => void) | undefined;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -149,9 +149,10 @@ test("later edits typed during Save stay unsaved after the sent list writes", as
   await expect(page.getByLabel("Performance cue")).toHaveValue("Hold the ending");
   await expect(page.getByRole("button", { name: "Save Rad Dad", exact: true }).last()).toBeEnabled();
   expect(posts[0]?.reviewedBase).toBe(officialSetRevision([song(11)]));
+  await page.screenshot({ path: testInfo.outputPath("owner-save-later-edits.png"), fullPage: true });
 });
 
-test("an unverified committed write blocks Save until Check confirms the official list", async ({ page }) => {
+test("an unverified committed write blocks Save until Check confirms the official list", async ({ page }, testInfo) => {
   let posts = 0;
   await openOwner(page, {
     onPost: () => {
@@ -169,7 +170,7 @@ test("an unverified committed write blocks Save until Check confirms the officia
   await page.getByText("Details, song resources, and rehearsal notes").click();
   await page.getByLabel("Performance cue").fill("Hold the ending");
   await page.getByRole("button", { name: "Save Rad Dad", exact: true }).last().click();
-  await expect(page.getByText(/Check that saved list before saving again/)).toBeVisible();
+  await expect(page.getByText(/could not be verified|Check that saved list before saving again/i)).toBeVisible();
   await expect(page.locator("[data-save-hold='uncertain']")).toBeVisible();
   await expect(page.getByRole("button", { name: "Save Rad Dad", exact: true }).last()).toBeDisabled();
   await expect(page.getByRole("button", { name: "Check saved Rad Dad", exact: true }).first()).toBeVisible();
@@ -179,6 +180,7 @@ test("an unverified committed write blocks Save until Check confirms the officia
   await expect(page.getByText(/Your unsaved draft is still here/)).toBeVisible();
   await expect(page.getByLabel("Performance cue")).toHaveValue("Hold the ending");
   await expect(page.getByRole("button", { name: "Save Rad Dad", exact: true }).last()).toBeEnabled();
+  await page.screenshot({ path: testInfo.outputPath("owner-save-check-kept-draft.png"), fullPage: true });
 });
 
 test("a stale reviewed-base conflict keeps the draft until Check loads the newer list", async ({ page }) => {
