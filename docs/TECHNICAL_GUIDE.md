@@ -34,6 +34,8 @@ media fails closed. The public band site stays at
 | `lib/show-store.ts` | Database seeding, reads, and song hydration |
 | `lib/show-read-integrity.ts` | Exact-show fallback policy and validated device snapshots |
 | `lib/show-night-use.ts` | First-open next action, leftover public actions, and practice resume |
+| `lib/run-position.ts` | Exact-identity current/previous/next resolution; no title/index guessing |
+| `lib/official-set-identity.ts` | Validate retained versus new IDs against the exact show/set |
 | `lib/show-lifecycle.ts` | Shared owner/UI and API lifecycle guards and confirmation copy |
 | `lib/show-control-posture.ts` | Owner status deck, one-next-step priority, and leftover owner work |
 | `lib/admin-access.ts` | Owner email authorization |
@@ -220,6 +222,15 @@ Owner-only. Accepts one set slug and its full ordered song array. Positions are
 recalculated server-side. The supplied show slug must resolve exactly; it never
 falls back to the default show. Text lengths, known set slugs, URLs, and maximum
 set size are validated before the D1 batch runs.
+
+Existing positive integer song IDs are retained only after exact show/set
+membership validation. Omitted IDs and valid editor draft tokens create new
+rows; numeric strings, duplicate IDs/tokens, and foreign or unknown saved IDs
+are rejected rather than silently remapped. The batch remains atomic and no
+schema change is needed. Stable identity keeps each performer's selected song
+through metadata edits and reorders, but is not a reviewed-base version check
+between two owner tabs. See [run-position handoff](RUN_POSITION_HANDOFF.md) for
+recovery behavior, test scope, and the separate owner-save issues.
 
 ### `POST /api/enrich`
 

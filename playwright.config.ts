@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { OFFLINE_ORIGIN } from "./tests/browser/fixture-origin";
 
 export default defineConfig({
   testDir: "./tests/browser",
@@ -12,7 +13,7 @@ export default defineConfig({
   reporter: "list",
   outputDir: "test-results/browser",
   use: {
-    baseURL: "http://127.0.0.1:4317",
+    baseURL: OFFLINE_ORIGIN,
     serviceWorkers: "block",
     locale: "en-US",
     timezoneId: "America/Chicago",
@@ -22,7 +23,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     command: "npx vite --config tests/browser/vite.config.ts",
-    url: "http://127.0.0.1:4317",
+    url: OFFLINE_ORIGIN,
     reuseExistingServer: false,
     timeout: 30_000,
   },

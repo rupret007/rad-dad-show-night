@@ -14,11 +14,17 @@ import {
 import { isShowDataUnavailableError } from "../../../lib/show-read-integrity";
 import { isShowNotFoundError } from "../../../lib/show-visibility";
 import {
+  OfficialSetIdentityError,
+  resolveOfficialSetSongIds,
+} from "../../../lib/official-set-identity";
+import {
   getYouTubeVideoId,
   hydrateOfficialSongMedia,
 } from "../../../lib/song-resources";
 
 export const dynamic = "force-dynamic";
+
+type StoredSongIdentity = { id: number; created_at: string };
 
 export async function GET(request: Request) {
   const slug = new URL(request.url).searchParams.get("show");
@@ -76,13 +82,29 @@ export async function POST(request: Request) {
 
     await ensureShowSeeded();
     const show = await getShowRecord(payload.showSlug, "owner");
+    const existing = await env.DB.prepare(
+      "SELECT id, created_at FROM songs WHERE show_id = ? AND set_slug = ?",
+    ).bind(show.id, setSlug).all<StoredSongIdentity>();
+    if (
+      existing.success === false || !Array.isArray(existing.results) ||
+      existing.results.some((row: StoredSongIdentity) => !Number.isSafeInteger(row.id) || row.id <= 0 || typeof row.created_at !== "string" || !row.created_at)
+    ) {
+      throw new Error("The official song identities could not be verified.");
+    }
+    const retainedIds = resolveOfficialSetSongIds(
+      payload.songs, existing.results.map((row: StoredSongIdentity) => row.id), show.id, setSlug,
+    );
+    const createdAtById = new Map<number, string>(existing.results.map((row: StoredSongIdentity) => [row.id, row.created_at]));
     const normalized = payload.songs.map((song, index) => {
+      const retainedId = retainedIds[index];
       const title = cleanText(song.title, 140);
       if (!title) throw new Error(`Song ${index + 1} needs a title.`);
       const youtubeUrl = cleanUrl(song.youtubeUrl);
       const youtubeVideoId =
         getYouTubeVideoId(youtubeUrl) || cleanText(song.youtubeVideoId, 20);
       return hydrateOfficialSongMedia({
+        id: retainedId,
+        createdAt: retainedId === null ? null : createdAtById.get(retainedId)!,
         position: index + 1,
         title,
         artist: cleanText(song.artist, 140),
@@ -111,15 +133,19 @@ export async function POST(request: Request) {
       ).bind(show.id, setSlug),
     ];
     for (const song of normalized) {
+      // Only an exact-show/set ID proved above may be reused. New rows omit id
+      // entirely so SQLite AUTOINCREMENT remains their sole identity allocator.
       statements.push(
         env.DB.prepare(
           `INSERT INTO songs (
+            ${song.id === null ? "" : "id,"}
             show_id, set_slug, position, title, artist, transition, is_original,
             duration_seconds, performance_note, song_key, tuning, youtube_url,
             youtube_video_id, chords_url, lyrics_url, rehearsal_notes,
             updated_by, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (${song.id === null ? "" : "?,"} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).bind(
+          ...(song.id === null ? [] : [song.id]),
           show.id,
           setSlug,
           song.position,
@@ -137,7 +163,7 @@ export async function POST(request: Request) {
           song.lyricsUrl,
           song.rehearsalNotes,
           user.email,
-          now,
+          song.createdAt ?? now,
           now,
         ),
       );
@@ -149,6 +175,9 @@ export async function POST(request: Request) {
       updatedAt: now,
     });
   } catch (error) {
+    if (error instanceof OfficialSetIdentityError) {
+      return Response.json({ error: error.message }, { status: 400 });
+    }
     if (isShowNotFoundError(error)) {
       return Response.json({ error: "Show not found." }, { status: 404 });
     }

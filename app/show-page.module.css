@@ -158,7 +158,7 @@
 .leftoverPublicLinks .secondaryAction { min-height: 38px; padding: 0 14px; }
 .emptyVerifiedList { margin: 0; padding: 16px 18px; border: 1px solid rgba(255, 61, 135, 0.35); color: var(--paper); background: rgba(255, 61, 135, 0.08); font-size: 0.92rem; font-weight: 700; line-height: 1.4; }
 .emptySet { margin: 0; padding: 22px 24px 26px; color: var(--muted); font-size: 0.92rem; line-height: 1.45; }
-.practiceNextLine { display: block; margin-top: 4px; overflow: hidden; color: var(--lime); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.practiceNextLine { display: block; margin-top: 4px; overflow-wrap: anywhere; color: var(--lime); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .showIdentityCard { min-height: 280px; padding: 36px 28px 32px; display: grid; align-content: end; gap: 8px; background: linear-gradient(160deg, rgba(24, 170, 245, 0.18), rgba(5, 5, 6, 0.94)); }
 .showIdentityCard span, .showIdentityCard small { color: var(--lime); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 .showIdentityCard strong { font-family: Impact, "Arial Black", sans-serif; font-size: clamp(2.1rem, 4vw, 3.1rem); line-height: 0.9; text-transform: uppercase; }
@@ -231,7 +231,14 @@
 .nowPlayingCopy { min-width: 0; }
 .nowPlayingCopy span, .nowPlayingCopy strong { display: block; }
 .nowPlayingCopy span { color: var(--pink); font-size: 0.67rem; font-weight: 900; letter-spacing: 0.13em; text-transform: uppercase; }
-.nowPlayingCopy strong { margin-top: 2px; overflow: hidden; font-size: 1.14rem; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.nowPlayingCopy strong { margin-top: 2px; overflow-wrap: anywhere; font-size: 1.14rem; text-transform: uppercase; }
+.runRecovery { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid rgba(255, 61, 135, 0.35); background: rgba(255, 61, 135, 0.08); }
+.runRecovery p { min-width: 0; margin: 0; color: var(--paper); font-size: 0.82rem; line-height: 1.5; overflow-wrap: anywhere; }
+.runRecovery button { min-height: 44px; flex-shrink: 0; padding: 9px 12px; color: var(--paper); border: 1px solid var(--pink); background: transparent; cursor: pointer; font: inherit; font-size: 0.74rem; font-weight: 800; }
+.runRecovery button:disabled { cursor: wait; opacity: 0.55; }
+.runRecovery button:focus-visible, .practiceControls button:focus-visible, .practiceSetNav a:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.runLocalNote { margin: 0; padding: 0 14px 11px; color: var(--muted); font-size: 0.7rem; line-height: 1.45; overflow-wrap: anywhere; }
+.runRecovery + .runLocalNote { padding-top: 10px; }
 .practiceControls { display: flex; flex-shrink: 0; gap: 7px; }
 .practiceControls button { min-height: 36px; padding: 0 11px; border: 1px solid rgba(255, 255, 255, 0.2); color: var(--paper); background: transparent; cursor: pointer; font: inherit; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
 .practiceControls button:hover:not(:disabled) { color: var(--black); border-color: var(--blue); background: var(--blue); }
@@ -357,6 +364,7 @@
   .practiceSetNav { padding: 7px; gap: 5px; }
   .practiceSetNav a { min-height: 42px; padding: 6px 4px; font-size: 0.64rem; letter-spacing: 0.035em; }
   .nowPlaying { align-items: stretch; flex-direction: column; gap: 9px; }
+  .runRecovery { align-items: stretch; flex-direction: column; }
   .practiceControls { display: grid; grid-template-columns: 1fr 1fr; }
   .practiceControls button { min-height: 40px; }
   .practiceControls button:last-child { grid-column: 1 / -1; }

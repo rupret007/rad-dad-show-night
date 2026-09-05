@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
+import { FIXTURE_PORT, OFFLINE_ORIGIN } from "./fixture-origin";
 
 const fixtureRoot = fileURLToPath(new URL(".", import.meta.url));
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
@@ -27,7 +28,7 @@ function offlineComponentsOnly(): Plugin {
       // No API route or proxy exists in this fixture. Tests must fulfill or
       // abort every API request explicitly; never run a connected backend.
       server.middlewares.use((request, response, next) => {
-        const pathname = new URL(request.url ?? "/", "http://127.0.0.1:4317").pathname;
+        const pathname = new URL(request.url ?? "/", OFFLINE_ORIGIN).pathname;
         if (pathname === "/api" || pathname.startsWith("/api/")) {
           response.statusCode = 501;
           response.setHeader("Content-Type", "application/json");
@@ -50,7 +51,7 @@ export default defineConfig({
   css: { postcss: { plugins: [] } },
   server: {
     host: "127.0.0.1",
-    port: 4317,
+    port: FIXTURE_PORT,
     strictPort: true,
     hmr: false,
     fs: { strict: true, allow: [repositoryRoot] },

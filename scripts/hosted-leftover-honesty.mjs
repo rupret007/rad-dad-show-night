@@ -1,10 +1,13 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { setTimeout as delay } from "node:timers/promises";
+import net from "node:net";
 
 const PORT = process.env.LEFTOVER_HOSTED_PORT || "3011";
 const HOST = process.env.LEFTOVER_HOSTED_HOST || "localhost";
-let BASE = `http://${HOST}:${PORT}`;
+assert(["localhost", "127.0.0.1"].includes(HOST), "local fixture host must be loopback");
+assert(/^\d{4,5}$/.test(PORT) && Number(PORT) >= 1024 && Number(PORT) <= 65535, "local fixture port must be unprivileged");
+const BASE = `http://${HOST}:${PORT}`;
 const CLONE_SLUG = "richardson-2026-10-31";
 const CANONICAL_SLUG = "guitars-growlers-2026-09-19";
 const CLOSED_SLUG = "closed-draft-2026-11-01";
@@ -25,16 +28,16 @@ async function readPath(pathname) {
   return { response, text };
 }
 
-async function findExistingServer() {
-  for (const base of [BASE, "http://localhost:3000", "http://localhost:3001"]) {
-    try {
-      const response = await fetch(base, { cache: "no-store" });
-      if (response.status > 0) return base;
-    } catch {
-      // Try the next local leftover host.
-    }
+async function requireUnusedFixturePort() {
+  // Never probe or borrow an existing app. Refuse an occupied target before
+  // seeding local D1, and never fall back to a developer's 3000/3001 server.
+  for (const host of HOST === "localhost" ? ["127.0.0.1", "::1"] : [HOST]) {
+    await new Promise((resolve, reject) => {
+      const server = net.createServer();
+      server.once("error", () => reject(new Error(`Local fixture endpoint ${host}:${PORT} is unavailable; choose an unused port.`)));
+      server.listen(Number(PORT), host, () => server.close((error) => error ? reject(error) : resolve()));
+    });
   }
-  return null;
 }
 
 async function seedLocalD1() {
@@ -231,21 +234,10 @@ async function proveIsolation() {
   return "unavailable-clone";
 }
 
+await requireUnusedFixturePort();
 const seed = await seedLocalD1();
-if (seed.ok) {
-  console.log("hosted leftover-honesty: seeded local D1 empty clone");
-} else {
-  console.log("hosted leftover-honesty: local D1 seed skipped");
-  if (seed.output.trim()) console.log(seed.output.trim().slice(0, 800));
-}
-
-const existing = await findExistingServer();
-if (existing) {
-  BASE = existing;
-  const mode = await proveIsolation();
-  console.log(`hosted leftover-honesty / isolation passed (${mode}) on ${BASE}`);
-  process.exit(0);
-}
+assert(seed.ok, `Local D1 fixture seed failed; no database proof is available. ${seed.output.trim().slice(0, 800)}`);
+console.log("hosted leftover-honesty: seeded local D1 empty clone");
 
 const child = spawn("npx", ["vinext", "dev", "--host", HOST, "--port", PORT], {
   cwd: process.cwd(),

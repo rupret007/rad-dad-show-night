@@ -5,6 +5,9 @@
     "types": ["node", "vite/client", "vinext/types"]
   },
   "include": [
+    "lib/run-position.ts",
+    "lib/official-set-identity.ts",
+    "app/live-set-lists.tsx",
     "lib/public-suggestion.ts",
     "lib/suggestion-board.ts",
     "app/api/suggestions/route.ts",
