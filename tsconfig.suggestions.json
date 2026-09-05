@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "types": ["node", "vite/client", "vinext/types"]
+  },
+  "include": [
+    "lib/public-suggestion.ts",
+    "lib/suggestion-board.ts",
+    "app/api/suggestions/route.ts",
+    "app/song-board.tsx",
+    "app/show-control/show-control.tsx",
+    "playwright.config.ts",
+    "tests/browser/**/*.ts",
+    "tests/browser/**/*.tsx"
+  ]
+}

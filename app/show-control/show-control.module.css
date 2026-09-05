@@ -172,6 +172,10 @@
 .inboxHeader strong { display: grid; width: 30px; height: 30px; place-items: center; color: var(--black); background: var(--pink); }
 .suggestionInbox > p { margin: 0; padding: 15px 18px; color: var(--muted); font-size: 0.84rem; line-height: 1.35; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .inboxList { max-height: 620px; overflow: auto; }
+.inboxRefresh { display: block; width: calc(100% - 36px); min-height: 44px; margin: 12px 18px; border: 1px solid var(--blue); color: var(--blue); background: transparent; font: inherit; cursor: pointer; }
+.inboxRefresh:focus-visible, .inboxSong button:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.inboxRefresh:disabled, .inboxSong button:disabled { cursor: not-allowed; opacity: 0.55; }
+.inboxSong { overflow-wrap: anywhere; }
 .inboxSong { padding: 15px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.09); }
 .inboxSong strong, .inboxSong span { display: block; }
 .inboxSong strong { font-size: 1rem; text-transform: uppercase; }

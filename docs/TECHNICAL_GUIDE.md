@@ -229,16 +229,46 @@ search fallback.
 
 ### `GET /api/suggestions`
 
-Public. Reads and parses the connected Google Sheet CSV feed.
+Public. Reads and validates the connected Google Sheet CSV feed within a
+six-second deadline and a streamed 512 KiB / 1,000-row cap. It expects the
+existing five positional columns: Timestamp, title, artist, submitter, notes.
+The four question labels may vary; the Timestamp header and five-column shape
+must be present. Only a valid header-only feed is verified empty. HTTP errors,
+redirects, invalid UTF-8/CSV, changed shape, or oversized data return `503`, not a
+successful empty list. Every response is `no-store`.
 
 ### `POST /api/suggestions`
 
-Public. Validates the submission, checks for a duplicate when possible, and
-submits it to the connected Google Form. Suggestions never write to D1.
+Public. Validates the submission and requires a verified duplicate preflight
+before its one connected Google Form write. Unavailable preflight returns `503`
+with `delivery: not-sent` and performs no write. A duplicate returns `409` plus
+the actual existing board row. A 2xx Form response produces `202` with
+`delivery: awaiting-board` and the sanitized submission, never a fabricated
+board row or persistence claim. Attempted-write failures, redirects, or the
+eight-second deadline return `502` with `delivery: unknown`. No automatic retry
+occurs. Suggestions never write to D1.
 `lib/public-suggestion.ts` strips official-set fields and allows network writes
 only to the connected Google Form. The regression suite in
 `tests/suggestion-cannot-mutate-set.test.mjs` fails if a public suggestion can
 alter official set order, keys, or song rows.
+
+The public client validates feed/receipt payloads using the browser-safe
+`lib/suggestion-board.ts`. It keeps pending delivery separate from verified rows
+and only confirms a complete five-field match from a read started after the
+attempt. Fields are controlled and disabled during one in-flight write; the
+client uses ten-second read / twenty-second write deadlines. Unknown delivery
+keeps the draft and requires a fresh read and explicit duplicate-risk
+acknowledgement before a further attempt. This is not cross-client idempotency:
+the provider's response Sheet can lag, and simultaneous visitors can still
+submit the same idea. No new store or provider was added.
+
+`tests/suggestion-recovery.test.mjs` executes the actual GET/POST route handlers
+with an allowlisted local-module map and injected fetch fixtures. The browser
+suite imports the real audience and owner components into a test-only Vite
+entry; `next/link` is an anchor shim there, not a live routing/auth test. All
+external HTTP, non-fixture APIs, service workers, and non-local WebSockets are
+blocked. Hosted checks include these tests, lint, the focused suggestion
+typecheck, the real production build, and the existing local D1/HTTP isolation.
 
 ### `GET/POST /api/shows`
 

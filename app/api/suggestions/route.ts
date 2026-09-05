@@ -1,158 +1,71 @@
 import {
-  PUBLIC_SUGGESTION_SHEET_CSV_URL,
-  createPublicSuggestionFetch,
+  loadPublicSuggestions,
   sanitizePublicSuggestion,
   writeSanitizedSuggestionToForm,
 } from "../../../lib/public-suggestion";
+import { sameSuggestionSong } from "../../../lib/suggestion-board";
 
 export const dynamic = "force-dynamic";
 
-const suggestionFetch = createPublicSuggestionFetch();
-
-type Suggestion = {
-  id: string;
-  title: string;
-  artist: string;
-  addedBy: string;
-  notes: string;
-  isOriginal: boolean;
-  submittedAt: string;
-};
+const noStore = { "Cache-Control": "no-store" };
 
 export async function GET() {
   try {
-    return Response.json(
-      { suggestions: await loadSuggestions() },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return Response.json({ suggestions: await loadPublicSuggestions() }, { headers: noStore });
   } catch {
-    return Response.json({ suggestions: [] });
+    return Response.json({
+      error: "The suggestion board is unavailable. Try checking it again shortly.",
+      delivery: "not-sent",
+    }, { status: 503, headers: { ...noStore, "Retry-After": "5" } });
   }
 }
 
 export async function POST(request: Request) {
+  let payload: Record<string, unknown>;
   try {
-    const payload = (await request.json()) as Record<string, unknown>;
-    const isolated = sanitizePublicSuggestion(payload);
-    if (isolated.kind === "honeypot") return Response.json({ ok: true });
-
-    const { title, artist, addedBy, notes, isOriginal } = isolated.suggestion;
-    if (!title || !addedBy) {
-      return Response.json(
-        { error: "Song title and your name are required." },
-        { status: 400 },
-      );
-    }
-
-    try {
-      const current = await loadSuggestions();
-      const duplicate = current.some(
-        (song) =>
-          song.title.toLowerCase() === title.toLowerCase() &&
-          song.artist.toLowerCase() === artist.toLowerCase(),
-      );
-      if (duplicate) {
-        return Response.json(
-          { error: "That song is already on the suggestion board." },
-          { status: 409 },
-        );
-      }
-    } catch {
-      // A temporary feed problem should not block a new suggestion.
-    }
-
-    await writeSanitizedSuggestionToForm({
-      title,
-      artist,
-      addedBy,
-      notes,
-      isOriginal,
-    });
-
-    const suggestion: Suggestion = {
-      id: `${Date.now()}-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-      title,
-      artist,
-      addedBy,
-      notes,
-      isOriginal,
-      submittedAt: new Date().toISOString(),
-    };
-    return Response.json({ suggestion }, { status: 201 });
-  } catch (error) {
-    return Response.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Could not add that suggestion right now.",
-      },
-      { status: 500 },
-    );
-  }
-}
-
-async function loadSuggestions(): Promise<Suggestion[]> {
-  const response = await suggestionFetch(PUBLIC_SUGGESTION_SHEET_CSV_URL, {
-    cache: "no-store",
-  });
-  if (!response.ok) throw new Error("Suggestion feed unavailable.");
-  const rows = parseCsv(await response.text());
-  if (rows.length < 2) return [];
-
-  return rows
-    .slice(1)
-    .filter((row) => row.some((cell) => cell.trim()))
-    .map((row, index) => {
-      const rawNotes = row[4]?.trim() ?? "";
-      const isOriginal = /^\[ORIGINAL\](?:\s|$)/i.test(rawNotes);
-      return {
-        id: `${row[0] || "suggestion"}-${index}`,
-        submittedAt: row[0] ?? "",
-        title: row[1]?.trim() ?? "",
-        artist: row[2]?.trim() ?? "",
-        addedBy: row[3]?.trim() ?? "Anonymous",
-        notes: isOriginal
-          ? rawNotes.replace(/^\[ORIGINAL\]\s*/i, "")
-          : rawNotes,
-        isOriginal,
-      };
-    })
-    .filter((song) => song.title)
-    .reverse();
-}
-
-function parseCsv(input: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let quoted = false;
-
-  for (let index = 0; index < input.length; index += 1) {
-    const character = input[index];
-    const next = input[index + 1];
-    if (character === '"' && quoted && next === '"') {
-      cell += '"';
-      index += 1;
-    } else if (character === '"') {
-      quoted = !quoted;
-    } else if (character === "," && !quoted) {
-      row.push(cell);
-      cell = "";
-    } else if ((character === "\n" || character === "\r") && !quoted) {
-      if (character === "\r" && next === "\n") index += 1;
-      row.push(cell);
-      rows.push(row);
-      row = [];
-      cell = "";
-    } else {
-      cell += character;
-    }
+    const value: unknown = await request.json();
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error();
+    payload = value as Record<string, unknown>;
+  } catch {
+    return Response.json({ error: "Provide a valid song suggestion.", delivery: "not-sent" }, { status: 400, headers: noStore });
   }
 
-  if (cell || row.length) {
-    row.push(cell);
-    rows.push(row);
+  const isolated = sanitizePublicSuggestion(payload);
+  if (isolated.kind === "honeypot") return Response.json({ ok: true }, { headers: noStore });
+  const submission = isolated.suggestion;
+  if (!submission.title || !submission.addedBy) {
+    return Response.json({ error: "Song title and your name are required.", delivery: "not-sent" }, { status: 400, headers: noStore });
   }
-  return rows;
+  if (!submission.isOriginal && /^\[ORIGINAL\](?:\s|$)/i.test(submission.notes)) {
+    return Response.json({
+      error: "Mark the original/unreleased checkbox, or remove the leading [ORIGINAL] marker from your notes. Nothing was sent.",
+      delivery: "not-sent",
+    }, { status: 400, headers: noStore });
+  }
+
+  try {
+    const current = await loadPublicSuggestions();
+    const existing = current.find((song) => sameSuggestionSong(song, submission));
+    if (existing) {
+      return Response.json({
+        error: "That song is already on the suggestion board. No new suggestion was sent.",
+        existing, delivery: "already-present",
+      }, { status: 409, headers: noStore });
+    }
+  } catch {
+    return Response.json({
+      error: "The board could not be checked for an existing idea. Nothing was sent; check the board and try again later.",
+      delivery: "not-sent",
+    }, { status: 503, headers: { ...noStore, "Retry-After": "5" } });
+  }
+
+  try {
+    await writeSanitizedSuggestionToForm(submission);
+    return Response.json({ delivery: "awaiting-board", submission }, { status: 202, headers: noStore });
+  } catch {
+    return Response.json({
+      error: "Delivery is uncertain. Check the board before sending again or using the backup form; the earlier request may have arrived.",
+      delivery: "unknown",
+    }, { status: 502, headers: noStore });
+  }
 }

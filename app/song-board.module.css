@@ -1,56 +1,76 @@
 .board { --blue: #18aaf5; --lime: #b8f527; --pink: #ff3d87; }
-.heading { margin-bottom: 38px; display: flex; align-items: end; justify-content: space-between; gap: 50px; }
-.kicker { margin: 0 0 8px; color: var(--pink); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
-.title { margin: 0; font-family: Impact, "Arial Black", sans-serif; font-size: clamp(3rem, 6.3vw, 5.6rem); line-height: 0.9; letter-spacing: -0.035em; }
-.intro { max-width: 470px; margin: 0; color: #a9adb3; font-size: 1.1rem; line-height: 1.5; }
-.layout { display: grid; grid-template-columns: minmax(320px, 0.75fr) minmax(420px, 1.25fr); gap: 18px; }
-.formCard, .feedCard { border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(9, 9, 12, 0.92); }
-.formCard { padding: 28px; }
-.formTop { margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
-.formTop strong { font-size: 1.35rem; text-transform: uppercase; }
-.formNumber { padding: 6px 8px; color: #050506; background: var(--pink); font-size: 0.65rem; font-weight: 900; letter-spacing: 0.1em; }
-.field { margin-top: 14px; display: block; }
-.field > span { display: block; margin-bottom: 6px; color: #c6c9c6; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
-.field input, .field textarea { width: 100%; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 0; outline: 0; color: white; background: #101014; font: inherit; font-size: 1rem; }
-.field input { height: 46px; padding: 0 13px; }
+.heading { margin-bottom: 32px; display: flex; align-items: end; justify-content: space-between; gap: 40px; }
+.kicker { margin: 0 0 8px; color: var(--pink); font-size: .75rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.title { margin: 0; font-family: Impact, "Arial Black", sans-serif; font-size: clamp(2.7rem, 6.3vw, 5.6rem); line-height: .95; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.intro { max-width: 470px; margin: 0; color: #b7bac0; font-size: 1.05rem; line-height: 1.55; }
+.layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; gap: 22px; }
+.formCard, .feedCard { min-width: 0; border: 1px solid rgba(255,255,255,.15); background: rgba(9,9,12,.92); }
+.formCard { padding: 26px; scroll-margin-top: 90px; }
+.formTop { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.formTop strong { font-size: 1.2rem; text-transform: uppercase; }
+.formNumber { padding: 6px 8px; color: #050506; background: var(--pink); font-size: .65rem; font-weight: 900; letter-spacing: .1em; }
+.formHint, .draftHint { color: #adb2b5; font-size: .85rem; line-height: 1.5; }
+.draftHint { margin: 18px 0 0; font-size: .78rem; }
+.fields { min-width: 0; margin: 0; padding: 0; border: 0; }
+.field { margin-top: 14px; display: block; min-width: 0; }
+.field > span { display: block; margin-bottom: 7px; color: #d3d6d4; font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.field input, .field textarea { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid rgba(255,255,255,.24); border-radius: 4px; color: white; background: #101014; font: inherit; font-size: 1rem; }
+.field input { min-height: 46px; padding: 10px 13px; }
 .field textarea { padding: 11px 13px; resize: vertical; }
-.field input:focus, .field textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(24, 170, 245, 0.12); }
-.originalChoice { margin-top: 16px; padding: 13px; display: flex; align-items: flex-start; gap: 10px; border: 1px solid rgba(255, 61, 135, 0.3); background: rgba(255, 61, 135, 0.055); cursor: pointer; }
-.originalChoice input { margin-top: 3px; accent-color: var(--pink); }
-.originalChoice span, .originalChoice strong, .originalChoice small { display: block; }
-.originalChoice strong { color: #f0f1eb; font-size: 0.82rem; text-transform: uppercase; }
-.originalChoice small { margin-top: 3px; color: #92979a; font-size: 0.75rem; }
+.field input:focus-visible, .field textarea:focus-visible, .board button:focus-visible, .board a:focus-visible, .board input[type="checkbox"]:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+.fields:disabled .field input, .fields:disabled .field textarea { color: #c1c5c9; opacity: 1; background: #17191e; }
+.originalChoice, .checkChoice { margin-top: 16px; display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.originalChoice { padding: 13px; border: 1px solid rgba(255,61,135,.3); background: rgba(255,61,135,.055); }
+.originalChoice input, .checkChoice input { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; accent-color: var(--pink); }
+.originalChoice span, .originalChoice strong, .originalChoice small { display: block; min-width: 0; }
+.originalChoice strong { color: #f0f1eb; font-size: .82rem; }
+.originalChoice small { margin-top: 4px; color: #afb5b9; font-size: .78rem; line-height: 1.4; }
 .honeypot { position: absolute; left: -9999px; }
-.submitButton { width: 100%; min-height: 48px; margin-top: 19px; border: 0; color: #050506; background: var(--lime); box-shadow: 5px 5px 0 var(--blue); cursor: pointer; font: inherit; font-weight: 900; letter-spacing: 0.09em; text-transform: uppercase; }
-.submitButton:disabled { cursor: wait; opacity: 0.65; }
-.message { margin: 16px 0 0; color: var(--blue); font-size: 0.9rem; line-height: 1.35; }
-.fallbackLink { display: inline-block; margin-top: 18px; color: #8e9396; font-size: 0.75rem; text-decoration: underline; }
+.submitButton { width: 100%; min-height: 48px; margin-top: 19px; padding: 12px; border: 0; border-radius: 3px; color: #050506; background: var(--lime); box-shadow: 4px 4px 0 var(--blue); cursor: pointer; font: inherit; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.submitButton:disabled, .fields:disabled .submitButton { cursor: not-allowed; opacity: .6; }
+.secondaryButton, .moreButton, .textButton { min-height: 44px; padding: 10px 13px; border: 1px solid rgba(255,255,255,.28); border-radius: 4px; color: #f3f5f4; background: #151820; font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; line-height: 1.4; }
+.secondaryButton:disabled { opacity: .55; cursor: not-allowed; }
+.textButton { padding-left: 0; padding-right: 0; border-color: transparent; color: var(--blue); background: transparent; text-decoration: underline; text-underline-offset: 3px; }
+.fallbackLink { display: inline-block; margin-top: 12px; padding: 10px 0; color: #bac0c4; font-size: .8rem; text-decoration: underline; text-underline-offset: 3px; }
 .feedCard { overflow: hidden; }
-.feedHeader { min-height: 76px; padding: 0 22px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.13); }
-.feedHeader strong, .feedHeader span { display: block; }
-.feedLabel { color: #8e9396; font-size: 0.68rem; letter-spacing: 0.13em; text-transform: uppercase; }
-.feedHeader strong { margin-top: 2px; font-size: 1.25rem; text-transform: uppercase; }
-.feedStatus { position: relative; padding-left: 16px; color: var(--lime); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
-.feedStatus::before { position: absolute; top: 50%; left: 0; width: 8px; height: 8px; content: ""; transform: translateY(-50%); border-radius: 50%; background: var(--lime); }
-.feed { max-height: 620px; overflow: auto; }
-.suggestion { min-height: 94px; padding: 19px 20px; display: grid; grid-template-columns: 42px 1fr; gap: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.09); }
+.feedHeader { padding: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-bottom: 1px solid rgba(255,255,255,.13); }
+.feedHeader strong, .feedLabel { display: block; }
+.feedLabel { color: #abb1b6; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; }
+.feedHeader strong { margin-top: 5px; font-size: 1.25rem; }
+.addIdeaLink { min-height: 44px; display: inline-flex; align-items: center; color: var(--lime); font-size: .86rem; font-weight: 800; text-decoration: underline; text-underline-offset: 4px; }
+.discovery { padding: 0 20px 16px; border-bottom: 1px solid rgba(255,255,255,.13); }
+.feedTools { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.feedStatus { flex: 1 1 170px; margin: 0; color: #b7c4cc; font-size: .78rem; line-height: 1.45; }
+.feed { max-height: 640px; overflow-y: auto; }
+.suggestion { min-width: 0; padding: 20px; border-bottom: 1px solid rgba(255,255,255,.09); overflow-wrap: anywhere; }
 .suggestion:last-child { border-bottom: 0; }
-.rank { color: rgba(255, 255, 255, 0.28); font-family: Impact, sans-serif; font-size: 1.2rem; }
-.suggestion h3 { margin: 0; font-size: 1.25rem; line-height: 1.1; text-transform: uppercase; }
-.originalTag { display: inline-block; margin-top: 6px; padding: 3px 6px; color: #050506; background: var(--pink); font-size: 0.59rem; font-weight: 900; letter-spacing: 0.09em; text-transform: uppercase; }
-.artist { margin: 3px 0 0; color: #a9adb3; font-size: 0.9rem; }
-.notes { margin: 9px 0 0; color: #d6d8d5; font-size: 0.9rem; line-height: 1.35; }
-.byline { margin: 10px 0 0; color: #73787b; font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.suggestion h3 { margin: 0; color: #f1f4ef; font-size: 1.18rem; line-height: 1.25; }
+.originalTag { display: inline-block; margin-top: 6px; padding: 3px 6px; color: #050506; background: var(--pink); font-size: .65rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.artist { margin: 5px 0 0; color: #b9bec4; font-size: .9rem; }
+.notes { margin: 10px 0 0; color: #d6d8d5; font-size: .88rem; line-height: 1.5; white-space: pre-wrap; }
+.byline { margin: 10px 0 0; color: #a4acb2; font-size: .74rem; line-height: 1.5; }
 .byline strong { color: var(--blue); }
-.empty { padding: 34px 22px; color: #8e9396; }
-
+.empty, .resultCount { margin: 0; padding: 22px 20px; color: #bac0c4; font-size: .88rem; line-height: 1.5; }
+.resultCount { padding-bottom: 0; font-size: .8rem; }
+.moreButton { display: block; width: calc(100% - 40px); margin: 14px 20px 20px; }
+.delivery, .knownMatch { margin: 18px 0; padding: 16px; border: 1px solid rgba(24,170,245,.45); border-radius: 5px; background: rgba(24,170,245,.07); overflow-wrap: anywhere; }
+.delivery > strong, .knownMatch > strong { color: #e2f3fc; font-size: .98rem; line-height: 1.4; }
+.delivery p, .knownMatch p { color: #bccbd3; font-size: .84rem; line-height: 1.5; }
+.compactSuggestion { margin: 12px 0; padding: 13px; background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.13); }
+.retryChoice, .newIdea { margin-top: 16px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.17); }
+.checkChoice { color: #e0e8ed; font-size: .82rem; line-height: 1.45; }
+.retryChoice .secondaryButton { margin-top: 12px; }
+.newIdea { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.newIdea p { flex-basis: 100%; margin: 0; }
 @media (max-width: 800px) {
   .heading { align-items: flex-start; flex-direction: column; gap: 20px; }
-  .layout { grid-template-columns: 1fr; }
-  .feed { max-height: none; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .feed { max-height: 440px; }
 }
-
 @media (max-width: 520px) {
-  .formCard { padding: 22px 17px; }
-  .suggestion { padding: 17px 14px; grid-template-columns: 34px 1fr; }
+  .formCard { padding: 22px 16px; }
+  .suggestion, .feedHeader { padding: 17px 16px; }
+  .discovery { padding: 0 16px 16px; }
+  .delivery, .knownMatch { padding: 12px; }
+  .feedTools .secondaryButton { width: 100%; }
 }
