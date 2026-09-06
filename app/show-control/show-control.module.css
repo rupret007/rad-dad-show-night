@@ -130,6 +130,13 @@
 .coachResult > .coachContext { margin: 0 0 12px; color: var(--muted); font-size: 0.8rem; }
 .coachPanel button:disabled { opacity: 0.6; cursor: default; }
 .coachPanel button { min-height: 40px; padding: 0 14px; border: 0; color: var(--black); background: var(--blue); cursor: pointer; font: inherit; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; }
+.publicSetReview { margin: 0 16px 16px; padding: 15px; border: 1px solid rgba(184, 245, 39, 0.28); background: rgba(184, 245, 39, 0.05); overflow-wrap: anywhere; }
+.publicSetReview span { display: block; color: var(--lime); font-size: 0.62rem; font-weight: 900; letter-spacing: 0.13em; text-transform: uppercase; }
+.publicSetReview strong { display: block; margin-top: 3px; text-transform: uppercase; }
+.publicSetReview p { margin: 6px 0 0; color: #bec5c8; font-size: 0.82rem; line-height: 1.4; }
+.publicSongReview { margin: 8px 0 0; color: #aeb8bc; font-size: 0.78rem; line-height: 1.35; overflow-wrap: anywhere; }
+.publicSongReview[data-kind="owner-search-only"] { color: #e2c48a; }
+.publicSongReview[data-kind="original"] { color: #c6c9c6; }
 .coachResult { margin: -3px 16px 16px; padding: 16px; border: 1px solid rgba(255, 255, 255, 0.13); background: #0e0e12; }
 .coachResult header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
 .coachResult header strong { color: var(--lime); font-family: Impact, sans-serif; font-size: 2.1rem; }
@@ -296,6 +303,7 @@
   .clonePanel { grid-template-columns: 1fr; }
   .clonePanel > div { grid-column: auto; }
   .coachPanel { align-items: stretch; flex-direction: column; }
+  .publicSetReview { margin: 0 8px 14px; }
   .coachFindings { grid-template-columns: 1fr; }
   .setTabs button { min-height: 78px; }
   .composer { grid-template-columns: 1fr; }

@@ -131,6 +131,20 @@ The smart timing review works without an AI key. When `OPENAI_API_KEY` is
 configured, the same button adds a concise OpenAI review of pacing and handoffs.
 Only the active set's titles and operational metadata are sent; lyrics are not.
 
+## Public list review
+
+The editor names what the public share link will show for this browser draft.
+That review uses the same saved-media contract as the public page:
+
+- Covers show YouTube or lyrics only when a saved direct URL is on the song.
+- Search links stay in Show Control. They are labeled **Search YouTube** or
+  **Search lyrics**, not as public actions.
+- Songs marked **Original / hide resources** hide both on the public list.
+- Rehearsal notes stay in Show Control.
+
+An empty set says so. It does not borrow another night's songs or media. This
+review does not save or publish. Save and Check remain the existing write path.
+
 For every editable song, the owner can change:
 
 - Song title and artist

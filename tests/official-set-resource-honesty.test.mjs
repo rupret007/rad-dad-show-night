@@ -24,6 +24,10 @@ const showDataUrl = new URL("../lib/show-data.ts", import.meta.url);
 const readmeUrl = new URL("../README.md", import.meta.url);
 const technicalGuideUrl = new URL("../docs/TECHNICAL_GUIDE.md", import.meta.url);
 const showPlanUrl = new URL("../docs/SHOW_PLAN.md", import.meta.url);
+const showControlUrl = new URL("../app/show-control/show-control.tsx", import.meta.url);
+const ownerReviewUrl = new URL("../lib/song-resources.ts", import.meta.url);
+const ownerGuideUrl = new URL("../docs/SHOW_CONTROL.md", import.meta.url);
+const publicReviewHandoffUrl = new URL("../docs/OWNER_PUBLIC_SET_REVIEW_HANDOFF.md", import.meta.url);
 
 const officialOriginals = DEFAULT_SONGS.filter((song) => song.isOriginal);
 const officialRadDadSongs = DEFAULT_SONGS.filter(
@@ -65,15 +69,19 @@ test("surface roles admit originals hide public resources on the live set", () =
 });
 
 test("official-set copy does not claim every song has a YouTube path", async () => {
-  const [page, readme, guide, plan, liveList] = await Promise.all([
+  const [page, readme, guide, plan, liveList, showControl, ownerReview, ownerGuide, handoff] = await Promise.all([
     readFile(pageUrl, "utf8"),
     readFile(readmeUrl, "utf8"),
     readFile(technicalGuideUrl, "utf8"),
     readFile(showPlanUrl, "utf8"),
     readFile(liveSetListsUrl, "utf8"),
+    readFile(showControlUrl, "utf8"),
+    readFile(ownerReviewUrl, "utf8"),
+    readFile(ownerGuideUrl, "utf8"),
+    readFile(publicReviewHandoffUrl, "utf8"),
   ]);
 
-  for (const source of [page, readme, guide, plan, liveList]) {
+  for (const source of [page, readme, guide, plan, liveList, showControl, ownerReview, ownerGuide, handoff]) {
     for (const token of everySongHasYouTubeLies) {
       assert.doesNotMatch(source, token);
     }
@@ -85,6 +93,10 @@ test("official-set copy does not claim every song has a YouTube path", async () 
   assert.match(page, /These lists update from Show Control/);
   assert.match(plan, /The Way I Love You is the only Rad Dad original/);
   assert.match(guide, /Original songs display neither resource/);
+  assert.match(showControl, /ownerPublicSetReview/);
+  assert.match(ownerReview, /publicSongResourceActions/);
+  assert.match(ownerGuide, /Search YouTube/);
+  assert.match(handoff, /Search links stay in Show Control/);
 });
 
 test("the live list hides YouTube and lyrics for official originals", async () => {
