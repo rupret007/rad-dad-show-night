@@ -3,7 +3,7 @@ import {
   buildSongResourceLinks,
   publicSongResourceActions,
   savedOfficialMediaUrl,
-} from "./song-resources";
+} from "./song-resources.ts";
 
 const TEXT_LIMITS = {
   title: 140, artist: 140, performanceNote: 300, songKey: 40, tuning: 80,

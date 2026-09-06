@@ -93,8 +93,8 @@ test("owner public review hides search fallbacks and originals from the public l
 test("set review names public media without treating an empty draft as another night", () => {
   assert.match(ownerPublicSetReview([]).summary, /empty set stays empty/);
   const review = ownerPublicSetReview([
-    song(1),
-    song(2, { position: 2, isOriginal: false }),
+    song(1, { rehearsalNotes: "" }),
+    song(2, { position: 2, isOriginal: false, rehearsalNotes: "" }),
     song(3, {
       position: 3,
       isOriginal: false,
