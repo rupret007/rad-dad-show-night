@@ -137,7 +137,8 @@ test("Show Control disables guarded actions and confirms allowed ones", async ()
     readFile(stylesUrl, "utf8"),
   ]);
   const changeStart = control.indexOf("async function changeShowStatus");
-  const changeEnd = control.indexOf("async function runCoach", changeStart);
+  const changeEnd = control.indexOf("  if (loading)", changeStart);
+  assert.ok(changeStart >= 0 && changeEnd > changeStart);
   const change = control.slice(changeStart, changeEnd);
 
   assert.match(change, /dirtySetCount: dirtySets\.size/);

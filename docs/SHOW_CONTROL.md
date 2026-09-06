@@ -111,8 +111,21 @@ Publish, and Archive are unavailable until that exact show loads successfully.
 ## Set Coach
 
 Select **Review this set** to check estimated runtime, transitions, performance
-cues, and missing exact practice references. Set Coach never changes song order
-or publishes anything.
+cues, and missing exact practice references. The panel names the show, set, and
+browser draft it reviews. Advice disappears when you edit that draft, switch
+sets, or switch shows; choose **Review this set again** for current advice. A
+late response from an earlier review cannot replace it. Set Coach does not save,
+change song order, or publish anything.
+
+The scheduled window comes only from this show's selected set time. Blank,
+ambiguous, or malformed times show **Scheduled window unknown** and **Timing not
+scored**, alongside the estimated runtime and other readiness findings. Coach
+does not borrow another night's schedule. The estimate uses the draft's song
+durations, not measured rehearsal time.
+
+A review has a ten-second deadline including its response body. A failed or
+unverified response keeps the draft and offers **Retry review**. Retries require
+a click; changing drafts never starts a review automatically.
 
 The smart timing review works without an AI key. When `OPENAI_API_KEY` is
 configured, the same button adds a concise OpenAI review of pacing and handoffs.
