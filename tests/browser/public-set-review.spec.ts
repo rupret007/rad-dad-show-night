@@ -111,7 +111,7 @@ async function openOwner(page: Page) {
 const publicReview = (page: Page) => page.getByRole("region", { name: "Public list review", exact: true });
 
 function songCard(page: Page, title: string) {
-  return page.getByRole("article").filter({ has: page.getByDisplayValue(title, { exact: true }) });
+  return page.getByRole("article").filter({ has: page.locator(`input[value="${title}"]`) });
 }
 
 test("Show Control reviews the public list instead of presenting search as saved media", async ({ page }) => {
