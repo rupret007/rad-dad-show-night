@@ -110,6 +110,10 @@ async function openOwner(page: Page) {
 
 const publicReview = (page: Page) => page.getByRole("region", { name: "Public list review", exact: true });
 
+function songCard(page: Page, title: string) {
+  return page.getByRole("article").filter({ has: page.getByDisplayValue(title, { exact: true }) });
+}
+
 test("Show Control reviews the public list instead of presenting search as saved media", async ({ page }) => {
   const mutations = await openOwner(page);
   await expect(publicReview(page)).toContainText("3 songs in this browser draft");
@@ -118,23 +122,25 @@ test("Show Control reviews the public list instead of presenting search as saved
   await expect(publicReview(page)).toContainText("1 cover keeps search links in Show Control");
   await expect(publicReview(page)).toContainText("Rehearsal notes stay in Show Control");
 
-  const cards = page.getByRole("article").filter({ has: page.getByTestId("owner-public-song-review") });
-  await expect(cards).toHaveCount(3);
-  await expect(cards.nth(0).getByTestId("owner-public-song-review")).toContainText("Original — public list hides YouTube and lyrics");
-  await expect(cards.nth(0).getByRole("link", { name: /YouTube|lyrics/i })).toHaveCount(0);
-  await expect(cards.nth(1).getByRole("link", { name: "Search YouTube" })).toBeVisible();
-  await expect(cards.nth(1).getByRole("link", { name: "Search lyrics" })).toBeVisible();
-  await expect(cards.nth(1).getByRole("link", { name: "Open saved YouTube" })).toHaveCount(0);
-  await expect(cards.nth(1).getByTestId("owner-public-song-review")).toContainText("Search links stay in Show Control");
-  await expect(cards.nth(2).getByRole("link", { name: "Open saved YouTube" })).toBeVisible();
-  await expect(cards.nth(2).getByRole("link", { name: "Open saved lyrics" })).toBeVisible();
-  await expect(cards.nth(2).getByTestId("owner-public-song-review")).toContainText("Public list shows saved YouTube and lyrics");
+  const original = songCard(page, "Fixture original");
+  const searchCover = songCard(page, "Fixture search cover");
+  const savedCover = songCard(page, "Fixture saved cover");
+  await expect(page.getByTestId("owner-public-song-review")).toHaveCount(3);
+  await expect(original.getByTestId("owner-public-song-review")).toContainText("Original — public list hides YouTube and lyrics");
+  await expect(original.getByRole("link", { name: /YouTube|lyrics/i })).toHaveCount(0);
+  await expect(searchCover.getByRole("link", { name: "Search YouTube" })).toBeVisible();
+  await expect(searchCover.getByRole("link", { name: "Search lyrics" })).toBeVisible();
+  await expect(searchCover.getByRole("link", { name: "Open saved YouTube" })).toHaveCount(0);
+  await expect(searchCover.getByTestId("owner-public-song-review")).toContainText("Search links stay in Show Control");
+  await expect(savedCover.getByRole("link", { name: "Open saved YouTube" })).toBeVisible();
+  await expect(savedCover.getByRole("link", { name: "Open saved lyrics" })).toBeVisible();
+  await expect(savedCover.getByTestId("owner-public-song-review")).toContainText("Public list shows saved YouTube and lyrics");
   expect(mutations).toEqual([]);
 });
 
 test("marking a cover original retires public media and search links", async ({ page }) => {
   await openOwner(page);
-  const savedCover = page.getByRole("article").filter({ hasText: "Fixture saved cover" });
+  const savedCover = songCard(page, "Fixture saved cover");
   await savedCover.getByLabel("Original / hide resources").check();
   await expect(savedCover.getByTestId("owner-public-song-review")).toContainText("Original — public list hides YouTube and lyrics");
   await expect(savedCover.getByRole("link", { name: /YouTube|lyrics/i })).toHaveCount(0);
