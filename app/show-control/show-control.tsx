@@ -53,8 +53,11 @@ import {
   type OwnerSaveHold,
 } from "../../lib/owner-set-save";
 import {
+  ownerPublicSetReview,
+  ownerPublicSongReview,
+  ownerSongReviewDetails,
   readOwnerSetSongs, readOwnerShowSongs, removedDraftSongs,
-  stageReviewedOwnerDraft, ownerSongReviewDetails,
+  stageReviewedOwnerDraft,
 } from "../../lib/owner-set-review";
 import type { Suggestion } from "../song-board";
 import { parseSuggestionFeedPayload } from "../../lib/suggestion-board";
@@ -1255,9 +1258,16 @@ export default function ShowControlClient({
               songs={activeSongs}
             />
 
+            <section className={styles.publicSetReview} aria-label="Public list review" data-testid="owner-public-set-review">
+              <span>Public list for this draft</span>
+              <strong>{activeDefinition.title}</strong>
+              <p>{ownerPublicSetReview(activeSongs).summary}</p>
+            </section>
+
             <div className={styles.songEditorList}>
               {activeSongs.map((song, index) => {
                 const searches = buildSongResourceLinks(song.title, song.artist);
+                const publicReview = ownerPublicSongReview(song);
                 const videoId = song.youtubeVideoId || getYouTubeVideoId(song.youtubeUrl);
                 const isEnriching = enriching === String(song.id);
                 return (
@@ -1316,9 +1326,12 @@ export default function ShowControlClient({
                           <span>Original / hide resources</span>
                         </label>
                         {!song.isOriginal && videoId ? <button type="button" onClick={() => setPreview({ ...song, youtubeVideoId: videoId })}>Preview video</button> : null}
-                        {!song.isOriginal ? <a href={song.youtubeUrl || searches.youtubeSearchUrl} target="_blank" rel="noreferrer">Open YouTube</a> : null}
-                        {!song.isOriginal ? <a href={song.lyricsUrl || searches.lyricsSearchUrl} target="_blank" rel="noreferrer">Open lyrics</a> : null}
+                        {publicReview.youtubeOwnerLabel ? <a href={publicReview.youtubeOwnerHref} target="_blank" rel="noreferrer">{publicReview.youtubeOwnerLabel}</a> : null}
+                        {publicReview.lyricsOwnerLabel ? <a href={publicReview.lyricsOwnerHref} target="_blank" rel="noreferrer">{publicReview.lyricsOwnerLabel}</a> : null}
                       </div>
+                      <p className={styles.publicSongReview} data-kind={publicReview.kind} data-testid="owner-public-song-review">
+                        {publicReview.summary}
+                      </p>
 
                       <details className={styles.songDetailsEditor}>
                         <summary>Details, song resources, and rehearsal notes</summary>
@@ -1469,6 +1482,7 @@ function ReviewSongList({ label, songs, otherSongs }: { label: string; songs: Sh
       return <li key={song.id}>
         <strong>{song.title}</strong><span>{song.artist || "Artist not recorded"}</span>
         {!other ? <small>Only in this list</small> : null}
+        <small>{ownerPublicSongReview(song).summary}</small>
         {details.length ? <dl>{details.map(({ label: fieldLabel, text }) => <div key={fieldLabel}><dt>{fieldLabel}</dt><dd>{text}</dd></div>)}</dl> : <small>Other details match</small>}
       </li>;
     })}</ol>}

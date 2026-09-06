@@ -78,6 +78,9 @@ commit. A save updates the public page only when that show is already published.
 - Keeps the established black, electric-blue, lime, and hot-pink Rad Dad brand.
 - Estimates set runtime from per-song durations.
 - Runs Set Coach for timing, transitions, guest load, and readiness checks.
+- Reviews the public list on the Show Control draft: saved YouTube/lyrics,
+  search-only owner links, originals that hide both, and rehearsal notes that
+  stay in Show Control.
 
 Draft and archived show slugs stay owner-only: anonymous page and API reads
 return not found until the owner marks the show **Published** in Show Control.
@@ -96,6 +99,8 @@ covers table is not the set.
 - [Band-run position product handoff](docs/RUN_POSITION_HANDOFF.md)
 - [Owner save recovery product handoff](docs/OWNER_SAVE_RECOVERY_HANDOFF.md)
 - [Conflict-safe owner saves and review handoff](docs/OWNER_SET_CONFLICT_REVIEW_HANDOFF.md)
+- [Set Coach draft handoff](docs/SET_COACH_DRAFT_HANDOFF.md)
+- [Public-list set review handoff](docs/OWNER_PUBLIC_SET_REVIEW_HANDOFF.md)
 
 ## Quick owner workflow
 

@@ -22,6 +22,7 @@ const liveSetListsUrl = new URL("../app/live-set-lists.tsx", import.meta.url);
 const songResourcesUrl = new URL("../lib/song-resources.ts", import.meta.url);
 const showRouteUrl = new URL("../app/api/show/route.ts", import.meta.url);
 const showControlUrl = new URL("../app/show-control/show-control.tsx", import.meta.url);
+const ownerReviewUrl = new URL("../lib/owner-set-review.ts", import.meta.url);
 const showDataUrl = new URL("../lib/show-data.ts", import.meta.url);
 
 const siteCoversWallIsNotTheSet = [
@@ -133,12 +134,13 @@ test("official writes fail closed so search URLs are not stored as media", () =>
 });
 
 test("public and owner paths do not treat the covers table or search links as official-set media", async () => {
-  const [page, liveList, resources, showRoute, showControl] = await Promise.all([
+  const [page, liveList, resources, showRoute, showControl, ownerReview] = await Promise.all([
     readFile(pageUrl, "utf8"),
     readFile(liveSetListsUrl, "utf8"),
     readFile(songResourcesUrl, "utf8"),
     readFile(showRouteUrl, "utf8"),
     readFile(showControlUrl, "utf8"),
+    readFile(ownerReviewUrl, "utf8"),
   ]);
 
   assert.match(page, /Covers can show YouTube and lyrics when saved; originals hide both/);
@@ -153,8 +155,19 @@ test("public and owner paths do not treat the covers table or search links as of
   assert.match(normalization, /hydrateOfficialSongMedia/);
   assert.doesNotMatch(normalization, /getCuratedSongResources|resolveSongResourceLinks/);
   assert.match(showControl, /savedOfficialMediaUrl/);
+  assert.match(showControl, /ownerPublicSongReview/);
+  assert.match(showControl, /ownerPublicSetReview/);
+  assert.match(showControl, /Public list for this draft/);
+  assert.doesNotMatch(showControl, />Open YouTube</);
+  assert.doesNotMatch(showControl, />Open lyrics</);
+  assert.doesNotMatch(showControl, /song\.youtubeUrl \|\| searches\.youtubeSearchUrl/);
+  assert.doesNotMatch(showControl, /song\.lyricsUrl \|\| searches\.lyricsSearchUrl/);
   assert.doesNotMatch(showControl, /chordsUrl: resources\.chordsSearchUrl/);
   assert.doesNotMatch(showControl, /lyricsUrl: resources\.lyricsSearchUrl/);
+  assert.match(ownerReview, /publicSongResourceActions/);
+  assert.match(ownerReview, /savedOfficialMediaUrl/);
+  assert.doesNotMatch(ownerReview, /getCuratedSongResources/);
+  assert.doesNotMatch(ownerReview, /resolveSongResourceLinks/);
 
   const publicActions = resources.slice(
     resources.indexOf("export function publicSongResourceActions"),
