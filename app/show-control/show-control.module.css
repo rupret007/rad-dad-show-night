@@ -126,9 +126,12 @@
 .coachPanel span { color: var(--blue); font-size: 0.62rem; font-weight: 900; letter-spacing: 0.13em; }
 .coachPanel strong { margin-top: 3px; text-transform: uppercase; }
 .coachPanel p { margin: 3px 0 0; color: var(--muted); font-size: 0.78rem; }
+.coachContext { overflow-wrap: anywhere; }
+.coachResult > .coachContext { margin: 0 0 12px; color: var(--muted); font-size: 0.8rem; }
+.coachPanel button:disabled { opacity: 0.6; cursor: default; }
 .coachPanel button { min-height: 40px; padding: 0 14px; border: 0; color: var(--black); background: var(--blue); cursor: pointer; font: inherit; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; }
 .coachResult { margin: -3px 16px 16px; padding: 16px; border: 1px solid rgba(255, 255, 255, 0.13); background: #0e0e12; }
-.coachResult header { display: flex; align-items: baseline; gap: 12px; }
+.coachResult header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
 .coachResult header strong { color: var(--lime); font-family: Impact, sans-serif; font-size: 2.1rem; }
 .coachResult header span { font-size: 0.83rem; font-weight: 800; text-transform: uppercase; }
 .coachResult header small { margin-left: auto; color: var(--pink); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; }

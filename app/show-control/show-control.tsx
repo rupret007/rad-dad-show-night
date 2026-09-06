@@ -9,7 +9,7 @@ import {
   type SetSlug,
   type ShowSong,
 } from "../../lib/show-data";
-import { showPayloadBelongsToShow, type ShowSetDefinition } from "../../lib/show-read-integrity";
+import { parseShowSets, showPayloadBelongsToShow, type ShowSetDefinition } from "../../lib/show-read-integrity";
 import {
   buildSongResourceLinks,
   getYouTubeEmbedUrl,
@@ -59,6 +59,7 @@ import {
 import type { Suggestion } from "../song-board";
 import { parseSuggestionFeedPayload } from "../../lib/suggestion-board";
 import styles from "./show-control.module.css";
+import SetCoach from "./set-coach";
 
 type SongMap = Record<SetSlug, ShowSong[]>;
 type DeletedSong = BoundUndoRemove | null;
@@ -67,18 +68,6 @@ type SetReview = {
   reviewedBase: string; reviewedVersion: string;
 };
 type OwnerOperation = { controller: AbortController; showSlug: string; showId: string; setSlug: SetSlug };
-type CoachResult = {
-  source: "smart-check" | "openai";
-  score: number;
-  estimatedMinutes: number;
-  scheduledMinutes: number;
-  findings: Array<{
-    tone: "good" | "watch" | "action";
-    title: string;
-    detail: string;
-  }>;
-  aiNotes: string;
-};
 
 const emptySongMap = (): SongMap => ({
   "jeff-story-friends": [],
@@ -157,8 +146,7 @@ export default function ShowControlClient({
   const [showSets, setShowSets] = useState<ShowSetDefinition[]>([...SET_DEFINITIONS]);
   const [cloneOpen, setCloneOpen] = useState(false);
   const [cloning, setCloning] = useState(false);
-  const [coach, setCoach] = useState<CoachResult | null>(null);
-  const [coaching, setCoaching] = useState(false);
+  const [coachSets, setCoachSets] = useState<ShowSetDefinition[]>([]);
   const [statusChanging, setStatusChanging] = useState<ShowLifecycleStatus | null>(null);
   const dragIndex = useRef<number | null>(null);
   const draftTitleRef = useRef<HTMLInputElement | null>(null);
@@ -201,6 +189,7 @@ export default function ShowControlClient({
         setShows(showList.shows ?? [showData.show]);
         setActiveShowSlug(showData.show.slug);
         if (showData.sets?.length) setShowSets(showData.sets);
+        setCoachSets(parseShowSets(showData.sets) ?? []);
         setShowVerified(true);
       })
       .catch((error) => {
@@ -272,6 +261,7 @@ export default function ShowControlClient({
     shows.find((show) => show.slug === activeShowSlug) ??
     (SHOW_DETAILS as ManagedShow);
   const activeSongs = songsBySet[activeSet];
+  const activeCoachSets = coachSets.filter((set) => set.slug === activeSet);
   const currentShow = useRef({ id: activeShow.id, slug: activeShowSlug });
   useLayoutEffect(() => {
     currentShow.current = { id: activeShow.id, slug: activeShowSlug };
@@ -721,7 +711,6 @@ export default function ShowControlClient({
     if (dirtySets.size && !window.confirm("Switch shows and discard unsaved changes?")) return;
     setLoading(true);
     setNotice("");
-    setCoach(null);
     try {
       const response = await fetch(`/api/show?show=${encodeURIComponent(slug)}&scope=owner`, {
         cache: "no-store",
@@ -747,6 +736,7 @@ export default function ShowControlClient({
       setDeleted(null);
       setActiveShowSlug(data.show.slug);
       setShowSets(data.sets?.length ? data.sets : [...SET_DEFINITIONS]);
+      setCoachSets(parseShowSets(data.sets) ?? []);
       setDirtySets(new Set());
       window.history.replaceState(null, "", `/show-control?show=${encodeURIComponent(data.show.slug)}`);
     } catch (error) {
@@ -832,34 +822,6 @@ export default function ShowControlClient({
       setNotice(error instanceof Error ? error.message : "Could not update show status.");
     } finally {
       setStatusChanging(null);
-    }
-  }
-
-  async function runCoach() {
-    setCoaching(true);
-    setNotice("Set Coach is reviewing the active set...");
-    try {
-      const response = await fetch("/api/coach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          showTitle: `${activeShow.title} at ${activeShow.venue}`,
-          setSlug: activeSet,
-          songs: activeSongs,
-        }),
-      });
-      const result = (await response.json()) as CoachResult & { error?: string };
-      if (!response.ok) throw new Error(result.error || "Set Coach could not run.");
-      setCoach(result);
-      setNotice(
-        result.source === "openai"
-          ? "AI Set Coach review is ready."
-          : "Set timing and readiness check is ready.",
-      );
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Set Coach could not run.");
-    } finally {
-      setCoaching(false);
     }
   }
 
@@ -1283,37 +1245,15 @@ export default function ShowControlClient({
               <button type="submit">Add + find</button>
             </form>
 
-            <section className={styles.coachPanel}>
-              <div>
-                <span>SET COACH</span>
-                <strong>Timing, pacing, and readiness</strong>
-                <p>Reviews only this active set and never changes the order.</p>
-              </div>
-              <button type="button" onClick={runCoach} disabled={coaching || !activeSongs.length}>
-                {coaching ? "Reviewing..." : "Review this set"}
-              </button>
-            </section>
-
-            {coach ? (
-              <section className={styles.coachResult}>
-                <header>
-                  <strong>{coach.score}/100</strong>
-                  <span>
-                    {coach.estimatedMinutes} estimated / {coach.scheduledMinutes} scheduled minutes
-                  </span>
-                  <small>{coach.source === "openai" ? "AI review" : "Smart set check"}</small>
-                </header>
-                <div className={styles.coachFindings}>
-                  {coach.findings.map((finding) => (
-                    <article data-tone={finding.tone} key={finding.title}>
-                      <strong>{finding.title}</strong>
-                      <p>{finding.detail}</p>
-                    </article>
-                  ))}
-                </div>
-                {coach.aiNotes ? <p className={styles.aiNotes}>{coach.aiNotes}</p> : null}
-              </section>
-            ) : null}
+            <SetCoach
+              showId={activeShow.id}
+              showSlug={activeShowSlug}
+              showTitle={`${activeShow.title} at ${activeShow.venue}`}
+              setSlug={activeSet}
+              setTitle={activeDefinition.title}
+              setTime={activeCoachSets.length === 1 ? activeCoachSets[0].time : ""}
+              songs={activeSongs}
+            />
 
             <div className={styles.songEditorList}>
               {activeSongs.map((song, index) => {
