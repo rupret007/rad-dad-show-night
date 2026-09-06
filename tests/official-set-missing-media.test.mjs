@@ -22,7 +22,7 @@ const liveSetListsUrl = new URL("../app/live-set-lists.tsx", import.meta.url);
 const songResourcesUrl = new URL("../lib/song-resources.ts", import.meta.url);
 const showRouteUrl = new URL("../app/api/show/route.ts", import.meta.url);
 const showControlUrl = new URL("../app/show-control/show-control.tsx", import.meta.url);
-const ownerReviewUrl = new URL("../lib/owner-set-review.ts", import.meta.url);
+const ownerReviewUrl = new URL("../lib/song-resources.ts", import.meta.url);
 const showDataUrl = new URL("../lib/show-data.ts", import.meta.url);
 
 const siteCoversWallIsNotTheSet = [
@@ -164,10 +164,14 @@ test("public and owner paths do not treat the covers table or search links as of
   assert.doesNotMatch(showControl, /song\.lyricsUrl \|\| searches\.lyricsSearchUrl/);
   assert.doesNotMatch(showControl, /chordsUrl: resources\.chordsSearchUrl/);
   assert.doesNotMatch(showControl, /lyricsUrl: resources\.lyricsSearchUrl/);
-  assert.match(ownerReview, /publicSongResourceActions/);
-  assert.match(ownerReview, /savedOfficialMediaUrl/);
-  assert.doesNotMatch(ownerReview, /getCuratedSongResources/);
-  assert.doesNotMatch(ownerReview, /resolveSongResourceLinks/);
+  const ownerPublicReview = ownerReview.slice(
+    ownerReview.indexOf("export function ownerPublicSongReview"),
+    ownerReview.indexOf("export function resolveSongResourceLinks"),
+  );
+  assert.match(ownerPublicReview, /publicSongResourceActions/);
+  assert.match(ownerPublicReview, /savedOfficialMediaUrl/);
+  assert.doesNotMatch(ownerPublicReview, /getCuratedSongResources/);
+  assert.doesNotMatch(ownerPublicReview, /resolveSongResourceLinks/);
 
   const publicActions = resources.slice(
     resources.indexOf("export function publicSongResourceActions"),

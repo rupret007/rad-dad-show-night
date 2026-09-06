@@ -127,10 +127,10 @@ does not grant editing authority from the confirmed repository fallback.
 The editor rejects offline-marked responses and missing/wrong owner headers for
 initial load, Check, and show switches. Unresolved save/check/review state also
 blocks lifecycle actions, even when no song has been marked dirty.
-Show Control's public-list review uses `publicSongResourceActions` on the
-current browser draft so search fallbacks and rehearsal notes cannot be
-presented as public official-set media. It does not write, publish, or call a
-provider.
+Show Control's public-list review uses `ownerPublicSetReview` and
+`publicSongResourceActions` on the current browser draft so search fallbacks
+and rehearsal notes cannot be presented as public official-set media. It does
+not write, publish, or call a provider.
 
 Show Control can switch between D1-backed show records and clone an existing
 show into a new draft. Cloning can copy the timeline and show-specific songs,

@@ -25,7 +25,7 @@ const readmeUrl = new URL("../README.md", import.meta.url);
 const technicalGuideUrl = new URL("../docs/TECHNICAL_GUIDE.md", import.meta.url);
 const showPlanUrl = new URL("../docs/SHOW_PLAN.md", import.meta.url);
 const showControlUrl = new URL("../app/show-control/show-control.tsx", import.meta.url);
-const ownerReviewUrl = new URL("../lib/owner-set-review.ts", import.meta.url);
+const ownerReviewUrl = new URL("../lib/song-resources.ts", import.meta.url);
 const ownerGuideUrl = new URL("../docs/SHOW_CONTROL.md", import.meta.url);
 const publicReviewHandoffUrl = new URL("../docs/OWNER_PUBLIC_SET_REVIEW_HANDOFF.md", import.meta.url);
 

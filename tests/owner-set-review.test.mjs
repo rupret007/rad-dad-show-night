@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  ownerPublicSetReview,
-  ownerPublicSongReview,
   ownerSongReviewDetails,
   readOwnerSetSongs,
   readOwnerShowSongs,
   removedDraftSongs,
   stageReviewedOwnerDraft,
 } from "../lib/owner-set-review.ts";
+import { ownerPublicSetReview, ownerPublicSongReview } from "../lib/song-resources.ts";
 
 const song = (id, extra = {}) => ({
   id, showId: "fixture-night", setSlug: "rad-dad", position: 1, title: "Fixture song", artist: "Fixture band",
