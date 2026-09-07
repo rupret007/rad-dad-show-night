@@ -29,8 +29,10 @@ master timeline, but its song list is not managed in Show Control.
 Use the show picker at the top of Show Control to switch events. Select **Clone
 show** to copy the current timeline, sets, cues, song resources, original flags,
 and durations into a new private draft. Enter the new date, venue, and title.
-Start and end times are optional. Enter both to set this night's hours; one
-time alone is ignored.
+Start and end times are optional. Enter both to set this night's hours, or leave
+both blank. If only one is entered, the form keeps your details and focuses the
+missing time before creating a draft. Complete the pair or clear both to retry.
+This is a form safeguard; direct API callers retain the existing hours behavior.
 
 Every show has a unique share link using `?show=show-slug`. The clone keeps its
 own set rows. Later edits to the original show cannot change the draft, and the

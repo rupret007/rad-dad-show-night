@@ -159,3 +159,55 @@ test("a clone form with both hours sends those clocks and stays readable on a 32
   });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 });
+
+for (const copySongs of [false, true]) {
+  for (const supplied of ["start", "end"] as const) {
+    test(`clone with copy=${copySongs} keeps a lone ${supplied} time for correction`, async ({ page }) => {
+      const clones = await openOwner(page);
+      await page.getByRole("button", { name: "Clone show" }).click();
+      const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Create draft" }) });
+      await form.getByLabel("New show title").fill("Keep my new night");
+      await form.getByLabel("New show date").fill("2026-10-31");
+      await form.getByLabel("Copy official songs and set times into the draft").setChecked(copySongs);
+      const entered = form.getByLabel(`New show ${supplied} time`);
+      const missing = form.getByLabel(`New show ${supplied === "start" ? "end" : "start"} time`);
+      await entered.fill(supplied === "start" ? "8:00 PM" : "11:00 PM");
+      await missing.fill("   ");
+      await form.getByRole("button", { name: "Create draft" }).click();
+      await expect(form.getByRole("alert")).toContainText("No draft was created");
+      await expect(missing).toBeFocused();
+      await expect(entered).toHaveValue(supplied === "start" ? "8:00 PM" : "11:00 PM");
+      await expect(form.getByLabel("New show title")).toHaveValue("Keep my new night");
+      await expect(form.getByLabel("New show date")).toHaveValue("2026-10-31");
+      expect(clones).toEqual([]);
+      if (copySongs && supplied === "end") {
+        await page.getByRole("button", { name: "Clone show" }).click();
+        await page.getByRole("button", { name: "Clone show" }).click();
+        await expect(form.getByRole("alert")).toHaveCount(0);
+        await expect(entered).toHaveValue("");
+        return;
+      }
+      await missing.fill(supplied === "start" ? "11:00 PM" : "8:00 PM");
+      await expect(form.getByRole("alert")).toHaveCount(0);
+      await form.getByRole("button", { name: "Create draft" }).click();
+      await expect.poll(() => clones.length).toBe(1);
+      expect(clones[0]).toMatchObject({ title: "Keep my new night", copySongs, startTime: "8:00 PM", endTime: "11:00 PM" });
+    });
+  }
+}
+
+test("clearing a lone clock allows an optional-hours empty draft", async ({ page }) => {
+  const clones = await openOwner(page);
+  await page.getByRole("button", { name: "Clone show" }).click();
+  const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Create draft" }) });
+  await form.getByLabel("New show date").fill("2026-10-31");
+  await form.getByLabel("Copy official songs and set times into the draft").uncheck();
+  await form.getByLabel("New show start time").fill("8:00 PM");
+  await form.getByRole("button", { name: "Create draft" }).click();
+  await expect(form.getByRole("alert")).toBeVisible();
+  expect(clones).toEqual([]);
+  await form.getByLabel("New show start time").fill("");
+  await form.getByRole("button", { name: "Create draft" }).click();
+  await expect.poll(() => clones.length).toBe(1);
+  expect(clones[0]).toMatchObject({ copySongs: false, startTime: "", endTime: "" });
+});
