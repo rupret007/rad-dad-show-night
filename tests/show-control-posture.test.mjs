@@ -53,6 +53,32 @@ test("a clean published show leads with the verified band run", () => {
   assert.deepEqual(posture.leftoverActions, []);
 });
 
+test("the set plan glance states this night's own hours", () => {
+  const posture = buildShowControlPosture({
+    status: "published",
+    sets,
+    dirtySetSlugs: [],
+    nightHours: "7:00-10:00 PM",
+  });
+
+  assert.match(posture.setPlan.detail, /^This night runs 7:00-10:00 PM\./);
+  assert.match(posture.setPlan.detail, /3 set windows are scheduled/);
+});
+
+test("an empty clone glance says night hours are not borrowed", () => {
+  const emptySets = sets.map((set) => ({ ...set, time: "", songCount: 0 }));
+  const posture = buildShowControlPosture({
+    status: "draft",
+    sets: emptySets,
+    dirtySetSlugs: [],
+    nightHours: "   ",
+  });
+
+  assert.match(posture.setPlan.detail, /^Hours not set for this night;/);
+  assert.match(posture.setPlan.detail, /start or wrap will not appear here/);
+  assert.match(posture.setPlan.detail, /No songs or set times will be borrowed/);
+});
+
 test("the first unsaved set wins before publish or run actions", () => {
   const posture = buildShowControlPosture({
     status: "published",
@@ -147,6 +173,7 @@ test("Show Control renders the posture and its one real action on phones", async
   assert.match(control.slice(verifiedGuard, postureBuild), /No Add, Save, Publish, or Archive action/);
   assert.match(control, /data-show-control="unverified"/);
   assert.match(control, /data-next-action=\{controlPosture\.nextAction\.kind\}/);
+  assert.match(control, /nightHours: activeShow\.hours \?\? ""/);
   assert.match(control, /Show status at a glance/);
   assert.match(control, /One next step/);
   assert.match(
