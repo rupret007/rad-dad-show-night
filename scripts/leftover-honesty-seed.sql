@@ -83,10 +83,10 @@ INSERT OR IGNORE INTO shows (
   'Richardson Halloween',
   'The Granada',
   '2026-10-31',
-  '8:00 PM',
-  '11:00 PM',
+  '',
+  '',
   'published',
-  'Expected wrap near 11:00 PM',
+  '',
   0
 );
 INSERT OR IGNORE INTO shows (

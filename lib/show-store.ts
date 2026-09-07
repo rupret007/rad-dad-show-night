@@ -25,7 +25,7 @@ import {
   songsBelongToShow,
   ShowDataUnavailableError,
 } from "./show-read-integrity";
-import { toPublicShowSongs } from "./show-public";
+import { formatShowHours, toPublicShowSongs } from "./show-public";
 import { INITIAL_OFFICIAL_SET_VERSION, officialSetRevision, readReviewedVersion, type SetWriteVersions } from "./owner-set-save";
 
 const SEED_KEY = "show-control-seed-v1";
@@ -160,7 +160,7 @@ function mapShow(row: typeof shows.$inferSelect): ManagedShow {
     date: formatShowDate(row.showDate),
     startTime: row.startTime,
     endTime: row.endTime,
-    hours: `${row.startTime}-${row.endTime}`,
+    hours: formatShowHours(row.startTime, row.endTime),
     expectedWrap: row.expectedWrap,
     status: row.status as ManagedShow["status"],
     isDefault: row.isDefault,

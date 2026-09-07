@@ -257,4 +257,7 @@ test("Show Control makes leftover work clickable on phones and keeps leftover co
   assert.match(readme, /See closed public link/);
   assert.match(guide, /See last saved public list/);
   assert.match(technical, /leftover share-link proof/);
+  assert.match(control, /Hours not set for this night/);
+  assert.match(control, /night hours/);
+  assert.match(leftoverHosted, /inherited the September wrap|inherited 7:00 PM/);
 });

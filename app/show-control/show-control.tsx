@@ -40,6 +40,7 @@ import {
   type ShowControlLeftoverAction,
   type ShowControlNextAction,
 } from "../../lib/show-control-posture";
+import { showHoursLabel } from "../../lib/show-public";
 import {
   applySuccessfulOfficialSave,
   bindUndoRemove,
@@ -764,6 +765,8 @@ export default function ShowControlClient({
           title: data.title,
           venue: data.venue,
           showDate: data.showDate,
+          startTime: data.startTime,
+          endTime: data.endTime,
           copySongs: data.copySongs === "on",
         }),
       });
@@ -775,7 +778,7 @@ export default function ShowControlClient({
       setNotice(
         data.copySongs === "on"
           ? "New draft created. It has its own copy of the sets. The original show is unchanged. The public share link stays closed until you publish."
-          : "New empty draft created. It does not inherit another show's songs or set times. The public share link stays closed until you publish.",
+          : "New empty draft created. It does not inherit another show's songs, set times, or night hours. The public share link stays closed until you publish.",
       );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not clone the show.");
@@ -943,6 +946,14 @@ export default function ShowControlClient({
           <div>
             <p className={styles.controlKicker}>
               {activeShow.showDate} / {activeShow.venue}
+            </p>
+            <p
+              className={styles.showHours}
+              data-show-hours={activeShow.hours ? "set" : "unset"}
+            >
+              {activeShow.hours
+                ? showHoursLabel(activeShow.hours)
+                : "Hours not set for this night. Another show's start or wrap will not appear here."}
             </p>
             <h1>BUILD THE NIGHT.</h1>
             <p>
@@ -1132,12 +1143,16 @@ export default function ShowControlClient({
           <form className={styles.clonePanel} onSubmit={cloneShow}>
             <div>
               <strong>Clone this show</strong>
-              <span>The original show is unchanged. The new draft stays private until you publish. Uncheck the box to start an empty night that does not inherit songs or set times.</span>
+              <span>The original show is unchanged. The new draft stays private until you publish. Uncheck the box to start an empty night that does not inherit songs, set times, or night hours. Enter both start and end to set this night&apos;s hours; one time alone is ignored.</span>
             </div>
             <input name="title" defaultValue={activeShow.title} aria-label="New show title" required />
             <input name="venue" defaultValue={activeShow.venue} aria-label="New show venue" required />
             <input name="showDate" type="date" aria-label="New show date" required />
             <button type="submit" disabled={cloning}>{cloning ? "Cloning..." : "Create draft"}</button>
+            <div className={styles.cloneHours}>
+              <input name="startTime" aria-label="New show start time" placeholder="Start time (optional)" autoComplete="off" />
+              <input name="endTime" aria-label="New show end time" placeholder="End time (optional)" autoComplete="off" />
+            </div>
             <label className={styles.cloneCopyChoice}>
               <input name="copySongs" type="checkbox" defaultChecked />
               <span>Copy official songs and set times into the draft</span>

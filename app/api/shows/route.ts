@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { getAdminUser } from "../../../lib/admin-access";
 import { showStatusChangeBlockReason } from "../../../lib/show-lifecycle";
-import { shouldCopyCloneSongs } from "../../../lib/show-public";
+import { cloneShowNightHours, shouldCopyCloneSongs } from "../../../lib/show-public";
 import { ensureShowSeeded, getManagedShows } from "../../../lib/show-store";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +38,8 @@ export async function POST(request: Request) {
       showDate?: string;
       status?: string;
       copySongs?: boolean | string | number;
+      startTime?: string;
+      endTime?: string;
     };
 
     if (payload.action === "clone") {
@@ -62,6 +64,14 @@ export async function POST(request: Request) {
       const id = `show-${crypto.randomUUID()}`;
       const now = new Date().toISOString();
       const copySongs = shouldCopyCloneSongs(payload.copySongs);
+      const nightHours = cloneShowNightHours({
+        copySongs,
+        sourceStartTime: source.start_time,
+        sourceEndTime: source.end_time,
+        sourceExpectedWrap: source.expected_wrap,
+        startTime: payload.startTime,
+        endTime: payload.endTime,
+      });
       const statements = [
         env.DB.prepare(
           `INSERT INTO shows (
@@ -74,9 +84,9 @@ export async function POST(request: Request) {
           title,
           venue,
           showDate,
-          source.start_time,
-          source.end_time,
-          source.expected_wrap,
+          nightHours.startTime,
+          nightHours.endTime,
+          nightHours.expectedWrap,
           now,
           now,
         ),

@@ -102,7 +102,7 @@ suggest and practice stay after that step. Empty official sets say so instead
 of showing `0 songs ~0 min`. Empty clones also omit another night's run of
 show and featured-guest production notes.
 Practice names the next song and only resumes a place that belongs to this
-slug. An empty clone does not inherit another show's set. Public show reads
+slug. An empty clone does not inherit another show's set or night hours. Public show reads
 strip owner rehearsal notes. The unscoped homepage only resolves the default
 published show; it never inherits the latest published clone.
 
@@ -134,8 +134,12 @@ not write, publish, or call a provider.
 
 Show Control can switch between D1-backed show records and clone an existing
 show into a new draft. Cloning can copy the timeline and show-specific songs,
-or start an empty night that does not inherit another event's songs or set
-times. The original event remains unchanged. The editor shows this show's own
+or start an empty night that does not inherit another event's songs, set
+times, or night hours. Empty clones write blank start, end, and wrap unless
+the owner enters both clocks on the clone form. A full copy keeps the source
+hours unless both clocks are entered. `cloneShowNightHours` and
+`formatShowHours` keep that contract; blank clocks do not become `"-"`. The
+original event remains unchanged. The editor shows this show's own hours and
 set times from the loaded payload, not the September 19 defaults.
 
 The lifecycle API refuses to move the default public show away from `published`,
@@ -335,7 +339,7 @@ typecheck, the real production build, and the existing local D1/HTTP isolation.
 ### `GET/POST /api/shows`
 
 Owner-only. Lists shows, clones a source show into a draft (optionally without
-copying songs or set times), and updates draft, published, or archived status.
+copying songs, set times, or night hours), and updates draft, published, or archived status.
 Status changes require an existing show slug.
 
 ### `POST /api/coach`

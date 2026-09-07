@@ -115,11 +115,12 @@ export function publicProductionNotes({
     );
   }
   notes.push("Confirm guest keys and endings before show day.");
-  notes.push(
-    canonicalShow
-      ? "10:00 PM is the expected wrap, not a venue curfew."
-      : `${expectedWrap || "The planned wrap"} is the expected wrap, not a venue curfew.`,
-  );
+  const wrap = expectedWrap.trim();
+  if (canonicalShow) {
+    notes.push("10:00 PM is the expected wrap, not a venue curfew.");
+  } else if (wrap) {
+    notes.push(`${wrap} is the expected wrap, not a venue curfew.`);
+  }
   return notes;
 }
 
