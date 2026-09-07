@@ -191,11 +191,13 @@ export function buildShowControlPosture({
   sets,
   dirtySetSlugs,
   heldSetSlugs = [],
+  nightHours = "",
 }: {
   status: ShowLifecycleStatus;
   sets: ShowControlSetPosture[];
   dirtySetSlugs: SetSlug[];
   heldSetSlugs?: SetSlug[];
+  nightHours?: string;
 }): ShowControlPosture {
   const dirty = new Set(dirtySetSlugs);
   const held = new Set(heldSetSlugs);
@@ -207,6 +209,13 @@ export function buildShowControlPosture({
   );
   const populatedSets = sets.filter((set) => safeSongCount(set.songCount) > 0).length;
   const scheduledSets = sets.filter((set) => set.time.trim()).length;
+  const nightHoursText = typeof nightHours === "string" ? nightHours.trim() : "";
+  const scheduleDetail = scheduledSets
+    ? `${scheduledSets} set window${scheduledSets === 1 ? " is" : "s are"} scheduled for this show.`
+    : "No songs or set times will be borrowed from another night.";
+  const setPlanDetail = nightHoursText
+    ? `This night runs ${nightHoursText}. ${scheduleDetail}`
+    : `Hours not set for this night; another show's start or wrap will not appear here. ${scheduleDetail}`;
 
   let nextAction: ShowControlNextAction;
   if (firstHeldSet) {
@@ -263,9 +272,7 @@ export function buildShowControlPosture({
       value: totalSongs
         ? `${totalSongs} song${totalSongs === 1 ? "" : "s"} · ${populatedSets} active set${populatedSets === 1 ? "" : "s"}`
         : "No verified songs",
-      detail: scheduledSets
-        ? `${scheduledSets} set window${scheduledSets === 1 ? " is" : "s are"} scheduled for this show.`
-        : "No songs or set times will be borrowed from another night.",
+      detail: setPlanDetail,
     },
     booking: {
       label: "Booking & outreach",

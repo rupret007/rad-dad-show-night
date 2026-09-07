@@ -159,16 +159,16 @@ Jeff can tap this on a phone without mixing Save and Publish:
 2. Open [Show Control](https://rad-dad-show-night.jeffstory007.chatgpt.site/show-control)
    and sign in. The September 19 default public show stays **Published · public**.
    Archive stays blocked because the main show link would stop working. The
-   status deck names the public link, official set plan, and that Travis owns
-   booking, then presents one next step. Leftover work on this show sits under
-   that step.
+   status deck names the public link, official set plan with this night's own
+   hours, and that Travis owns booking, then presents one next step. Leftover
+   work on this show sits under that step.
 3. Choose **Clone show**, uncheck **Copy official songs and set times**, leave
    start and end blank, and create an empty draft. That night stays empty and
    does not inherit September 19 songs, set windows, or 7:00-10:00 hours. The
-   editor says **Hours not set**. The public share link stays closed until you
-   publish. **Leftover on this show** lists leftover empty Stalemate and Rad
-   Dad plus leftover **See closed public link**. Tap a leftover empty set to
-   start it here.
+   editor and the status deck both say **Hours not set for this night**. The
+   public share link stays closed until you publish. **Leftover on this show**
+   lists leftover empty Stalemate and Rad Dad plus leftover **See closed public
+   link**. Tap a leftover empty set to start it here.
 4. Save a set on the draft if you want. Saving writes this private show. It
    does not open the public link. The editor says **Private draft — not public**.
    Leftover unsaved other sets stay listed as leftover saves.

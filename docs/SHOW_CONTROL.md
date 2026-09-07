@@ -74,6 +74,11 @@ view: whether the public share link is open, how many verified songs and set
 windows belong to this show, and that Travis owns booking and outreach outside
 Show Control. The app never pitches, posts, or sends on his behalf.
 
+The set-plan fact also states this night's own hours (**This night runs
+7:00-10:00 PM**), or says **Hours not set for this night** when this night has
+no start or wrap of its own. An empty clone shows the not-set message; another
+show's start or wrap is never filled in for it.
+
 The highlighted **One next step** follows a fixed order instead of guessing:
 
 1. Check the first set whose last Save did not come back with a verified
