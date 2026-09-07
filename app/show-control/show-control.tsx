@@ -149,6 +149,7 @@ export default function ShowControlClient({
   const [activeShowSlug, setActiveShowSlug] = useState<string>(SHOW_DETAILS.slug);
   const [showSets, setShowSets] = useState<ShowSetDefinition[]>([...SET_DEFINITIONS]);
   const [cloneOpen, setCloneOpen] = useState(false);
+  const [cloneHoursError, setCloneHoursError] = useState("");
   const [cloning, setCloning] = useState(false);
   const [coachSets, setCoachSets] = useState<ShowSetDefinition[]>([]);
   const [statusChanging, setStatusChanging] = useState<ShowLifecycleStatus | null>(null);
@@ -752,10 +753,19 @@ export default function ShowControlClient({
 
   async function cloneShow(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form).entries());
+    const hasStart = Boolean(String(data.startTime ?? "").trim());
+    const hasEnd = Boolean(String(data.endTime ?? "").trim());
+    if (hasStart !== hasEnd) {
+      setCloneHoursError("Enter both start and end times, or clear both to leave hours optional. No draft was created.");
+      form.querySelector<HTMLInputElement>(`[name="${hasStart ? "endTime" : "startTime"}"]`)?.focus();
+      return;
+    }
+    setCloneHoursError("");
     setCloning(true);
     setNotice("Cloning the show plan...");
     try {
-      const data = Object.fromEntries(new FormData(event.currentTarget).entries());
       const response = await fetch("/api/shows", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -999,7 +1009,7 @@ export default function ShowControlClient({
             </a>
             <button
               type="button"
-              onClick={() => setCloneOpen((value) => !value)}
+              onClick={() => { setCloneHoursError(""); setCloneOpen((value) => !value); }}
               disabled={Boolean(statusChanging)}
             >
               Clone show
@@ -1140,10 +1150,10 @@ export default function ShowControlClient({
         </section>
 
         {cloneOpen ? (
-          <form className={styles.clonePanel} onSubmit={cloneShow}>
+          <form className={styles.clonePanel} onSubmit={cloneShow} onInput={() => setCloneHoursError("")}>
             <div>
               <strong>Clone this show</strong>
-              <span>The original show is unchanged. The new draft stays private until you publish. Uncheck the box to start an empty night that does not inherit songs, set times, or night hours. Enter both start and end to set this night&apos;s hours; one time alone is ignored.</span>
+              <span>The original show is unchanged. The new draft stays private until you publish. Uncheck the box to start an empty night that does not inherit songs, set times, or night hours. Enter both start and end to set this night&apos;s hours, or leave both blank.</span>
             </div>
             <input name="title" defaultValue={activeShow.title} aria-label="New show title" required />
             <input name="venue" defaultValue={activeShow.venue} aria-label="New show venue" required />
@@ -1153,6 +1163,7 @@ export default function ShowControlClient({
               <input name="startTime" aria-label="New show start time" placeholder="Start time (optional)" autoComplete="off" />
               <input name="endTime" aria-label="New show end time" placeholder="End time (optional)" autoComplete="off" />
             </div>
+            {cloneHoursError ? <p role="alert">{cloneHoursError}</p> : null}
             <label className={styles.cloneCopyChoice}>
               <input name="copySongs" type="checkbox" defaultChecked />
               <span>Copy official songs and set times into the draft</span>
