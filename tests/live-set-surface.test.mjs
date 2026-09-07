@@ -136,7 +136,7 @@ test("the active test contract cannot revive the retired starter preview", async
   ]);
 
   assert.equal(packageJson.scripts.test, "npm run build && npm run test:isolation && npm run test:d1");
-  assert.equal(packageJson.scripts["test:d1"], "node --experimental-strip-types --test tests/official-set-identity-d1.test.mjs");
+  assert.equal(packageJson.scripts["test:d1"], "node --experimental-strip-types --test tests/official-set-identity-d1.test.mjs tests/show-clone-hours-d1.test.mjs");
   assert.doesNotMatch(packageJson.scripts.test, /rendered-html|_sites-preview/);
   assert.doesNotMatch(page, /codex-preview|SkeletonPreview|Your site is taking shape/);
   await assert.rejects(
