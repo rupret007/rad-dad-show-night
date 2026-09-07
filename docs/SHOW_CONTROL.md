@@ -79,6 +79,10 @@ The set-plan fact also states this night's own hours (**This night runs
 no start or wrap of its own. An empty clone shows the not-set message; another
 show's start or wrap is never filled in for it.
 
+When a set has songs but no stage time of its own, the set-plan fact says so
+(**1 active set still has songs but no stage time on this night**) so a band op
+sees the missing slot at a glance before doors. Empty sets are not counted.
+
 The highlighted **One next step** follows a fixed order instead of guessing:
 
 1. Check the first set whose last Save did not come back with a verified

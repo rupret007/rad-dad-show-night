@@ -79,6 +79,55 @@ test("an empty clone glance says night hours are not borrowed", () => {
   assert.match(posture.setPlan.detail, /No songs or set times will be borrowed/);
 });
 
+test("the set plan glance flags a populated set with no stage time", () => {
+  const mixed = [
+    { ...sets[0], time: "" },
+    { ...sets[1] },
+    { ...sets[2] },
+  ];
+  const posture = buildShowControlPosture({
+    status: "published",
+    sets: mixed,
+    dirtySetSlugs: [],
+    nightHours: "7:00-10:00 PM",
+  });
+
+  assert.match(posture.setPlan.detail, /2 set windows are scheduled for this show\./);
+  assert.match(
+    posture.setPlan.detail,
+    /1 active set still has songs but no stage time on this night\.$/,
+  );
+});
+
+test("the set plan glance counts every unslotted populated set", () => {
+  const mixed = sets.map((set) => ({ ...set, time: "" }));
+  const posture = buildShowControlPosture({
+    status: "published",
+    sets: mixed,
+    dirtySetSlugs: [],
+  });
+
+  assert.match(
+    posture.setPlan.detail,
+    /3 active sets still have songs but no stage time on this night\.$/,
+  );
+});
+
+test("the set plan glance stays quiet when every populated set is slotted", () => {
+  const withEmptyTimed = [
+    { ...sets[0] },
+    { ...sets[1], time: "", songCount: 0 },
+    { ...sets[2] },
+  ];
+  const posture = buildShowControlPosture({
+    status: "published",
+    sets: withEmptyTimed,
+    dirtySetSlugs: [],
+  });
+
+  assert.doesNotMatch(posture.setPlan.detail, /no stage time/);
+});
+
 test("the first unsaved set wins before publish or run actions", () => {
   const posture = buildShowControlPosture({
     status: "published",

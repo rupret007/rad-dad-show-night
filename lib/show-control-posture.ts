@@ -209,13 +209,20 @@ export function buildShowControlPosture({
   );
   const populatedSets = sets.filter((set) => safeSongCount(set.songCount) > 0).length;
   const scheduledSets = sets.filter((set) => set.time.trim()).length;
+  const unslottedSets = sets.filter(
+    (set) => safeSongCount(set.songCount) > 0 && !set.time.trim(),
+  ).length;
   const nightHoursText = typeof nightHours === "string" ? nightHours.trim() : "";
   const scheduleDetail = scheduledSets
     ? `${scheduledSets} set window${scheduledSets === 1 ? " is" : "s are"} scheduled for this show.`
     : "No songs or set times will be borrowed from another night.";
-  const setPlanDetail = nightHoursText
+  const slotGapDetail = unslottedSets
+    ? ` ${unslottedSets} active set${unslottedSets === 1 ? "" : "s"} still ${unslottedSets === 1 ? "has" : "have"} songs but no stage time on this night.`
+    : "";
+  const setPlanDetail = (nightHoursText
     ? `This night runs ${nightHoursText}. ${scheduleDetail}`
-    : `Hours not set for this night; another show's start or wrap will not appear here. ${scheduleDetail}`;
+    : `Hours not set for this night; another show's start or wrap will not appear here. ${scheduleDetail}`)
+    + slotGapDetail;
 
   let nextAction: ShowControlNextAction;
   if (firstHeldSet) {
