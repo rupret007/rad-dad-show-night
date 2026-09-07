@@ -30,7 +30,9 @@
 .controlIntro { margin-bottom: 36px; display: flex; align-items: end; justify-content: space-between; gap: 40px; }
 .controlKicker { margin: 0 0 7px; color: var(--blue); font-size: 0.72rem; font-weight: 900; letter-spacing: 0.18em; }
 .controlIntro h1 { margin: 0; font-family: Impact, "Arial Black", sans-serif; font-size: clamp(4rem, 8vw, 7.5rem); line-height: 0.8; letter-spacing: -0.045em; }
-.controlIntro p:not(.controlKicker) { max-width: 690px; margin: 25px 0 0; color: #aeb2b1; font-size: 1.08rem; line-height: 1.5; }
+.controlIntro p:not(.controlKicker):not(.showHours) { max-width: 690px; margin: 25px 0 0; color: #aeb2b1; font-size: 1.08rem; line-height: 1.5; }
+.showHours { max-width: 690px; margin: 10px 0 0; color: var(--lime); font-size: 0.82rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.showHours[data-show-hours="unset"] { color: #c6c9c6; font-weight: 700; letter-spacing: 0.02em; text-transform: none; }
 .controlStats { display: flex; border: 1px solid rgba(255, 255, 255, 0.13); }
 .controlStats div { min-width: 120px; padding: 18px; }
 .controlStats div + div { border-left: 1px solid rgba(255, 255, 255, 0.13); }
@@ -90,6 +92,7 @@
 .clonePanel span { margin-top: 3px; color: var(--muted); font-size: 0.72rem; }
 .clonePanel input { height: 42px; box-sizing: border-box; padding: 0 10px; border: 1px solid rgba(255, 255, 255, 0.15); color: white; background: #111116; font: inherit; }
 .clonePanel button { height: 42px; padding: 0 13px; border: 0; color: var(--black); background: var(--lime); cursor: pointer; font: inherit; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; }
+.cloneHours { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .cloneCopyChoice { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 10px; color: #d7d9d6; font-size: 0.78rem; line-height: 1.35; }
 .cloneCopyChoice input { width: auto; height: auto; margin-top: 3px; accent-color: var(--lime); }
 .cloneCopyChoice span { margin-top: 0; color: #d7d9d6; font-size: 0.78rem; text-transform: none; }
@@ -283,7 +286,8 @@
   .workspace { width: calc(100% - 22px); padding-top: 28px; }
   .controlIntro { margin-bottom: 22px; align-items: flex-start; flex-direction: column; gap: 18px; }
   .controlIntro h1 { font-size: clamp(3.4rem, 16vw, 4.8rem); }
-  .controlIntro p:not(.controlKicker) { margin-top: 14px; font-size: 0.96rem; }
+  .controlIntro p:not(.controlKicker):not(.showHours) { margin-top: 14px; font-size: 0.96rem; }
+  .cloneHours { grid-template-columns: 1fr; }
   .controlStats { width: 100%; }
   .controlStats div { padding: 12px 14px; flex: 1; }
   .postureHeader { padding: 15px; align-items: flex-start; flex-direction: column; gap: 8px; }

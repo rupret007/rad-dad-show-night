@@ -101,6 +101,7 @@ covers table is not the set.
 - [Conflict-safe owner saves and review handoff](docs/OWNER_SET_CONFLICT_REVIEW_HANDOFF.md)
 - [Set Coach draft handoff](docs/SET_COACH_DRAFT_HANDOFF.md)
 - [Public-list set review handoff](docs/OWNER_PUBLIC_SET_REVIEW_HANDOFF.md)
+- [Empty-clone night hours handoff](docs/EMPTY_CLONE_HOURS_HANDOFF.md)
 
 ## Quick owner workflow
 
@@ -161,18 +162,21 @@ Jeff can tap this on a phone without mixing Save and Publish:
    status deck names the public link, official set plan, and that Travis owns
    booking, then presents one next step. Leftover work on this show sits under
    that step.
-3. Choose **Clone show**, uncheck **Copy official songs and set times**, and
-   create an empty draft. That night stays empty. The public share link stays
-   closed until you publish. **Leftover on this show** lists leftover empty
-   Stalemate and Rad Dad plus leftover **See closed public link**. Tap a leftover
-   empty set to start it here. It still does not inherit September 19 songs.
+3. Choose **Clone show**, uncheck **Copy official songs and set times**, leave
+   start and end blank, and create an empty draft. That night stays empty and
+   does not inherit September 19 songs, set windows, or 7:00-10:00 hours. The
+   editor says **Hours not set**. The public share link stays closed until you
+   publish. **Leftover on this show** lists leftover empty Stalemate and Rad
+   Dad plus leftover **See closed public link**. Tap a leftover empty set to
+   start it here.
 4. Save a set on the draft if you want. Saving writes this private show. It
    does not open the public link. The editor says **Private draft — not public**.
    Leftover unsaved other sets stay listed as leftover saves.
 5. Tap leftover **See closed public link**. The public page says no published
    show was found and does not open September 19 songs.
 6. Publish the empty draft. The share link opens on an empty night. It still
-   does not inherit another show's set.
+   does not inherit another show's set or hours. The Time fact says
+   **Hours not set**.
 7. Archive that non-default show. The share link closes again.
 
 Do not archive the default public show. Travis still books. This path does not

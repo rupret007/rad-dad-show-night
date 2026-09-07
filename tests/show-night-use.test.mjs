@@ -87,6 +87,16 @@ test("an empty clone stays empty instead of inheriting another show's set", () =
   assert.equal(emptyNotes.includes("Share the backline where practical."), true);
 });
 
+test("an empty clone without hours does not invent another night's wrap", () => {
+  const notes = publicProductionNotes({
+    canonicalShow: false,
+    featuredGuestTitle: "",
+    expectedWrap: "",
+  });
+  assert.equal(notes.includes("Share the backline where practical."), true);
+  assert.doesNotMatch(notes.join(" "), /expected wrap|10:00 PM|7:00 PM|The planned wrap/);
+});
+
 test("canonical production notes stay on this night and empty clones drop guest windows", () => {
   const canonical = publicProductionNotes({
     canonicalShow: true,

@@ -28,18 +28,22 @@ master timeline, but its song list is not managed in Show Control.
 
 Use the show picker at the top of Show Control to switch events. Select **Clone
 show** to copy the current timeline, sets, cues, song resources, original flags,
-and durations into a new private draft. Enter the new date, venue, and title,
-then create the draft.
+and durations into a new private draft. Enter the new date, venue, and title.
+Start and end times are optional. Enter both to set this night's hours; one
+time alone is ignored.
 
 Every show has a unique share link using `?show=show-slug`. The clone keeps its
 own set rows. Later edits to the original show cannot change the draft, and the
-public page will not paint another event's songs or set times onto it. Uncheck
-**Copy official songs and set times** to start an empty night; that draft will
-not inherit another show's set. Mark a draft **Published** when it is ready for
-the band, and archive completed events to keep the picker organized without
-deleting their history. The editor times come from this show's own verified
-payload, not the September 19 defaults. Rehearsal notes stay in Show Control
-and are not sent on public show reads.
+public page will not paint another event's songs, set times, or night hours
+onto it. Uncheck **Copy official songs and set times** to start an empty night;
+that draft will not inherit another show's songs, set windows, or 7:00-10:00
+wrap. Leave the hours blank on an empty clone, or enter both clocks for this
+night. A full copy keeps the source hours unless both clocks are entered. Mark
+a draft **Published** when it is ready for the band, and archive completed
+events to keep the picker organized without deleting their history. The editor
+times come from this show's own verified payload, not the September 19
+defaults. Rehearsal notes stay in Show Control and are not sent on public show
+reads.
 
 Saving a set does not publish the show. Save writes this show's official list
 in the database. Publish is the separate action that opens the public share
@@ -101,7 +105,9 @@ Leftover order is fixed:
    on a published show, or **See live empty public list** when this leftover
    public night is open and empty.
 
-A leftover empty clone does not inherit another night's songs or set times.
+A leftover empty clone does not inherit another night's songs, set times, or
+night hours. Show Control says **Hours not set** when this night has no start
+or wrap of its own.
 Leftover owner copy stays in Show Control and does not appear on public pages.
 
 If the initial owner show payload itself cannot be verified, Show Control stops

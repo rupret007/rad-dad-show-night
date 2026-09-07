@@ -8,8 +8,11 @@ import {
   canReadShowStatus,
 } from "../lib/show-visibility.ts";
 import {
+  cloneShowNightHours,
+  formatShowHours,
   publicSongsLeakRehearsalNotes,
   shouldCopyCloneSongs,
+  showHoursLabel,
   toPublicShowSongs,
   visibleOfficialSets,
 } from "../lib/show-public.ts";
@@ -134,6 +137,70 @@ test("owner can start an empty clone instead of copying another night", () => {
   assert.equal(shouldCopyCloneSongs("on"), true);
 });
 
+test("an empty clone does not inherit another night's start, end, or wrap", () => {
+  const source = {
+    copySongs: false,
+    sourceStartTime: "7:00 PM",
+    sourceEndTime: "10:00 PM",
+    sourceExpectedWrap: "Expected wrap near 10:00 PM",
+  };
+  assert.deepEqual(cloneShowNightHours(source), {
+    startTime: "",
+    endTime: "",
+    expectedWrap: "",
+  });
+  assert.deepEqual(
+    cloneShowNightHours({ ...source, startTime: " 8:00 PM ", endTime: "" }),
+    { startTime: "", endTime: "", expectedWrap: "" },
+  );
+  assert.deepEqual(
+    cloneShowNightHours({ ...source, startTime: "8:00 PM", endTime: "11:00 PM" }),
+    {
+      startTime: "8:00 PM",
+      endTime: "11:00 PM",
+      expectedWrap: "Expected wrap near 11:00 PM",
+    },
+  );
+});
+
+test("a full clone keeps source hours unless both clocks are entered", () => {
+  const source = {
+    copySongs: true,
+    sourceStartTime: "7:00 PM",
+    sourceEndTime: "10:00 PM",
+    sourceExpectedWrap: "Expected wrap near 10:00 PM",
+  };
+  assert.deepEqual(cloneShowNightHours(source), {
+    startTime: "7:00 PM",
+    endTime: "10:00 PM",
+    expectedWrap: "Expected wrap near 10:00 PM",
+  });
+  assert.deepEqual(
+    cloneShowNightHours({ ...source, startTime: "8:00 PM" }),
+    {
+      startTime: "7:00 PM",
+      endTime: "10:00 PM",
+      expectedWrap: "Expected wrap near 10:00 PM",
+    },
+  );
+  assert.deepEqual(
+    cloneShowNightHours({ ...source, startTime: "6:30 PM", endTime: "9:30 PM" }),
+    {
+      startTime: "6:30 PM",
+      endTime: "9:30 PM",
+      expectedWrap: "Expected wrap near 9:30 PM",
+    },
+  );
+});
+
+test("blank show clocks stay blank instead of painting a dash", () => {
+  assert.equal(formatShowHours("7:00 PM", "10:00 PM"), "7:00 PM-10:00 PM");
+  assert.equal(formatShowHours("", ""), "");
+  assert.equal(formatShowHours("7:00 PM", ""), "7:00 PM");
+  assert.equal(showHoursLabel(""), "Hours not set");
+  assert.equal(showHoursLabel("7:00 PM-10:00 PM"), "7:00 PM-10:00 PM");
+});
+
 test("store, owner UI, and leftover CI keep this leftover real", async () => {
   const [store, showsRoute, showControl, liveList, page, workflow, packageJson, readme] =
     await Promise.all([
@@ -158,12 +225,29 @@ test("store, owner UI, and leftover CI keep this leftover real", async () => {
   assert.match(store, /scope === "public"/);
 
   assert.match(showsRoute, /shouldCopyCloneSongs\(payload\.copySongs\)/);
+  assert.match(showsRoute, /cloneShowNightHours\(/);
   assert.match(showsRoute, /if \(copySongs\)/);
+  const insertHours = showsRoute.slice(
+    showsRoute.indexOf("INSERT INTO shows"),
+    showsRoute.indexOf("if (copySongs)"),
+  );
+  assert.match(insertHours, /nightHours\.startTime/);
+  assert.match(insertHours, /nightHours\.endTime/);
+  assert.match(insertHours, /nightHours\.expectedWrap/);
+  assert.doesNotMatch(insertHours, /source\.start_time/);
+  assert.doesNotMatch(insertHours, /source\.end_time/);
+  assert.doesNotMatch(insertHours, /source\.expected_wrap/);
   assert.match(showsRoute, /error: "Show not found\."/);
   assert.match(showsRoute, /status: 404/);
+  assert.match(store, /formatShowHours\(row\.startTime, row\.endTime\)/);
 
   assert.match(showControl, /copySongs: data\.copySongs === "on"/);
+  assert.match(showControl, /startTime: data\.startTime/);
   assert.match(showControl, /does not inherit another show/);
+  assert.match(showControl, /night hours/);
+  assert.match(showControl, /Hours not set for this night/);
+  assert.match(page, /showHoursLabel\(show\.hours\)/);
+  assert.match(page, /data-show-hours=/);
   assert.match(showControl, /Leftover on this show/);
   assert.match(showControl, /activeSetTime/);
   assert.doesNotMatch(page, /Leftover on this show|Save leftover|Start leftover/);

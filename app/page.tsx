@@ -22,7 +22,7 @@ import {
   publicProductionNotes,
   showHasRunOfShow,
 } from "../lib/show-night-use";
-import { visibleOfficialSets } from "../lib/show-public";
+import { showHoursLabel, visibleOfficialSets } from "../lib/show-public";
 import { publishedPublicShareCopy } from "../lib/show-lifecycle";
 import PracticeResume from "./practice-resume";
 
@@ -73,7 +73,10 @@ export async function generateMetadata({
       return canonicalMetadata();
     }
     const title = `${payload.show.title} at ${payload.show.venue} | ${payload.show.date}`;
-    const description = `Live set surface for ${payload.show.title} at ${payload.show.venue} on ${payload.show.date}, ${payload.show.hours}.`;
+    const hours = payload.show.hours.trim();
+    const description = hours
+      ? `Live set surface for ${payload.show.title} at ${payload.show.venue} on ${payload.show.date}, ${hours}.`
+      : `Live set surface for ${payload.show.title} at ${payload.show.venue} on ${payload.show.date}.`;
     return {
       title,
       description,
@@ -221,7 +224,7 @@ export default async function Home({
                 <span>{show.date}</span>
                 <strong>{show.title}</strong>
                 <span>{show.venue}</span>
-                <small>{show.hours}</small>
+                {show.hours ? <small>{show.hours}</small> : null}
               </div>
             </div>
           </div>
@@ -311,9 +314,9 @@ export default async function Home({
               <span className={styles.factLabel}>When</span>
               <strong className={styles.factValue}>{show.date}</strong>
             </div>
-            <div className={styles.eventFact}>
+            <div className={styles.eventFact} data-show-hours={show.hours ? "set" : "unset"}>
               <span className={styles.factLabel}>Time</span>
-              <strong className={styles.factValue}>{show.hours}</strong>
+              <strong className={styles.factValue}>{showHoursLabel(show.hours)}</strong>
             </div>
             <div className={styles.eventFact}>
               <span className={styles.factLabel}>Where</span>

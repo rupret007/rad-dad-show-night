@@ -20,6 +20,8 @@ function denyInheritedSet(body, label) {
   assert(!/Heart-Shaped Box/.test(body), `${label} inherited Heart-Shaped Box`);
   assert(!/Basket Case/.test(body), `${label} inherited Basket Case`);
   assert(!/7:00-7:35/.test(body), `${label} inherited 7:00-7:35`);
+  assert(!/7:00 PM/.test(body), `${label} inherited 7:00 PM`);
+  assert(!/Expected wrap near 10:00/.test(body), `${label} inherited the September wrap`);
 }
 
 async function readPath(pathname) {
@@ -191,6 +193,10 @@ async function proveIsolation() {
       (clonePayload.sets || []).every((set) => !set.time),
       "empty clone inherited set times",
     );
+    assert(!clonePayload.show?.startTime, "empty clone inherited start time");
+    assert(!clonePayload.show?.endTime, "empty clone inherited end time");
+    assert(!clonePayload.show?.hours, "empty clone inherited night hours");
+    assert(!clonePayload.show?.expectedWrap, "empty clone inherited expected wrap");
     assert(clonePage.response.ok, "published empty clone page should render");
     assert(
       /data-has-verified-list="false"/.test(clonePage.text),
@@ -215,8 +221,12 @@ async function proveIsolation() {
       "empty clone page is missing a single first-open next action",
     );
     assert(
-      !/Fan next step|Band next step|Protect the Mason|7:00-7:35/.test(clonePage.text),
-      "empty clone inherited another night's first-open set or notes",
+      !/Fan next step|Band next step|Protect the Mason|7:00-7:35|7:00 PM|Expected wrap near 10:00/.test(clonePage.text),
+      "empty clone inherited another night's first-open set, hours, or notes",
+    );
+    assert(
+      /Hours not set/.test(clonePage.text),
+      "empty clone page is missing honest unset hours",
     );
     console.log("hosted leftover-honesty: D1-present empty clone stayed empty");
     return "database-empty-clone";
