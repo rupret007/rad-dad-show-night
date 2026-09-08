@@ -20,7 +20,7 @@ const SHOW_A = {
   endTime: "",
   hours: "",
   expectedWrap: "",
-  status: "draft" as const,
+  status: "draft" as "draft" | "published" | "archived",
   isDefault: false,
 };
 
@@ -274,6 +274,60 @@ test("phone next action becomes Check saved after an uncertain write", async ({ 
   await page.setViewportSize({ width: 320, height: 740 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 });
+
+for (const responseStatus of [202, 409]) {
+  test(`published glance keeps a ${responseStatus} save uncertain until the saved list is verified`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 320, height: 740 });
+    const published = { ...SHOW_A, status: "published" as const };
+    const checkedSongs = responseStatus === 202 ? [] : [song(22, { title: "Other owner's saved closer" })];
+    let posts = 0;
+    await openOwner(page, {
+      shows: [published],
+      onGet: (count) => count === 2
+        ? { status: 503, json: { error: "Offline fixture check unavailable" } }
+        : { json: ownerPayload(count === 1 ? [song(11)] : checkedSongs, count === 1 ? VERSION_A : VERSION_B, published) },
+      onPost: () => {
+        posts += 1;
+        return { status: responseStatus, json: responseStatus === 202
+          ? { written: true, error: "The official list could not be verified." }
+          : { error: "This set changed since you last loaded it." } };
+      },
+    });
+    const glance = page.locator("[data-next-action]");
+    await expect(glance.getByText("Official set plan", { exact: true })).toBeVisible();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Remove", exact: true }).click();
+    await expect(glance.getByText("Browser set plan", { exact: true })).toBeVisible();
+    await expect(glance.getByText("No songs in this browser", { exact: true })).toBeVisible();
+    await expect(glance.getByRole("link", { name: "See last saved public list", exact: true })).toBeVisible();
+    await expect(glance.getByRole("link", { name: "See live empty public list" })).toHaveCount(0);
+    await saveActive(page);
+    await expect(glance.getByText("Open · check saved list", { exact: true })).toBeVisible();
+    await expect(glance).toContainText("The public list may already have changed");
+    await expect(glance).not.toContainText("still private in this browser");
+    await expect(glance.getByRole("link", { name: "See public list · check pending", exact: true })).toHaveAttribute("href", `/?show=${published.slug}`);
+    await checkActive(page);
+    await expect(glance.getByRole("button", { name: "Check saved Rad Dad", exact: true })).toBeEnabled();
+    await expect(glance.getByText("Open · check saved list", { exact: true })).toBeVisible();
+    await glance.screenshot({ path: testInfo.outputPath(`published-save-${responseStatus}-glance-320.png`) });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    await checkActive(page);
+    if (responseStatus === 409) {
+      await expect(page.getByRole("region", { name: "Saved set comparison" })).toBeVisible();
+      await expect(glance.getByText("Open · check saved list", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Use saved list", exact: true }).click();
+    }
+    await expect(glance.getByText("Official set plan", { exact: true })).toBeVisible();
+    await expect(glance.getByText("Open · saved list", { exact: true })).toBeVisible();
+    await expect(glance.getByText("Open · check saved list", { exact: true })).toHaveCount(0);
+    if (responseStatus === 202) {
+      await expect(glance.getByRole("link", { name: "See live empty public list" })).toBeVisible();
+    } else {
+      await expect(glance.getByRole("link", { name: "Open band run mode", exact: true })).toBeVisible();
+    }
+    expect(posts).toBe(1);
+  });
+}
 
 test("a competing saved list is reviewed at phone widths before an explicit whole-set replacement", async ({ page }, testInfo) => {
   const winner = [song(22, { title: "Other owner's closer", performanceNote: "New saved cue", rehearsalNotes: "Private fixture note", updatedAt: "2026-09-05T02:00:00.000Z" })];

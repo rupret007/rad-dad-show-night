@@ -70,9 +70,22 @@ is open before saving a set.
 ## Show status and one next step
 
 The status deck directly below the show picker keeps three separate facts in
-view: whether the public share link is open, how many verified songs and set
+view: whether the public share link is open, how many songs and set
 windows belong to this show, and that Travis owns booking and outreach outside
 Show Control. The app never pitches, posts, or sends on his behalf.
+
+Unsaved edits change the count label to **Browser set plan**. Those counts
+describe the browser draft, including a local deletion of the last song; they
+do not prove that the public night is empty. Once the draft is saved or a
+checked saved list is adopted, the label returns to **Official set plan**.
+
+If a save is uncertain or conflicts with another owner's edit, a published
+show says **Open · check saved list**. The write may already be public, so
+neither the glance nor its public-list link claims those changes are still
+private. **Check saved** stays the next step through a failed check and through
+comparison, until the owner resolves the draft. Merely opening the public link
+does not verify or release a save hold. Draft and archived share links remain
+closed. This changes the readout, not Save, Publish, or conflict recovery.
 
 The set-plan fact also states this night's own hours (**This night runs
 7:00-10:00 PM**), or says **Hours not set for this night** when this night has

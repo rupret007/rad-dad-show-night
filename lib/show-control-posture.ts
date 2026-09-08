@@ -45,8 +45,16 @@ function safeSongCount(value: number): number {
 function publicLinkPosture(
   status: ShowLifecycleStatus,
   dirtySetCount: number,
+  heldSetCount: number,
 ): PostureItem {
   if (status === "published") {
+    if (heldSetCount) {
+      return {
+        label: "Public share link",
+        value: "Open · check saved list",
+        detail: `${heldSetCount} set${heldSetCount === 1 ? " needs" : "s need"} a saved-list check. The public list may already have changed; this browser is not proof of what is live.`,
+      };
+    }
     return {
       label: "Public share link",
       value: dirtySetCount ? "Open · last saved list" : "Open · saved list",
@@ -111,8 +119,18 @@ function leftoverEmptyAction(set: ShowControlSetPosture): ShowControlLeftoverAct
 function leftoverShareAction(
   status: ShowLifecycleStatus,
   totalSongs: number,
+  hasDirtySets: boolean,
+  hasHeldSets: boolean,
 ): ShowControlLeftoverAction {
-  if (status === "published" && totalSongs === 0) {
+  if (status === "published" && hasHeldSets) {
+    return {
+      kind: "see-share-link",
+      title: "The public list needs checking.",
+      detail: "A save or another owner's edit may already be public. Check the saved set before treating this browser's list as official.",
+      label: "See public list · check pending",
+    };
+  }
+  if (status === "published" && totalSongs === 0 && !hasDirtySets) {
     return {
       kind: "see-share-link",
       title: "Check this leftover empty public night.",
@@ -173,14 +191,14 @@ export function buildLeftoverOwnerActions({
   }
 
   for (const set of sets) {
-    if (dirty.has(set.slug)) continue;
+    if (dirty.has(set.slug) || held.has(set.slug)) continue;
     if (safeSongCount(set.songCount) > 0) continue;
     if (nextAction.kind === "add-song" && nextAction.setSlug === set.slug) continue;
     leftovers.push(leftoverEmptyAction(set));
   }
 
-  if (status !== "published" || dirty.size > 0 || totalSongs === 0) {
-    leftovers.push(leftoverShareAction(status, totalSongs));
+  if (status !== "published" || dirty.size > 0 || held.size > 0 || totalSongs === 0) {
+    leftovers.push(leftoverShareAction(status, totalSongs, dirty.size > 0, held.size > 0));
   }
 
   return leftovers;
@@ -203,6 +221,10 @@ export function buildShowControlPosture({
   const held = new Set(heldSetSlugs);
   const firstHeldSet = sets.find((set) => held.has(set.slug));
   const firstDirtySet = sets.find((set) => dirty.has(set.slug) && !held.has(set.slug));
+  const hasBrowserDraft = dirty.size > 0 || held.size > 0;
+  const countDetail = held.size
+    ? "Counts reflect this browser. Check saved sets before treating these counts as official. "
+    : dirty.size ? "Counts include unsaved browser edits. " : "";
   const totalSongs = sets.reduce(
     (total, set) => total + safeSongCount(set.songCount),
     0,
@@ -280,13 +302,13 @@ export function buildShowControlPosture({
   }
 
   return {
-    publicLink: publicLinkPosture(status, dirty.size),
+    publicLink: publicLinkPosture(status, dirty.size, held.size),
     setPlan: {
-      label: "Official set plan",
+      label: hasBrowserDraft ? "Browser set plan" : "Official set plan",
       value: totalSongs
         ? `${totalSongs} song${totalSongs === 1 ? "" : "s"} · ${populatedSets} active set${populatedSets === 1 ? "" : "s"}`
-        : "No verified songs",
-      detail: setPlanDetail,
+        : hasBrowserDraft ? "No songs in this browser" : "No verified songs",
+      detail: countDetail + setPlanDetail,
     },
     booking: {
       label: "Booking & outreach",
