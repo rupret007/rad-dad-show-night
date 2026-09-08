@@ -254,7 +254,7 @@ const seed = await seedLocalD1();
 assert(seed.ok, `Local D1 fixture seed failed; no database proof is available. ${seed.output.trim().slice(0, 800)}`);
 console.log("hosted leftover-honesty: seeded local D1 empty clone");
 
-const child = spawn("npx", ["vinext", "dev", "--host", HOST, "--port", PORT], {
+const child = spawn("npx", ["vinext", "dev", "--hostname", HOST, "--port", PORT], {
   cwd: process.cwd(),
   env: {
     ...process.env,
