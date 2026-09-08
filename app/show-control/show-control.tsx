@@ -896,6 +896,7 @@ export default function ShowControlClient({
     dirtySetSlugs: [...dirtySets],
     heldSetSlugs: (Object.keys(saveHolds) as SetSlug[]).filter((slug) => saveHolds[slug]),
     nightHours: activeShow.hours ?? "",
+    savePending: saving,
   });
   const activeSaveHold = saveHolds[activeSet] ?? null;
   const activeReview = setReviews[activeSet];

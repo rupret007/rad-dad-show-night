@@ -53,6 +53,34 @@ test("a clean published show leads with the verified band run", () => {
   assert.deepEqual(posture.leftoverActions, []);
 });
 
+for (const status of ["published", "draft", "archived"]) {
+  test(`a pending ${status} save waits without claiming a verified list or offering another write`, () => {
+    const posture = buildShowControlPosture({
+      status,
+      sets: sets.map((set) => ({ ...set, songCount: 0 })),
+      dirtySetSlugs: ["rad-dad", "stalemate"],
+      heldSetSlugs: ["stalemate"],
+      savePending: true,
+    });
+    assert.equal(posture.nextAction.kind, "wait-save");
+    assert.equal(posture.setPlan.label, "Browser set plan");
+    assert.match(posture.setPlan.detail, /saved result is not yet verified/);
+    assert.deepEqual(posture.leftoverActions.map((action) => action.kind), ["see-share-link"]);
+    if (status === "published") {
+      assert.equal(posture.publicLink.value, "Open · save pending");
+      assert.match(posture.publicLink.detail, /may already have changed/);
+      assert.equal(posture.leftoverActions[0].label, "See public list · save pending");
+      assert.doesNotMatch(JSON.stringify(posture), /still private|live empty public list|Open band run mode/);
+    } else {
+      assert.match(posture.publicLink.value, /^Closed/);
+      assert.equal(posture.leftoverActions[0].label, "See closed public link");
+    }
+    const after = buildShowControlPosture({ status, sets, dirtySetSlugs: ["rad-dad"], heldSetSlugs: ["stalemate"] });
+    assert.equal(after.nextAction.kind, "check-saved-set");
+    assert(after.leftoverActions.some((action) => action.kind === "save-set" && action.setSlug === "rad-dad"));
+  });
+}
+
 test("the set plan glance states this night's own hours", () => {
   const posture = buildShowControlPosture({
     status: "published",

@@ -79,6 +79,13 @@ describe the browser draft, including a local deletion of the last song; they
 do not prove that the public night is empty. Once the draft is saved or a
 checked saved list is adopted, the label returns to **Official set plan**.
 
+While a save is pending, the published glance says **Open · save pending**
+and **Wait for the save result**. The public list may already have changed
+before the response arrives. Counts remain a browser plan, and the glance
+temporarily keeps only the public-link check under its disabled next action.
+Normal remaining actions return after the result; later edits remain unsaved.
+Opening the public link never confirms a pending save.
+
 If a save is uncertain or conflicts with another owner's edit, a published
 show says **Open · check saved list**. The write may already be public, so
 neither the glance nor its public-list link claims those changes are still

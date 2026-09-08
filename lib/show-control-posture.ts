@@ -9,7 +9,7 @@ export type ShowControlSetPosture = {
 };
 
 export type ShowControlNextAction = {
-  kind: "check-saved-set" | "save-set" | "add-song" | "publish-show" | "run-show" | "none";
+  kind: "wait-save" | "check-saved-set" | "save-set" | "add-song" | "publish-show" | "run-show" | "none";
   title: string;
   detail: string;
   label: string;
@@ -46,8 +46,16 @@ function publicLinkPosture(
   status: ShowLifecycleStatus,
   dirtySetCount: number,
   heldSetCount: number,
+  savePending: boolean,
 ): PostureItem {
   if (status === "published") {
+    if (savePending) {
+      return {
+        label: "Public share link",
+        value: "Open · save pending",
+        detail: "The public list may already have changed. Wait for the save result before treating this browser's list as official.",
+      };
+    }
     if (heldSetCount) {
       return {
         label: "Public share link",
@@ -121,7 +129,16 @@ function leftoverShareAction(
   totalSongs: number,
   hasDirtySets: boolean,
   hasHeldSets: boolean,
+  savePending = false,
 ): ShowControlLeftoverAction {
+  if (status === "published" && savePending) {
+    return {
+      kind: "see-share-link",
+      title: "The public list may already have changed.",
+      detail: "Opening the public link does not confirm this save. Wait for its result; check the saved set if verification is needed.",
+      label: "See public list · save pending",
+    };
+  }
   if (status === "published" && hasHeldSets) {
     return {
       kind: "see-share-link",
@@ -164,6 +181,7 @@ export function buildLeftoverOwnerActions({
   heldSetSlugs,
   nextAction,
   totalSongs,
+  savePending = false,
 }: {
   status: ShowLifecycleStatus;
   sets: ShowControlSetPosture[];
@@ -171,8 +189,10 @@ export function buildLeftoverOwnerActions({
   heldSetSlugs?: Iterable<SetSlug>;
   nextAction: ShowControlNextAction;
   totalSongs: number;
+  savePending?: boolean;
 }): ShowControlLeftoverAction[] {
   if (nextAction.kind === "none") return [];
+  if (savePending) return [leftoverShareAction(status, totalSongs, true, false, true)];
 
   const dirty = new Set(dirtySetSlugs);
   const held = new Set(heldSetSlugs ?? []);
@@ -210,19 +230,23 @@ export function buildShowControlPosture({
   dirtySetSlugs,
   heldSetSlugs = [],
   nightHours = "",
+  savePending = false,
 }: {
   status: ShowLifecycleStatus;
   sets: ShowControlSetPosture[];
   dirtySetSlugs: SetSlug[];
   heldSetSlugs?: SetSlug[];
   nightHours?: string;
+  savePending?: boolean;
 }): ShowControlPosture {
   const dirty = new Set(dirtySetSlugs);
   const held = new Set(heldSetSlugs);
   const firstHeldSet = sets.find((set) => held.has(set.slug));
   const firstDirtySet = sets.find((set) => dirty.has(set.slug) && !held.has(set.slug));
-  const hasBrowserDraft = dirty.size > 0 || held.size > 0;
-  const countDetail = held.size
+  const hasBrowserDraft = savePending || dirty.size > 0 || held.size > 0;
+  const countDetail = savePending
+    ? "Counts reflect this browser while a save is pending; the saved result is not yet verified. "
+    : held.size
     ? "Counts reflect this browser. Check saved sets before treating these counts as official. "
     : dirty.size ? "Counts include unsaved browser edits. " : "";
   const totalSongs = sets.reduce(
@@ -254,7 +278,14 @@ export function buildShowControlPosture({
     + slotGapDetail;
 
   let nextAction: ShowControlNextAction;
-  if (firstHeldSet) {
+  if (savePending) {
+    nextAction = {
+      kind: "wait-save",
+      title: "Wait for the save result.",
+      detail: "Do not resend while this save is pending. Any later browser edits remain here for a separate save.",
+      label: "Saving...",
+    };
+  } else if (firstHeldSet) {
     nextAction = {
       kind: "check-saved-set",
       title: `Check saved ${firstHeldSet.title}.`,
@@ -302,7 +333,7 @@ export function buildShowControlPosture({
   }
 
   return {
-    publicLink: publicLinkPosture(status, dirty.size, held.size),
+    publicLink: publicLinkPosture(status, dirty.size, held.size, savePending),
     setPlan: {
       label: hasBrowserDraft ? "Browser set plan" : "Official set plan",
       value: totalSongs
@@ -323,6 +354,7 @@ export function buildShowControlPosture({
       heldSetSlugs: held,
       nextAction,
       totalSongs,
+      savePending,
     }),
   };
 }

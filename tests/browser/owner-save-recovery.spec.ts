@@ -159,12 +159,14 @@ async function checkActive(page: Page) {
 }
 
 test("later edits typed during Save stay unsaved after the sent list writes", async ({ page }, testInfo) => {
+  const published = { ...SHOW_A, status: "published" as const };
   let release: (() => void) | undefined;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
   const posts: Array<Record<string, unknown>> = [];
   await openOwner(page, {
+    shows: [published],
     onPost: async (posted) => {
       posts.push(posted);
       await gate;
@@ -182,10 +184,15 @@ test("later edits typed during Save stay unsaved after the sent list writes", as
   await page.getByLabel("Performance cue").fill("Count in together - send");
   await page.getByRole("button", { name: "Save Rad Dad", exact: true }).last().click();
   await expect(page.getByText(/Saving Rad Dad/)).toBeVisible();
+  const glance = page.locator("[data-next-action]");
+  await expect(glance.getByText("Open · save pending", { exact: true })).toBeVisible();
+  await expect(glance).not.toContainText("still private in this browser");
   await page.getByLabel("Performance cue").fill("Hold the ending");
   release?.();
   await expect(page.getByText(/Later edits on this set are still unsaved/)).toBeVisible();
   await expect(page.getByLabel("Performance cue")).toHaveValue("Hold the ending");
+  await expect(glance.getByText("Open · last saved list", { exact: true })).toBeVisible();
+  await expect(glance.getByText("Open · save pending", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Save Rad Dad", exact: true }).last()).toBeEnabled();
   expect(posts[0]?.reviewedBase).toBe(officialSetRevision([song(11)]));
   expect(posts[0]?.reviewedVersion).toBe(VERSION_A);
@@ -518,7 +525,9 @@ test("two owner pages starting from an empty set review the first winning write 
 });
 
 for (const method of ["POST", "GET"] as const) {
-  test(`a stalled ${method === "POST" ? "Save" : "Check"} body releases recovery at the deadline and ignores its late receipt`, async ({ page }) => {
+  test(`a stalled ${method === "POST" ? "Save" : "Check"} body releases recovery at the deadline and ignores its late receipt`, async ({ page }, testInfo) => {
+    const published = { ...SHOW_A, status: "published" as const };
+    await page.setViewportSize({ width: 320, height: 740 });
     await page.clock.install();
     await page.addInitScript(({ method }) => {
       const realFetch = window.fetch.bind(window);
@@ -543,7 +552,8 @@ for (const method of ["POST", "GET"] as const) {
     }, { method });
     let posts = 0;
     await openOwner(page, {
-      onGet: (count) => ({ json: count === 1 ? ownerPayload() : ownerPayload([song(11, { performanceNote: "Late saved cue" })], VERSION_B) }),
+      shows: [published],
+      onGet: (count) => ({ json: count === 1 ? ownerPayload([song(11)], VERSION_A, published) : ownerPayload([song(11, { performanceNote: "Late saved cue" })], VERSION_B, published) }),
       onPost: (posted) => {
         posts += 1;
         if (method === "GET") return { status: 409, json: { error: "This set changed since you last loaded it." } };
@@ -555,6 +565,16 @@ for (const method of ["POST", "GET"] as const) {
     await saveActive(page);
     if (method === "GET") await checkActive(page);
     await expect.poll(() => page.evaluate(() => typeof (window as Window & { releaseOwnerBody?: unknown }).releaseOwnerBody)).toBe("function");
+    if (method === "POST") {
+      const glance = page.locator("[data-next-action]");
+      await expect(glance.getByText("Open · save pending", { exact: true })).toBeVisible();
+      await expect(glance).not.toContainText("still private in this browser");
+      await expect(glance.getByText("Wait for the save result.", { exact: true })).toBeVisible();
+      await expect(glance.getByRole("button", { name: "Saving...", exact: true })).toBeDisabled();
+      await expect(glance.getByRole("link", { name: "See public list · save pending", exact: true })).toHaveAttribute("href", `/?show=${published.slug}`);
+      await glance.screenshot({ path: testInfo.outputPath("published-pending-save-320.png") });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    }
     if (method === "GET") await page.getByLabel("Performance cue").fill("Changed while checking");
     await page.clock.fastForward(10_100);
     await expect(page.getByRole("button", { name: "Check saved Rad Dad", exact: true }).first()).toBeEnabled();
