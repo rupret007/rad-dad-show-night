@@ -83,6 +83,11 @@ When a set has songs but no stage time of its own, the set-plan fact says so
 (**1 active set still has songs but no stage time on this night**) so a band op
 sees the missing slot at a glance before doors. Empty sets are not counted.
 
+The mirror gap is called out too: when a set holds a stage-time window but no
+songs yet, the fact says **1 scheduled set still has stage time but no songs on
+this night** so a reserved slot with an empty list is visible before doors. A
+plan can show both lines when one set is missing its slot and another its songs.
+
 The highlighted **One next step** follows a fixed order instead of guessing:
 
 1. Check the first set whose last Save did not come back with a verified

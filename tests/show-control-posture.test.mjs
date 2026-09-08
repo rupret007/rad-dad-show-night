@@ -128,6 +128,73 @@ test("the set plan glance stays quiet when every populated set is slotted", () =
   assert.doesNotMatch(posture.setPlan.detail, /no stage time/);
 });
 
+test("the set plan glance flags a scheduled set window with no songs", () => {
+  const mixed = [
+    { ...sets[0], songCount: 0 },
+    { ...sets[1] },
+    { ...sets[2] },
+  ];
+  const posture = buildShowControlPosture({
+    status: "published",
+    sets: mixed,
+    dirtySetSlugs: [],
+    nightHours: "7:00-10:00 PM",
+  });
+
+  assert.match(posture.setPlan.detail, /3 set windows are scheduled for this show\./);
+  assert.match(
+    posture.setPlan.detail,
+    /1 scheduled set still has stage time but no songs on this night\.$/,
+  );
+});
+
+test("the set plan glance counts every empty scheduled set window", () => {
+  const mixed = sets.map((set) => ({ ...set, songCount: 0 }));
+  const posture = buildShowControlPosture({
+    status: "published",
+    sets: mixed,
+    dirtySetSlugs: [],
+  });
+
+  assert.match(
+    posture.setPlan.detail,
+    /3 scheduled sets still have stage time but no songs on this night\.$/,
+  );
+});
+
+test("the set plan glance reports both stage-time gaps together", () => {
+  const mixed = [
+    { ...sets[0], time: "" },
+    { ...sets[1], songCount: 0 },
+    { ...sets[2] },
+  ];
+  const posture = buildShowControlPosture({
+    status: "published",
+    sets: mixed,
+    dirtySetSlugs: [],
+    nightHours: "7:00-10:00 PM",
+  });
+
+  assert.match(
+    posture.setPlan.detail,
+    /1 scheduled set still has stage time but no songs on this night\./,
+  );
+  assert.match(
+    posture.setPlan.detail,
+    /1 active set still has songs but no stage time on this night\.$/,
+  );
+});
+
+test("the set plan glance stays quiet on empty windows when every scheduled set has songs", () => {
+  const posture = buildShowControlPosture({
+    status: "published",
+    sets,
+    dirtySetSlugs: [],
+  });
+
+  assert.doesNotMatch(posture.setPlan.detail, /stage time but no songs/);
+});
+
 test("the first unsaved set wins before publish or run actions", () => {
   const posture = buildShowControlPosture({
     status: "published",
