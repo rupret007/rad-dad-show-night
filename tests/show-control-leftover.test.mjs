@@ -183,7 +183,7 @@ test("a leftover uncertain save is a leftover check, not another unreviewed save
   assert.match(posture.nextAction.detail, /before saving again/);
   assert.deepEqual(leftoverKinds(posture), [
     ["save-set", "rad-dad"],
-    ["see-share-link", "See last saved public list"],
+    ["see-share-link", "See public list · check pending"],
   ]);
   assert.ok(!posture.leftoverActions.some((action) => action.kind === "save-set" && action.setSlug === "stalemate"));
 });

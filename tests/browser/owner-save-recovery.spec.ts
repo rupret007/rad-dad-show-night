@@ -20,7 +20,7 @@ const SHOW_A = {
   endTime: "",
   hours: "",
   expectedWrap: "",
-  status: "draft" as const,
+  status: "draft" as "draft" | "published" | "archived",
   isDefault: false,
 };
 
@@ -159,12 +159,14 @@ async function checkActive(page: Page) {
 }
 
 test("later edits typed during Save stay unsaved after the sent list writes", async ({ page }, testInfo) => {
+  const published = { ...SHOW_A, status: "published" as const };
   let release: (() => void) | undefined;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
   const posts: Array<Record<string, unknown>> = [];
   await openOwner(page, {
+    shows: [published],
     onPost: async (posted) => {
       posts.push(posted);
       await gate;
@@ -182,10 +184,15 @@ test("later edits typed during Save stay unsaved after the sent list writes", as
   await page.getByLabel("Performance cue").fill("Count in together - send");
   await page.getByRole("button", { name: "Save Rad Dad", exact: true }).last().click();
   await expect(page.getByText(/Saving Rad Dad/)).toBeVisible();
+  const glance = page.locator("[data-next-action]");
+  await expect(glance.getByText("Open · save pending", { exact: true })).toBeVisible();
+  await expect(glance).not.toContainText("still private in this browser");
   await page.getByLabel("Performance cue").fill("Hold the ending");
   release?.();
   await expect(page.getByText(/Later edits on this set are still unsaved/)).toBeVisible();
   await expect(page.getByLabel("Performance cue")).toHaveValue("Hold the ending");
+  await expect(glance.getByText("Open · last saved list", { exact: true })).toBeVisible();
+  await expect(glance.getByText("Open · save pending", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Save Rad Dad", exact: true }).last()).toBeEnabled();
   expect(posts[0]?.reviewedBase).toBe(officialSetRevision([song(11)]));
   expect(posts[0]?.reviewedVersion).toBe(VERSION_A);
@@ -274,6 +281,60 @@ test("phone next action becomes Check saved after an uncertain write", async ({ 
   await page.setViewportSize({ width: 320, height: 740 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 });
+
+for (const responseStatus of [202, 409]) {
+  test(`published glance keeps a ${responseStatus} save uncertain until the saved list is verified`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 320, height: 740 });
+    const published = { ...SHOW_A, status: "published" as const };
+    const checkedSongs = responseStatus === 202 ? [] : [song(22, { title: "Other owner's saved closer" })];
+    let posts = 0;
+    await openOwner(page, {
+      shows: [published],
+      onGet: (count) => count === 2
+        ? { status: 503, json: { error: "Offline fixture check unavailable" } }
+        : { json: ownerPayload(count === 1 ? [song(11)] : checkedSongs, count === 1 ? VERSION_A : VERSION_B, published) },
+      onPost: () => {
+        posts += 1;
+        return { status: responseStatus, json: responseStatus === 202
+          ? { written: true, error: "The official list could not be verified." }
+          : { error: "This set changed since you last loaded it." } };
+      },
+    });
+    const glance = page.locator("[data-next-action]");
+    await expect(glance.getByText("Official set plan", { exact: true })).toBeVisible();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Remove", exact: true }).click();
+    await expect(glance.getByText("Browser set plan", { exact: true })).toBeVisible();
+    await expect(glance.getByText("No songs in this browser", { exact: true })).toBeVisible();
+    await expect(glance.getByRole("link", { name: "See last saved public list", exact: true })).toBeVisible();
+    await expect(glance.getByRole("link", { name: "See live empty public list" })).toHaveCount(0);
+    await saveActive(page);
+    await expect(glance.getByText("Open · check saved list", { exact: true })).toBeVisible();
+    await expect(glance).toContainText("The public list may already have changed");
+    await expect(glance).not.toContainText("still private in this browser");
+    await expect(glance.getByRole("link", { name: "See public list · check pending", exact: true })).toHaveAttribute("href", `/?show=${published.slug}`);
+    await checkActive(page);
+    await expect(glance.getByRole("button", { name: "Check saved Rad Dad", exact: true })).toBeEnabled();
+    await expect(glance.getByText("Open · check saved list", { exact: true })).toBeVisible();
+    await glance.screenshot({ path: testInfo.outputPath(`published-save-${responseStatus}-glance-320.png`) });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    await checkActive(page);
+    if (responseStatus === 409) {
+      await expect(page.getByRole("region", { name: "Saved set comparison" })).toBeVisible();
+      await expect(glance.getByText("Open · check saved list", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Use saved list", exact: true }).click();
+    }
+    await expect(glance.getByText("Official set plan", { exact: true })).toBeVisible();
+    await expect(glance.getByText("Open · saved list", { exact: true })).toBeVisible();
+    await expect(glance.getByText("Open · check saved list", { exact: true })).toHaveCount(0);
+    if (responseStatus === 202) {
+      await expect(glance.getByRole("link", { name: "See live empty public list" })).toBeVisible();
+    } else {
+      await expect(glance.getByRole("link", { name: "Open band run mode", exact: true })).toBeVisible();
+    }
+    expect(posts).toBe(1);
+  });
+}
 
 test("a competing saved list is reviewed at phone widths before an explicit whole-set replacement", async ({ page }, testInfo) => {
   const winner = [song(22, { title: "Other owner's closer", performanceNote: "New saved cue", rehearsalNotes: "Private fixture note", updatedAt: "2026-09-05T02:00:00.000Z" })];
@@ -464,7 +525,9 @@ test("two owner pages starting from an empty set review the first winning write 
 });
 
 for (const method of ["POST", "GET"] as const) {
-  test(`a stalled ${method === "POST" ? "Save" : "Check"} body releases recovery at the deadline and ignores its late receipt`, async ({ page }) => {
+  test(`a stalled ${method === "POST" ? "Save" : "Check"} body releases recovery at the deadline and ignores its late receipt`, async ({ page }, testInfo) => {
+    const published = { ...SHOW_A, status: "published" as const };
+    await page.setViewportSize({ width: 320, height: 740 });
     await page.clock.install();
     await page.addInitScript(({ method }) => {
       const realFetch = window.fetch.bind(window);
@@ -489,7 +552,8 @@ for (const method of ["POST", "GET"] as const) {
     }, { method });
     let posts = 0;
     await openOwner(page, {
-      onGet: (count) => ({ json: count === 1 ? ownerPayload() : ownerPayload([song(11, { performanceNote: "Late saved cue" })], VERSION_B) }),
+      shows: [published],
+      onGet: (count) => ({ json: count === 1 ? ownerPayload([song(11)], VERSION_A, published) : ownerPayload([song(11, { performanceNote: "Late saved cue" })], VERSION_B, published) }),
       onPost: (posted) => {
         posts += 1;
         if (method === "GET") return { status: 409, json: { error: "This set changed since you last loaded it." } };
@@ -501,6 +565,16 @@ for (const method of ["POST", "GET"] as const) {
     await saveActive(page);
     if (method === "GET") await checkActive(page);
     await expect.poll(() => page.evaluate(() => typeof (window as Window & { releaseOwnerBody?: unknown }).releaseOwnerBody)).toBe("function");
+    if (method === "POST") {
+      const glance = page.locator("[data-next-action]");
+      await expect(glance.getByText("Open · save pending", { exact: true })).toBeVisible();
+      await expect(glance).not.toContainText("still private in this browser");
+      await expect(glance.getByText("Wait for the save result.", { exact: true })).toBeVisible();
+      await expect(glance.getByRole("button", { name: "Saving...", exact: true })).toBeDisabled();
+      await expect(glance.getByRole("link", { name: "See public list · save pending", exact: true })).toHaveAttribute("href", `/?show=${published.slug}`);
+      await glance.screenshot({ path: testInfo.outputPath("published-pending-save-320.png") });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    }
     if (method === "GET") await page.getByLabel("Performance cue").fill("Changed while checking");
     await page.clock.fastForward(10_100);
     await expect(page.getByRole("button", { name: "Check saved Rad Dad", exact: true }).first()).toBeEnabled();
