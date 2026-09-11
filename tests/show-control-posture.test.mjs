@@ -398,6 +398,14 @@ test("Show Control renders the posture and its one real action on phones", async
   assert.match(styles, /\.nextActionCard/);
   assert.match(styles, /\.nextActionControl[^}]*min-height: 48px/);
   assert.match(styles, /\.nextActionCard \{ order: -1; \}/);
+  const statsIndex = control.indexOf("controlStats");
+  const postureIndex = control.indexOf("const controlPosture = buildShowControlPosture");
+  assert.ok(statsIndex >= 0 && postureIndex >= 0 && postureIndex < statsIndex);
+  assert.match(
+    control,
+    /data-songs-source=\{controlPosture\.setPlan\.label === "Official set plan" \? "official" : "browser"\}/,
+  );
+  assert.match(control, /Browser total songs/);
   for (const document of [readme, guide, technical]) {
     assert.match(document, /one\s+next\s+step/i);
     assert.match(document, /Travis\s+owns\s+booking/i);

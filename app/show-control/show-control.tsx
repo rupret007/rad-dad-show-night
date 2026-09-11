@@ -976,7 +976,10 @@ export default function ShowControlClient({
             </p>
           </div>
           <div className={styles.controlStats}>
-            <div><strong>{totalSongs}</strong><span>Total songs</span></div>
+            <div data-songs-source={controlPosture.setPlan.label === "Official set plan" ? "official" : "browser"}>
+              <strong>{totalSongs}</strong>
+              <span>{controlPosture.setPlan.label === "Official set plan" ? "Total songs" : "Browser total songs"}</span>
+            </div>
             <div><strong>{dirtySets.size}</strong><span>Sets changed</span></div>
           </div>
         </section>

@@ -79,6 +79,11 @@ describe the browser draft, including a local deletion of the last song; they
 do not prove that the public night is empty. Once the draft is saved or a
 checked saved list is adopted, the label returns to **Official set plan**.
 
+The **Total songs** stat above the picker carries the same honesty: while any
+set is unsaved, held for a saved-list check, or a save is pending, its label
+reads **Browser total songs** instead, so the very first number on the phone
+screen never reads as official when it is still a local draft.
+
 While a save is pending, the published glance says **Open · save pending**
 and **Wait for the save result**. The public list may already have changed
 before the response arrives. Counts remain a browser plan, and the glance
