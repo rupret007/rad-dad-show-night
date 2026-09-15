@@ -31,7 +31,7 @@ test("first open names one next action from this show's verified list", () => {
   assert.equal(ready.songCount, DEFAULT_SONGS.length);
   assert.equal(ready.firstSet?.slug, "jeff-story-friends");
   assert.equal(ready.firstSet?.time, "7:00-7:35 PM");
-  assert.equal(ready.sets[0].songCount, 7);
+  assert.equal(ready.sets[0].songCount, 6);
   assert.equal(ready.sets[1].songCount, 6);
   assert.equal(ready.sets[2].songCount, 19);
 
@@ -39,7 +39,7 @@ test("first open names one next action from this show's verified list", () => {
   assert.equal(next.kind, "start-set");
   assert.match(next.title, /Jeff Story & Friends/);
   assert.match(next.title, /7:00-7:35 PM/);
-  assert.match(next.copy, /32 verified songs/);
+  assert.match(next.copy, /31 verified songs/);
   assert.equal(next.label, "See the official sets");
   assert.equal(next.href, "#set-jeff-story-friends");
   assert.doesNotMatch(next.copy, /suggest a song|practice/i);
@@ -128,8 +128,8 @@ test("practice resume only accepts a song that belongs to this show", () => {
     title: song.title,
   }));
   assert.deepEqual(
-    resumeSongFromSavedPosition("1002", thisShowSongs),
-    { id: 1002, title: "Nutshell" },
+    resumeSongFromSavedPosition("1003", thisShowSongs),
+    { id: 1003, title: "The Drinking Song" },
   );
   assert.equal(
     resumeSongFromSavedPosition("9999", thisShowSongs),
