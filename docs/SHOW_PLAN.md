@@ -9,7 +9,10 @@
 - Finish language: expected wrap near 10:00 PM, not a venue curfew
 
 The live database is the operational source of truth for this live set surface.
-This document records the confirmed baseline used to seed it. Show Night
+This document records the planned source baseline used for new seeds and the
+September 19 fallback. Editing it does not update an already-saved live set.
+The September 15 opening-set revision below still needs an owner save in
+Show Control; see [the apply checklist](OPENING_SET_20260915.md). Show Night
 does not expand Vault. The public band site stays at
 <https://www.raddadband.com>.
 
@@ -27,13 +30,21 @@ does not expand Vault. The public band site stays at
 
 ## Jeff Story & Friends
 
-1. Badfish - Sublime
-2. Nutshell - Alice in Chains
-3. The Drinking Song - original
-4. Heart-Shaped Box - Nirvana - Travis Story, guitar
-5. Creep - Radiohead - Carly, vocals / Travis Worsham, guitar
-6. Just a Girl - No Doubt - Zella, vocals / Kelly, guitar
-7. Misery Business - Paramore - Zella, vocals
+Revised at Jeff's request on September 15: two solo acoustic slots, then Jeff
+and Candace, followed by the remaining guest songs.
+
+1. The Drinking Song - original - Jeff, solo acoustic opener
+2. Acoustic song - TBD - Jeff, solo acoustic; second song to be chosen
+3. Anyone Else but You - The Moldy Peaches - Jeff and Candace, duet
+4. We're Going to Be Friends - The White Stripes - Jeff and Candace, duet
+5. Heart-Shaped Box - Nirvana - Travis Story, guitar
+6. Creep - Radiohead - Carly, vocals / Travis Worsham, guitar
+
+Just a Girl and Misery Business are removed from the plan; the Zella songs have
+not been rehearsed. Badfish and Nutshell are earlier options, not two additional
+confirmed opening songs. Jeff still needs to choose the second acoustic song.
+Keep the 7:00-7:35 PM opening window; the default per-song durations are planning
+estimates, not a newly confirmed 35-minute performance.
 
 ## Mason / The Fault Lines
 

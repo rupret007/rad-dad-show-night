@@ -171,22 +171,27 @@ function makeSong(
 }
 
 export const DEFAULT_SONGS: ShowSong[] = [
-  makeSong(1001, "jeff-story-friends", 1, "Badfish", "Sublime"),
-  makeSong(1002, "jeff-story-friends", 2, "Nutshell", "Alice in Chains"),
-  makeSong(1003, "jeff-story-friends", 3, "The Drinking Song", "", {
+  // September 15 revision: Jeff opens solo, then Candace joins for two songs.
+  // New songs use new identities; removed songs are never repurposed.
+  makeSong(1003, "jeff-story-friends", 1, "The Drinking Song", "", {
     isOriginal: true,
+    performanceNote: "Jeff - solo acoustic opener",
   }),
-  makeSong(1004, "jeff-story-friends", 4, "Heart-Shaped Box", "Nirvana", {
+  makeSong(1010, "jeff-story-friends", 2, "Acoustic song - TBD", "", {
+    performanceNote: "Jeff - solo acoustic; second song to be chosen",
+    rehearsalNotes: "Placeholder, not a confirmed song. Badfish and Nutshell were earlier options; Jeff has not chosen the second acoustic song.",
+  }),
+  makeSong(1008, "jeff-story-friends", 3, "Anyone Else but You", "The Moldy Peaches", {
+    performanceNote: "Jeff and Candace - duet",
+  }),
+  makeSong(1009, "jeff-story-friends", 4, "We're Going to Be Friends", "The White Stripes", {
+    performanceNote: "Jeff and Candace - duet",
+  }),
+  makeSong(1004, "jeff-story-friends", 5, "Heart-Shaped Box", "Nirvana", {
     performanceNote: "Travis Story - guitar",
   }),
-  makeSong(1005, "jeff-story-friends", 5, "Creep", "Radiohead", {
+  makeSong(1005, "jeff-story-friends", 6, "Creep", "Radiohead", {
     performanceNote: "Carly - vocals / Travis Worsham - guitar",
-  }),
-  makeSong(1006, "jeff-story-friends", 6, "Just a Girl", "No Doubt", {
-    performanceNote: "Zella - vocals / Kelly - guitar",
-  }),
-  makeSong(1007, "jeff-story-friends", 7, "Misery Business", "Paramore", {
-    performanceNote: "Zella - vocals",
   }),
 
   makeSong(1101, "stalemate", 1, "Turn Over the Flag", "Stalemate", {
