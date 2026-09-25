@@ -152,6 +152,21 @@
 .coachFindings article strong { font-size: 0.82rem; text-transform: uppercase; }
 .coachFindings article p { margin: 4px 0 0; color: var(--muted); font-size: 0.76rem; line-height: 1.35; }
 .aiNotes { margin: 13px 0 0; padding-top: 12px; white-space: pre-wrap; color: #d3d6d3; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.85rem; line-height: 1.45; }
+.acousticHelperPanel { margin: 0 16px 16px; padding: 15px; border: 1px solid rgba(255, 61, 135, 0.32); background: repeating-linear-gradient(135deg, rgba(255, 61, 135, 0.05) 0 8px, transparent 8px 16px); }
+.acousticHelperPanel > div:first-child span { display: block; color: var(--pink); font-size: 0.62rem; font-weight: 900; letter-spacing: 0.13em; text-transform: uppercase; }
+.acousticHelperPanel > div:first-child strong { display: block; margin-top: 3px; text-transform: uppercase; }
+.acousticHelperPanel > div:first-child p { margin: 3px 0 0; color: var(--muted); font-size: 0.78rem; }
+.acousticCandidateList { margin: 12px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.acousticCandidateList li { padding: 10px 12px; border-left: 4px solid var(--pink); background: rgba(255, 255, 255, 0.03); }
+.acousticCandidateList li[data-fit="fits"] { border-color: var(--lime); }
+.acousticCandidateList li[data-fit="over-budget"] { border-color: #ff5a3d; }
+.acousticCandidateList li strong { font-size: 0.82rem; text-transform: uppercase; }
+.acousticCandidateList li span { color: var(--muted); font-size: 0.78rem; }
+.acousticCandidateList li p { margin: 4px 0 0; color: var(--muted); font-size: 0.76rem; line-height: 1.35; }
+.acousticCandidateNote { font-style: italic; opacity: 0.85; }
+.acousticNoCandidates { margin: 12px 0 0; color: var(--muted); font-size: 0.8rem; }
+.acousticChecklist { margin: 12px 0 0; padding-left: 18px; color: #d3d6d3; font-size: 0.8rem; line-height: 1.5; }
+.acousticChecklist li { margin-bottom: 4px; }
 .songEditorCard { position: relative; padding: 16px 15px; display: grid; grid-template-columns: 28px 42px minmax(0, 1fr) auto; align-items: start; gap: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.012); }
 .songEditorCard[data-transition="true"] { background: linear-gradient(90deg, rgba(184, 245, 39, 0.08), transparent 44%); }
 .dragHandle { padding-top: 27px; color: #666b6e; cursor: grab; font-weight: 900; letter-spacing: -0.16em; user-select: none; }
@@ -309,6 +324,8 @@
   .coachPanel { align-items: stretch; flex-direction: column; }
   .publicSetReview { margin: 0 8px 14px; }
   .coachFindings { grid-template-columns: 1fr; }
+  .acousticHelperPanel { margin: 0 8px 14px; }
+  .acousticCandidateList { grid-template-columns: 1fr; }
   .setTabs button { min-height: 78px; }
   .composer { grid-template-columns: 1fr; }
   .composerTitle { grid-column: auto; }
