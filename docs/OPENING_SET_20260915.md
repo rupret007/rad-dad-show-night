@@ -64,3 +64,7 @@ booking is needed for this content edit. Travis books; NEVER_AUTO_POST.
   port 4336 and an isolated Chrome profile.
 - These checks verify the source revision, not a live owner save. Hosted status
   and the exact pushed tip are recorded in the draft PR and coord #11.
+- September 25 update: dependency overrides (sharp 0.35.4, undici 7.29.0 for
+  miniflare) resolved the sharp/libheif high advisory (GHSA-rgj7-g3m4-5g8c) that
+  blocked CI. All tests (isolation 207/207, D1 20/20), lint, typecheck, build,
+  and worker smoke pass.

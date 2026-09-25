@@ -14,7 +14,7 @@ claim: `worker/index.ts` imports Vinext from devDependencies into the worker.
 | --- | --- |
 | Vinext → image-size 2.0.2 | Malformed ICNS/JXL/HEIF parsing advisories have no patched image-size release in the audit. Vinext beta.6 removes this dependency. Its image and app-router code participates in the runtime, so a dev-only audit would miss this path. |
 | Vite 8.0.13 | Windows development-server file-disclosure findings; update within the 8.0 line to 8.0.16. These are local tooling findings, not evidence of a deployed Show Night exploit. |
-| Cloudflare Vite plugin / Wrangler / Miniflare | Update to plugin 1.47.0 and Wrangler 4.114.0, which use stable Miniflare 4.20260722.0 and patched sharp/ws/esbuild paths. Override only that Miniflare version's Undici to 7.29.0 for its remaining high advisories. The available parent update with fixed Undici instead moves to Miniflare 5 alpha; this patch preserves the stable major. Remove the targeted override when a tested stable parent supplies an unaffected version. |
+| Cloudflare Vite plugin / Wrangler / Miniflare | Update to plugin 1.47.0 and Wrangler 4.114.0, which use stable Miniflare 4.20260722.0. Override sharp to 0.35.4 to resolve GHSA-rgj7-g3m4-5g8c (libheif vulnerabilities). Override undici to 7.29.0 for its remaining high advisories. This patch keeps the miniflare 4.x stable API that the D1 tests depend on. |
 | Vinext peer | Update @vitejs/plugin-rsc to 0.5.34 to satisfy beta.6's declared peer requirement. |
 | Transitive tooling | Refresh compatible Babel/core, brace-expansion, browserslist, fast-uri, fflate, js-yaml, nanoid and postcss resolutions identified by the audit. No application dependency major upgrade. |
 
@@ -31,7 +31,7 @@ source, authentication, or owner-write path is added.
 
 ## Remaining findings
 
-The resulting full audit reports **4 moderate, 0 high, 0 critical, 0 low**.
+The resulting full audit reports **4 moderate, 0 high, 0 critical, 0 low** (September 25 update).
 These four package entries describe one advisory, not four independent flaws:
 Drizzle Kit 0.31.10 → @esbuild-kit/esm-loader → @esbuild-kit/core-utils →
 esbuild 0.18.20, [GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99).
