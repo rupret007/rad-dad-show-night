@@ -287,6 +287,20 @@
 .practiceLivePanel .resourceLink { min-height: 42px; padding: 0 15px; font-size: 0.76rem; }
 .practiceLivePanel .resourceLink:first-child { color: var(--black); border-color: var(--lime); background: var(--lime); }
 
+.stageCueDivider { display: flex; align-items: center; gap: 14px; padding: 0 22px; min-height: 42px; background: transparent; list-style: none; }
+.stageCueLine { flex: 1; height: 1px; }
+.stageCueDivider[data-cue-accent="duet"] .stageCueLine { background: linear-gradient(90deg, transparent, var(--pink), transparent); }
+.stageCueDivider[data-cue-accent="guests"] .stageCueLine { background: linear-gradient(90deg, transparent, var(--blue), transparent); }
+.stageCueDivider[data-cue-accent="solo"] .stageCueLine { background: linear-gradient(90deg, transparent, var(--lime), transparent); }
+.stageCueLabel { flex-shrink: 0; padding: 4px 14px; font-size: 0.7rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; }
+.stageCueDivider[data-cue-accent="duet"] .stageCueLabel { color: var(--pink); border: 1px solid rgba(255, 61, 135, 0.4); background: rgba(255, 61, 135, 0.1); }
+.stageCueDivider[data-cue-accent="guests"] .stageCueLabel { color: var(--blue); border: 1px solid rgba(24, 170, 245, 0.4); background: rgba(24, 170, 245, 0.1); }
+.stageCueDivider[data-cue-accent="solo"] .stageCueLabel { color: var(--lime); border: 1px solid rgba(184, 245, 39, 0.4); background: rgba(184, 245, 39, 0.1); }
+
+.tbdSong { background: repeating-linear-gradient(135deg, rgba(255, 61, 135, 0.04) 0 8px, transparent 8px 16px); border-left: 3px solid var(--pink); }
+.tbdSong .songNumber { color: var(--paper); background: var(--pink); }
+.tbdFlag { padding: 2px 8px; color: var(--black); background: var(--pink); font-size: 0.62rem; font-weight: 900; letter-spacing: 0.09em; text-transform: uppercase; }
+
 .notesGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .noteCard { min-height: 140px; padding: 22px; border: 1px solid rgba(255, 255, 255, 0.12); background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)); }
 .noteNumber { color: var(--pink); font-family: Impact, sans-serif; font-size: 1.1rem; }
