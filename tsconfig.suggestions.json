@@ -7,6 +7,8 @@
   "include": [
     "worker/image-response.ts",
     "lib/set-coach.ts",
+    "lib/acoustic-set-helper.ts",
+    "app/show-control/acoustic-slot-helper.tsx",
     "app/api/coach/route.ts",
     "lib/run-position.ts",
     "lib/official-set-identity.ts",

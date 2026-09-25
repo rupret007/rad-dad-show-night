@@ -78,6 +78,10 @@ commit. A save updates the public page only when that show is already published.
 - Keeps the established black, electric-blue, lime, and hot-pink Rad Dad brand.
 - Estimates set runtime from per-song durations.
 - Runs Set Coach for timing, transitions, guest load, and readiness checks.
+- Shows an Acoustic slot helper on Jeff Story & Friends while its second
+  acoustic song is still TBD: candidate songs, a runtime-fit check against the
+  set's own time window, and a fixed checklist. It never auto-picks a song or
+  guesses a runtime; the owner still chooses and saves.
 - Reviews the public list on the Show Control draft: saved YouTube/lyrics,
   search-only owner links, originals that hide both, and rehearsal notes that
   stay in Show Control.
