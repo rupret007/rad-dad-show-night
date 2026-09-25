@@ -58,16 +58,75 @@ test("an untimed set has no timing score or inherited scheduled minutes", () => 
 });
 
 test("pure review preserves the draft and reports cues and cover gaps", () => {
-  const value = input({ songs: [song(1, { transition: true }), song(2, { durationSeconds: 0 })] });
+  const value = input({ songs: [song(1, { transition: true, durationSeconds: 240 }), song(2, { durationSeconds: 0 })] });
   const before = structuredClone(value);
   const result = buildCoachCheck(value);
   assert.deepEqual(value, before);
-  assert.equal(result.estimatedMinutes, 6);
+  assert.equal(result.estimatedMinutes, 7);
   assert.equal(result.requestId, value.requestId);
   assert.equal(result.findings.length, 4);
   assert.match(result.findings[1].title, /1 planned transition/);
   assert.match(result.findings[2].title, /2 songs carry performance cues/);
   assert.match(result.findings[3].title, /2 covers have no saved/);
+});
+
+test("default duration warning surfaces songs still at the 3-minute placeholder", () => {
+  const result = buildCoachCheck(input({ songs: [song(1), song(2)] }));
+  const finding = result.findings.find((f) => f.title.includes("default timing"));
+  assert.ok(finding, "default timing finding should be present");
+  assert.equal(finding.tone, "watch");
+  assert.match(finding.title, /2 songs have default timing/);
+  assert.match(finding.detail, /Every song uses the 3-minute default/);
+});
+
+test("default duration warning lists up to three song titles when not all songs have default timing", () => {
+  const result = buildCoachCheck(input({
+    songs: [
+      song(1, { durationSeconds: 240 }),
+      song(2, { durationSeconds: 180, title: "Second Song" }),
+      song(3, { durationSeconds: 180, title: "Third Song" }),
+    ],
+  }));
+  const finding = result.findings.find((f) => f.title.includes("default timing"));
+  assert.ok(finding, "default timing finding should be present");
+  assert.match(finding.title, /2 songs have default timing/);
+  assert.match(finding.detail, /Second Song, Third Song/);
+  assert.match(finding.detail, /still use the 3-minute default/);
+});
+
+test("default duration warning truncates at three titles with count for the rest", () => {
+  const result = buildCoachCheck(input({
+    songs: [
+      song(1, { durationSeconds: 180, title: "First" }),
+      song(2, { durationSeconds: 180, title: "Second" }),
+      song(3, { durationSeconds: 180, title: "Third" }),
+      song(4, { durationSeconds: 180, title: "Fourth" }),
+      song(5, { durationSeconds: 240 }),
+    ],
+  }));
+  const finding = result.findings.find((f) => f.title.includes("default timing"));
+  assert.ok(finding, "default timing finding should be present");
+  assert.match(finding.title, /4 songs have default timing/);
+  assert.match(finding.detail, /First, Second, Third/);
+  assert.match(finding.detail, /and 1 more/);
+});
+
+test("default duration warning is omitted when all songs have custom durations", () => {
+  const result = buildCoachCheck(input({
+    songs: [song(1, { durationSeconds: 240 }), song(2, { durationSeconds: 210 })],
+  }));
+  const finding = result.findings.find((f) => f.title.includes("default timing"));
+  assert.equal(finding, undefined, "no default timing finding when all durations are custom");
+});
+
+test("single song at default duration uses singular grammar", () => {
+  const result = buildCoachCheck(input({
+    songs: [song(1, { durationSeconds: 240 }), song(2, { durationSeconds: 180, title: "Only Default" })],
+  }));
+  const finding = result.findings.find((f) => f.title.includes("default timing"));
+  assert.ok(finding);
+  assert.match(finding.title, /1 song has default timing/);
+  assert.match(finding.detail, /Only Default still uses the 3-minute default/);
 });
 
 test("input accepts one complete unsaved draft and keeps blank schedule explicit", () => {
