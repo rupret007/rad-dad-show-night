@@ -96,14 +96,89 @@ export function leftoverPublicActions(
   return leftovers;
 }
 
+export type StageCue = {
+  label: string;
+  afterPosition: number;
+  accent: "solo" | "duet" | "guests";
+};
+
+export type OpeningSetFlow = {
+  hasStageCues: boolean;
+  stageCues: StageCue[];
+  hasTbdSlot: boolean;
+  tbdSlotPosition: number;
+};
+
+const SOLO_PATTERN = /\bsolo\b/i;
+const DUET_PATTERN = /\bduet\b/i;
+const CANDACE_PATTERN = /\bcandace\b/i;
+const TBD_PATTERN = /\bTBD\b/;
+
+export function openingSetStageCues(
+  songs: Array<{
+    setSlug?: string;
+    position: number;
+    performanceNote: string;
+    title: string;
+  }>,
+): OpeningSetFlow {
+  const opening = songs
+    .filter((s) => s.setSlug === "jeff-story-friends")
+    .sort((a, b) => a.position - b.position);
+
+  if (opening.length < 3) {
+    return { hasStageCues: false, stageCues: [], hasTbdSlot: false, tbdSlotPosition: 0 };
+  }
+
+  const phases: Array<{ phase: "solo" | "duet" | "guests"; position: number }> = [];
+  for (const song of opening) {
+    const note = song.performanceNote;
+    if (SOLO_PATTERN.test(note)) {
+      phases.push({ phase: "solo", position: song.position });
+    } else if (DUET_PATTERN.test(note) || CANDACE_PATTERN.test(note)) {
+      phases.push({ phase: "duet", position: song.position });
+    } else {
+      phases.push({ phase: "guests", position: song.position });
+    }
+  }
+
+  const cues: StageCue[] = [];
+  for (let i = 1; i < phases.length; i++) {
+    if (phases[i].phase !== phases[i - 1].phase) {
+      const label =
+        phases[i].phase === "duet"
+          ? "Candace joins Jeff"
+          : phases[i].phase === "guests"
+            ? "Guest performers"
+            : "Solo";
+      cues.push({
+        label,
+        afterPosition: phases[i - 1].position,
+        accent: phases[i].phase,
+      });
+    }
+  }
+
+  const tbdSong = opening.find((s) => TBD_PATTERN.test(s.title));
+
+  return {
+    hasStageCues: cues.length > 0,
+    stageCues: cues,
+    hasTbdSlot: Boolean(tbdSong),
+    tbdSlotPosition: tbdSong?.position ?? 0,
+  };
+}
+
 export function publicProductionNotes({
   canonicalShow,
   featuredGuestTitle,
   expectedWrap,
+  openingFlow,
 }: {
   canonicalShow: boolean;
   featuredGuestTitle?: string | null;
   expectedWrap: string;
+  openingFlow?: OpeningSetFlow | null;
 }): string[] {
   const notes = ["Share the backline where practical."];
   const guest = featuredGuestTitle?.trim() ?? "";
@@ -112,6 +187,16 @@ export function publicProductionNotes({
       /fault lines/i.test(guest)
         ? "Protect the Mason / Fault Lines setup window."
         : `Protect the ${guest} setup window.`,
+    );
+  }
+  if (openingFlow?.hasStageCues) {
+    notes.push(
+      "Candace joins Jeff after the solo acoustic songs. Cue her before song 3.",
+    );
+  }
+  if (openingFlow?.hasTbdSlot) {
+    notes.push(
+      `Slot ${openingFlow.tbdSlotPosition} is TBD — Jeff picks the second acoustic song.`,
     );
   }
   notes.push("Confirm guest keys and endings before show day.");

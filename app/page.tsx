@@ -19,6 +19,7 @@ import {
   buildShowNightUse,
   firstOpenAction,
   leftoverPublicActions,
+  openingSetStageCues,
   publicProductionNotes,
   showHasRunOfShow,
 } from "../lib/show-night-use";
@@ -119,10 +120,12 @@ export default async function Home({
   const nightUse = buildShowNightUse(songs, sets);
   const openAction = firstOpenAction(nightUse);
   const leftoverActions = leftoverPublicActions(nightUse, openAction);
+  const openingFlow = openingSetStageCues(songs);
   const productionNotes = publicProductionNotes({
     canonicalShow,
     featuredGuestTitle: featuredGuest?.performance.title,
     expectedWrap: show.expectedWrap || show.hours,
+    openingFlow,
   });
   const hasRunOfShow = showHasRunOfShow(timeline);
   const controlHref = `/show-control?show=${encodeURIComponent(show.slug)}`;
@@ -457,6 +460,7 @@ export default async function Home({
           showSlug={show.slug}
           showId={show.id}
           practiceMode={practiceMode}
+          openingFlow={openingFlow}
         />
       </section>
 
