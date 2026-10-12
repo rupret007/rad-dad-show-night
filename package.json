@@ -15,6 +15,7 @@
     "test:browser": "playwright test",
     "typecheck:suggestions": "tsc --project tsconfig.suggestions.json",
     "leftover:hosted": "node scripts/hosted-leftover-honesty.mjs",
+    "audit:high": "node scripts/audit-high.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "test:worker": "node scripts/worker-image-smoke.mjs"
@@ -50,9 +51,15 @@
     "wrangler": "4.114.0"
   },
   "overrides": {
-    "miniflare@4.20260722.0": {
-      "undici": "7.29.0"
-    }
+    "miniflare": {
+      "sharp": "0.35.5",
+      "undici": "7.30.0"
+    },
+    "sharp": "0.35.5",
+    "undici": "7.30.0",
+    "source-map-js": "1.2.2",
+    "brace-expansion@1": "1.1.21",
+    "brace-expansion@5": "5.0.12"
   },
   "type": "module"
 }
