@@ -78,6 +78,8 @@ commit. A save updates the public page only when that show is already published.
 - Keeps the established black, electric-blue, lime, and hot-pink Rad Dad brand.
 - Estimates set runtime from per-song durations.
 - Runs Set Coach for timing, transitions, guest load, and readiness checks.
+- Moves keyboard focus into a video preview and returns it to Preview video
+  when the dialog closes.
 - Reviews the public list on the Show Control draft: saved YouTube/lyrics,
   search-only owner links, originals that hide both, and rehearsal notes that
   stay in Show Control.
