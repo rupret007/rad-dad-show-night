@@ -129,8 +129,8 @@ stays empty and never borrows another night's songs or set times.
 ## Leftover on this show
 
 Under the one next step, leftover work on this verified night stays listed and
-tappable. Leftover items reuse existing owner actions. They do not invent a
-booking, outreach, or send path.
+tappable as a named region. Leftover items reuse existing owner actions. They
+do not invent a booking, outreach, or send path.
 
 Leftover order is fixed:
 

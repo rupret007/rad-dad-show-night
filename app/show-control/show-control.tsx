@@ -1100,6 +1100,7 @@ export default function ShowControlClient({
                 <div
                   className={styles.leftoverWork}
                   data-leftover-count={controlPosture.leftoverActions.length}
+                  role="region"
                   aria-labelledby="leftover-work-title"
                 >
                   <span id="leftover-work-title">Leftover on this show</span>
