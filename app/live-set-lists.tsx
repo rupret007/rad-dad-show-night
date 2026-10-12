@@ -376,6 +376,7 @@ function ShowLiveSetLists({
   const placeLost = runPosition.kind === "missing" || runPosition.kind === "ambiguous";
   const hasVerifiedList = orderedSongs.length > 0;
   const listedSets = visibleOfficialSets(sets, songs);
+  const practiceJumpSets = sets.filter((set) => (grouped[set.slug] ?? []).length > 0);
 
   useEffect(() => {
     return () => {
@@ -449,10 +450,12 @@ function ShowLiveSetLists({
     <div className={`${styles.livePanel} ${practiceMode ? styles.practiceLivePanel : ""}`}>
       {practiceMode && (hasVerifiedList || placeLost) ? (
         <div className={styles.practiceToolbar} aria-label="Practice controls">
-          <div className={styles.practiceSetNav} aria-label="Jump to a set">
-            {sets
-              .filter((set) => (grouped[set.slug] ?? []).length > 0)
-              .map((set) => (
+          <div
+            className={styles.practiceSetNav}
+            aria-label="Jump to a set"
+            data-set-count={String(practiceJumpSets.length)}
+          >
+            {practiceJumpSets.map((set) => (
               <a href={`#set-${set.slug}`} key={set.slug}>
                 {set.title}
               </a>
