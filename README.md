@@ -70,6 +70,8 @@ commit. A save updates the public page only when that show is already published.
 - Keeps **Set lists** and **Suggest a song** in the phone header while moving
   the owner editor to the footer, so public visitors get the two useful public
   actions without another menu.
+- Announces share success or failure without treating a cancelled share sheet
+  as an error.
 - Collects public song ideas without allowing suggestions to alter the set.
 - Lets guests find existing ideas before sending, preserves uncertain drafts,
   and distinguishes a form response from an idea confirmed on the board.

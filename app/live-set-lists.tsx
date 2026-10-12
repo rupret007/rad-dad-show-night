@@ -55,14 +55,22 @@ export function SharePageButton({
         await navigator.clipboard.writeText(window.location.href);
         setStatus("Link copied");
       }
-    } catch {
-      setStatus("");
+    } catch (error) {
+      const cancelled =
+        (error instanceof DOMException && error.name === "AbortError") ||
+        (error instanceof Error && error.name === "AbortError");
+      setStatus(cancelled ? "" : "Could not share");
     }
     window.setTimeout(() => setStatus(""), 2200);
   }
 
   return (
-    <button className={styles.secondaryAction} type="button" onClick={sharePage}>
+    <button
+      className={styles.secondaryAction}
+      type="button"
+      onClick={sharePage}
+      aria-live="polite"
+    >
       {status || label}
     </button>
   );
