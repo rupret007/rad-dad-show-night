@@ -155,7 +155,7 @@
 .nextAction[data-kind="suggest-song"] .leftoverPublic { border-top-color: rgba(255, 61, 135, 0.35); }
 .leftoverPublicKicker { margin: 0; color: var(--blue); font-size: 0.64rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
 .leftoverPublicLinks { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
-.leftoverPublicLinks .secondaryAction { min-height: 38px; padding: 0 14px; }
+.leftoverPublicLinks .secondaryAction { min-height: 44px; padding: 0 14px; }
 .emptyVerifiedList { margin: 0; padding: 16px 18px; border: 1px solid rgba(255, 61, 135, 0.35); color: var(--paper); background: rgba(255, 61, 135, 0.08); font-size: 0.92rem; font-weight: 700; line-height: 1.4; }
 .emptySet { margin: 0; padding: 22px 24px 26px; color: var(--muted); font-size: 0.92rem; line-height: 1.45; }
 .practiceNextLine { display: block; margin-top: 4px; overflow-wrap: anywhere; color: var(--lime); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -240,7 +240,7 @@
 .runLocalNote { margin: 0; padding: 0 14px 11px; color: var(--muted); font-size: 0.7rem; line-height: 1.45; overflow-wrap: anywhere; }
 .runRecovery + .runLocalNote { padding-top: 10px; }
 .practiceControls { display: flex; flex-shrink: 0; gap: 7px; }
-.practiceControls button { min-height: 36px; padding: 0 11px; border: 1px solid rgba(255, 255, 255, 0.2); color: var(--paper); background: transparent; cursor: pointer; font: inherit; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.practiceControls button { min-height: 44px; padding: 0 11px; border: 1px solid rgba(255, 255, 255, 0.2); color: var(--paper); background: transparent; cursor: pointer; font: inherit; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
 .practiceControls button:hover:not(:disabled) { color: var(--black); border-color: var(--blue); background: var(--blue); }
 .practiceControls button:disabled { cursor: not-allowed; opacity: 0.35; }
 .practiceControls .wakeActive { color: var(--black); border-color: var(--lime); background: var(--lime); }
@@ -279,12 +279,12 @@
 .currentSong .songNumber { color: var(--black); background: var(--blue); }
 .currentFlag { padding: 3px 7px; color: var(--black); background: var(--pink); font-size: 0.62rem; font-weight: 900; letter-spacing: 0.09em; text-transform: uppercase; }
 .resourceBar { display: flex; gap: 7px; }
-.resourceButton, .resourceLink { min-height: 34px; padding: 0 11px; display: inline-flex; align-items: center; border: 1px solid rgba(255, 255, 255, 0.17); color: #d6d9d7; background: transparent; cursor: pointer; font: inherit; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-decoration: none; text-transform: uppercase; }
+.resourceButton, .resourceLink { min-height: 44px; padding: 0 11px; display: inline-flex; align-items: center; border: 1px solid rgba(255, 255, 255, 0.17); color: #d6d9d7; background: transparent; cursor: pointer; font: inherit; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-decoration: none; text-transform: uppercase; }
 .resourceButton:hover, .resourceLink:hover { color: var(--black); border-color: var(--blue); background: var(--blue); }
 .updatedLine { margin: -12px 4px 0; color: #72777b; font-size: 0.7rem; letter-spacing: 0.12em; text-align: right; text-transform: uppercase; }
 .practiceLivePanel .songRow { min-height: 94px; }
 .practiceLivePanel .songTitle { font-size: 1.48rem; }
-.practiceLivePanel .resourceLink { min-height: 42px; padding: 0 15px; font-size: 0.76rem; }
+.practiceLivePanel .resourceLink { min-height: 44px; padding: 0 15px; font-size: 0.76rem; }
 .practiceLivePanel .resourceLink:first-child { color: var(--black); border-color: var(--lime); background: var(--lime); }
 
 .notesGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
@@ -366,7 +366,7 @@
   .nowPlaying { align-items: stretch; flex-direction: column; gap: 9px; }
   .runRecovery { align-items: stretch; flex-direction: column; }
   .practiceControls { display: grid; grid-template-columns: 1fr 1fr; }
-  .practiceControls button { min-height: 40px; }
+  .practiceControls button { min-height: 44px; }
   .practiceControls button:last-child { grid-column: 1 / -1; }
   .section { width: min(100% - 28px, 1180px); padding: 66px 0; }
   .sectionHeader { align-items: flex-start; flex-direction: column; gap: 20px; }
@@ -384,7 +384,7 @@
   .songNumber { width: 34px; height: 34px; }
   .songTitle { white-space: normal; }
   .resourceBar { grid-column: 2; flex-wrap: wrap; }
-  .resourceButton, .resourceLink { min-height: 31px; padding: 0 8px; }
+  .resourceButton, .resourceLink { min-height: 44px; padding: 0 8px; }
   .practiceLivePanel .setBlock { scroll-margin-top: 250px; }
   .practiceLivePanel .songRow { min-height: 104px; }
   .practiceLivePanel .resourceBar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
