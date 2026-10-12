@@ -131,7 +131,7 @@ export default async function Home({
   const listedSets = visibleOfficialSets(sets, songs);
 
   return (
-    <main
+    <div
       className={`${styles.page} ${practiceMode ? styles.practicePage : ""}`}
       data-show-slug={show.slug}
       data-show-source={dataSource}
@@ -140,6 +140,10 @@ export default async function Home({
       data-song-count={String(nightUse.songCount)}
     >
       <div className={styles.atmosphere} aria-hidden="true" />
+
+      <a className={styles.skipLink} href="#main-content">
+        Skip to show content
+      </a>
 
       <nav className={styles.topBar} aria-label="Show page navigation">
         <div className={styles.topBarInner}>
@@ -189,6 +193,8 @@ export default async function Home({
           </div>
         </div>
       </nav>
+
+      <main id="main-content" className={styles.mainContent} tabIndex={-1}>
 
       {practiceMode ? (
         <header className={styles.practiceHero} id="top">
@@ -487,6 +493,8 @@ export default async function Home({
       </section>
       ) : null}
 
+      </main>
+
       <footer className={styles.footer}>
         <div>
           <strong className={styles.footerBrand}>RAD DAD + FRIENDS</strong>
@@ -505,7 +513,7 @@ export default async function Home({
           {practiceMode ? "Return to full show page" : "Owner: open Show Control"}
         </a>
       </footer>
-    </main>
+    </div>
   );
 }
 
