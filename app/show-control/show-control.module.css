@@ -15,6 +15,23 @@
   font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
 }
 .controlTopbar { position: sticky; top: 0; z-index: 30; min-height: 68px; padding: 0 max(24px, calc((100vw - 1400px) / 2)); display: flex; align-items: center; justify-content: space-between; gap: 22px; border-bottom: 1px solid rgba(255, 255, 255, 0.13); background: rgba(5, 5, 6, 0.94); backdrop-filter: blur(16px); }
+.controlBrand:focus-visible,
+.ownerStrip a:focus-visible,
+.showSelect select:focus-visible,
+.showActions a:focus-visible,
+.showActions button:focus-visible,
+.nextActionControl:focus-visible,
+.leftoverControl:focus-visible,
+.setTabs button:focus-visible,
+.clonePanel input:focus-visible,
+.clonePanel button:focus-visible,
+.saveActions button:focus-visible,
+.loadFailureCard button:focus-visible,
+.loadFailureCard a:focus-visible,
+.accessActions a:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
 .controlTopbar::after { position: absolute; right: 0; bottom: -4px; left: 0; height: 4px; content: ""; background: repeating-linear-gradient(90deg, var(--blue) 0 28px, var(--lime) 28px 56px, var(--pink) 56px 84px, transparent 84px 112px); }
 .controlBrand { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; }
 .controlBrand > span { display: grid; width: 40px; height: 40px; place-items: center; transform: rotate(-3deg); color: var(--black); background: var(--lime); box-shadow: 4px 4px 0 var(--pink); font-family: Impact, sans-serif; }
