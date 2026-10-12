@@ -70,6 +70,8 @@ commit. A save updates the public page only when that show is already published.
 - Keeps **Set lists** and **Suggest a song** in the phone header while moving
   the owner editor to the footer, so public visitors get the two useful public
   actions without another menu.
+- Pads sticky headers, the owner save dock, and the public footer for notched
+  phones when the viewport covers the safe area.
 - Collects public song ideas without allowing suggestions to alter the set.
 - Lets guests find existing ideas before sending, preserves uncertain drafts,
   and distinguishes a form response from an idea confirmed on the board.
