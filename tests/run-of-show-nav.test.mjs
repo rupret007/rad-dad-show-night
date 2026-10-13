@@ -57,6 +57,7 @@ test("empty published shows omit the Run of show navigation link", async () => {
     (match) => match[1],
   );
   const destinations = {
+    "#main-content": /id="main-content"/,
     "#run-of-show": /id="run-of-show"/,
     "#official-sets": /id="official-sets"/,
     "#suggestions": /id="suggestions"/,

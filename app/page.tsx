@@ -17,6 +17,7 @@ import { isShowNotFoundError } from "../lib/show-visibility";
 import { PUBLIC_SITE_LABEL, PUBLIC_SITE_URL } from "../lib/surface-roles";
 import {
   buildShowNightUse,
+  currentShowIdentity,
   firstOpenAction,
   leftoverPublicActions,
   publicProductionNotes,
@@ -117,6 +118,7 @@ export default async function Home({
   const canonicalShow = isCanonicalShowSlug(show.slug);
   const featuredGuest = featuredGuestSet(timeline);
   const nightUse = buildShowNightUse(songs, sets);
+  const eventIdentity = currentShowIdentity(show);
   const openAction = firstOpenAction(nightUse);
   const leftoverActions = leftoverPublicActions(nightUse, openAction);
   const productionNotes = publicProductionNotes({
@@ -131,7 +133,7 @@ export default async function Home({
   const listedSets = visibleOfficialSets(sets, songs);
 
   return (
-    <main
+    <div
       className={`${styles.page} ${practiceMode ? styles.practicePage : ""}`}
       data-show-slug={show.slug}
       data-show-source={dataSource}
@@ -140,6 +142,10 @@ export default async function Home({
       data-song-count={String(nightUse.songCount)}
     >
       <div className={styles.atmosphere} aria-hidden="true" />
+
+      <a className={styles.skipLink} href="#main-content">
+        Skip to show content
+      </a>
 
       <nav className={styles.topBar} aria-label="Show page navigation">
         <div className={styles.topBarInner}>
@@ -192,6 +198,8 @@ export default async function Home({
         </div>
       </nav>
 
+      <main id="main-content" className={styles.mainContent} tabIndex={-1}>
+
       {practiceMode ? (
         <header className={styles.practiceHero} id="top">
           <div>
@@ -240,6 +248,15 @@ export default async function Home({
             <p className={styles.publicShareLine} data-public-share="open">
               {publishedPublicShareCopy(nightUse.hasVerifiedList)}
             </p>
+          </div>
+
+          <div
+            className={styles.eventIdentity}
+            data-event-identity="current-show"
+          >
+            <strong>{eventIdentity.title}</strong>
+            <span>{eventIdentity.date}</span>
+            <span>{eventIdentity.venue}</span>
           </div>
 
           <section
@@ -489,6 +506,8 @@ export default async function Home({
       </section>
       ) : null}
 
+      </main>
+
       <footer className={styles.footer}>
         <div>
           <strong className={styles.footerBrand}>RAD DAD + FRIENDS</strong>
@@ -507,7 +526,7 @@ export default async function Home({
           {practiceMode ? "Return to full show page" : "Owner: open Show Control"}
         </a>
       </footer>
-    </main>
+    </div>
   );
 }
 
