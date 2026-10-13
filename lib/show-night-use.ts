@@ -30,6 +30,24 @@ export type PublicLeftoverAction = {
   label: string;
 };
 
+export type CurrentShowIdentity = {
+  title: string;
+  date: string;
+  venue: string;
+};
+
+export function currentShowIdentity(show: {
+  title?: string | null;
+  date?: string | null;
+  venue?: string | null;
+} | null | undefined): CurrentShowIdentity {
+  return {
+    title: typeof show?.title === "string" ? show.title.trim() : "",
+    date: typeof show?.date === "string" ? show.date.trim() : "",
+    venue: typeof show?.venue === "string" ? show.venue.trim() : "",
+  };
+}
+
 export function practicePositionKey(showSlug: string): string {
   return `rad-dad-practice-position:${showSlug}`;
 }

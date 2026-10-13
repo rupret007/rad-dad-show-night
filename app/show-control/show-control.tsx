@@ -940,7 +940,10 @@ export default function ShowControlClient({
   }
 
   return (
-    <main className={styles.controlShell}>
+    <div className={styles.controlShell}>
+      <a className={styles.skipLink} href="#show-control-main">
+        Skip to Show Control
+      </a>
       <header className={styles.controlTopbar}>
         <Link className={styles.controlBrand} href="/">
           <span>RD</span>
@@ -954,7 +957,7 @@ export default function ShowControlClient({
         </div>
       </header>
 
-      <div className={styles.workspace}>
+      <main id="show-control-main" className={styles.workspace} tabIndex={-1}>
         <section className={styles.controlIntro}>
           <div>
             <p className={styles.controlKicker}>
@@ -1464,7 +1467,7 @@ export default function ShowControlClient({
             </div>
           </aside>
         </div>
-      </div>
+      </main>
 
       <div
         className={styles.saveDock}
@@ -1508,7 +1511,7 @@ export default function ShowControlClient({
           </div>
         </div>
       ) : null}
-    </main>
+    </div>
   );
 }
 
