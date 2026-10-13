@@ -17,6 +17,7 @@ import { isShowNotFoundError } from "../lib/show-visibility";
 import { PUBLIC_SITE_LABEL, PUBLIC_SITE_URL } from "../lib/surface-roles";
 import {
   buildShowNightUse,
+  currentShowIdentity,
   firstOpenAction,
   leftoverPublicActions,
   publicProductionNotes,
@@ -117,6 +118,7 @@ export default async function Home({
   const canonicalShow = isCanonicalShowSlug(show.slug);
   const featuredGuest = featuredGuestSet(timeline);
   const nightUse = buildShowNightUse(songs, sets);
+  const eventIdentity = currentShowIdentity(show);
   const openAction = firstOpenAction(nightUse);
   const leftoverActions = leftoverPublicActions(nightUse, openAction);
   const productionNotes = publicProductionNotes({
@@ -238,6 +240,15 @@ export default async function Home({
             <p className={styles.publicShareLine} data-public-share="open">
               {publishedPublicShareCopy(nightUse.hasVerifiedList)}
             </p>
+          </div>
+
+          <div
+            className={styles.eventIdentity}
+            data-event-identity="current-show"
+          >
+            <strong>{eventIdentity.title}</strong>
+            <span>{eventIdentity.date}</span>
+            <span>{eventIdentity.venue}</span>
           </div>
 
           <section
