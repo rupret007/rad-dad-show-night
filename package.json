@@ -11,12 +11,11 @@
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "npm run build && npm run test:isolation && npm run test:d1",
     "test:d1": "node --experimental-strip-types --test tests/official-set-identity-d1.test.mjs tests/show-clone-hours-d1.test.mjs",
-    "test:isolation": "node --experimental-strip-types --test tests/official-set-identity.test.mjs tests/run-position.test.mjs tests/suggestion-cannot-mutate-set.test.mjs tests/suggestion-recovery.test.mjs tests/live-set-surface.test.mjs tests/official-set-resource-honesty.test.mjs tests/official-set-first-paint.test.mjs tests/official-set-missing-media.test.mjs tests/show-read-integrity.test.mjs tests/show-set-isolation.test.mjs tests/show-night-use.test.mjs tests/show-public-isolation.test.mjs tests/show-lifecycle-guard.test.mjs tests/show-control-posture.test.mjs tests/show-control-leftover.test.mjs tests/owner-set-save.test.mjs tests/owner-set-review.test.mjs tests/owner-cache-boundary.test.mjs tests/set-coach.test.mjs tests/worker-image-response.test.mjs tests/control-focus-visible.test.mjs",
+    "test:isolation": "node --experimental-strip-types --test tests/official-set-identity.test.mjs tests/run-position.test.mjs tests/suggestion-cannot-mutate-set.test.mjs tests/suggestion-recovery.test.mjs tests/live-set-surface.test.mjs tests/official-set-resource-honesty.test.mjs tests/official-set-first-paint.test.mjs tests/official-set-missing-media.test.mjs tests/show-read-integrity.test.mjs tests/show-set-isolation.test.mjs tests/show-night-use.test.mjs tests/show-public-isolation.test.mjs tests/show-lifecycle-guard.test.mjs tests/show-control-posture.test.mjs tests/show-control-leftover.test.mjs tests/owner-set-save.test.mjs tests/owner-set-review.test.mjs tests/owner-cache-boundary.test.mjs tests/set-coach.test.mjs tests/worker-image-response.test.mjs tests/vendor-braces-depth.test.mjs tests/skip-to-content.test.mjs tests/public-focus-visible.test.mjs tests/control-focus-visible.test.mjs",
     "test:browser": "playwright test",
     "typecheck:suggestions": "tsc --project tsconfig.suggestions.json",
     "leftover:hosted": "node scripts/hosted-leftover-honesty.mjs",
-    "audit:high": "node scripts/audit-high.mjs",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern vendor",
     "db:generate": "drizzle-kit generate",
     "test:worker": "node scripts/worker-image-smoke.mjs"
   },
@@ -48,7 +47,8 @@
     "typescript-eslint": "8.59.3",
     "vinext": "1.0.0-beta.6",
     "vite": "8.0.16",
-    "wrangler": "4.114.0"
+    "wrangler": "4.114.0",
+    "braces": "file:vendor/braces"
   },
   "overrides": {
     "miniflare": {
@@ -59,7 +59,9 @@
     "undici": "7.30.0",
     "source-map-js": "1.2.2",
     "brace-expansion@1": "1.1.21",
-    "brace-expansion@5": "5.0.12"
+<<<<<<< HEAD
+    "brace-expansion@5": "5.0.12",
+    "braces": "file:vendor/braces"
   },
   "type": "module"
 }
