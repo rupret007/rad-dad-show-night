@@ -10,8 +10,26 @@ import { RUN_SETS, RUN_SHOW_ID, RUN_SHOW_SLUG, RUN_SONGS } from "./run-fixture-d
 // real components, not application routes, authentication, Workers, or D1.
 const ownerSurface = new URLSearchParams(window.location.search).get("surface") === "owner";
 const runSurface = new URLSearchParams(window.location.search).get("surface") === "run";
+const publicSurface = new URLSearchParams(window.location.search).get("surface") === "public";
 const root = document.getElementById("root");
 if (!root) throw new Error("The offline browser fixture root is missing.");
+
+function PublicFixtureSurface() {
+  return (
+    <div className={pageStyles.page}>
+    <main className="audience-fixture">
+      <h1>Offline public set fixture</h1>
+      <LiveSetLists
+        initialSongs={RUN_SONGS}
+        initialSets={RUN_SETS}
+        initialDataSource={new URLSearchParams(window.location.search).get("source") === "fallback" ? "confirmed-fallback" : "database"}
+        showSlug={RUN_SHOW_SLUG}
+        showId={RUN_SHOW_ID}
+      />
+    </main>
+    </div>
+  );
+}
 
 function RunFixtureSurface() {
   const [otherShow, setOtherShow] = useState(false);
@@ -35,7 +53,9 @@ function RunFixtureSurface() {
 }
 
 const content = (
-  runSurface ? (
+  publicSurface ? (
+    <PublicFixtureSurface />
+  ) : runSurface ? (
     <RunFixtureSurface />
   ) : ownerSurface ? (
     <ShowControlClient

@@ -101,6 +101,46 @@ async function readBeforeAbort<T>(signal: AbortSignal, read: () => Promise<T>): 
   }
 }
 
+function SongReferenceDetails({
+  song,
+  showCurrentFlag,
+}: {
+  song: ShowSong;
+  showCurrentFlag: boolean;
+}) {
+  return (
+    <>
+      <div className={styles.songTitleLine}>
+        <strong className={styles.songTitle}>{song.title}</strong>
+        {showCurrentFlag ? (
+          <span className={styles.currentFlag}>Current</span>
+        ) : null}
+        {song.transition ? (
+          <span className={styles.flowArrow} title="Flows into next song">
+            {"\u2192"}
+          </span>
+        ) : null}
+      </div>
+      {song.artist ? (
+        <span className={styles.songArtist}>{song.artist}</span>
+      ) : null}
+      {song.performanceNote ? (
+        <span className={styles.songNote}>{song.performanceNote}</span>
+      ) : null}
+      {song.songKey || song.tuning ? (
+        <span className={styles.songDetails}>
+          {song.songKey ? `Key: ${song.songKey}` : ""}
+          {song.songKey && song.tuning ? " / " : ""}
+          {song.tuning ? `Tuning: ${song.tuning}` : ""}
+        </span>
+      ) : null}
+      {song.isOriginal ? (
+        <span className={styles.songDetails}>Original</span>
+      ) : null}
+    </>
+  );
+}
+
 function ShowLiveSetLists({
   initialSongs,
   initialSets,
@@ -638,43 +678,25 @@ function ShowLiveSetLists({
                     <span className={styles.songNumber}>
                       {String(song.position).padStart(2, "0")}
                     </span>
-                    <button
-                      className={`${styles.songMain} ${styles.songPick}`}
-                      type="button"
-                      onClick={() => practiceMode && selectSong(String(song.id))}
-                      disabled={practiceMode && runPosition.kind === "ambiguous"}
-                      aria-pressed={practiceMode ? runPosition.kind === "selected" && currentSongId === String(song.id) : undefined}
-                      aria-label={practiceMode ? `Mark ${song.title} as current song` : undefined}
-                      tabIndex={practiceMode ? 0 : -1}
-                    >
-                      <div className={styles.songTitleLine}>
-                        <strong className={styles.songTitle}>{song.title}</strong>
-                        {practiceMode && runPosition.kind === "selected" && currentSongId === String(song.id) ? (
-                          <span className={styles.currentFlag}>Current</span>
-                        ) : null}
-                        {song.transition ? (
-                          <span className={styles.flowArrow} title="Flows into next song">
-                            {"\u2192"}
-                          </span>
-                        ) : null}
+                    {practiceMode ? (
+                      <button
+                        className={`${styles.songMain} ${styles.songPick}`}
+                        type="button"
+                        onClick={() => selectSong(String(song.id))}
+                        disabled={runPosition.kind === "ambiguous"}
+                        aria-pressed={runPosition.kind === "selected" && currentSongId === String(song.id)}
+                        aria-label={`Mark ${song.title} as current song`}
+                      >
+                        <SongReferenceDetails
+                          song={song}
+                          showCurrentFlag={runPosition.kind === "selected" && currentSongId === String(song.id)}
+                        />
+                      </button>
+                    ) : (
+                      <div className={styles.songMain}>
+                        <SongReferenceDetails song={song} showCurrentFlag={false} />
                       </div>
-                      {song.artist ? (
-                        <span className={styles.songArtist}>{song.artist}</span>
-                      ) : null}
-                      {song.performanceNote ? (
-                        <span className={styles.songNote}>{song.performanceNote}</span>
-                      ) : null}
-                      {song.songKey || song.tuning ? (
-                        <span className={styles.songDetails}>
-                          {song.songKey ? `Key: ${song.songKey}` : ""}
-                          {song.songKey && song.tuning ? " / " : ""}
-                          {song.tuning ? `Tuning: ${song.tuning}` : ""}
-                        </span>
-                      ) : null}
-                      {song.isOriginal ? (
-                        <span className={styles.songDetails}>Original</span>
-                      ) : null}
-                    </button>
+                    )}
                     {!song.isOriginal &&
                     (resources.lyricsUrl || resources.youtubeUrl || chordsUrl) ? (
                       <div className={styles.resourceBar} aria-label={`${song.title} resources`}>
