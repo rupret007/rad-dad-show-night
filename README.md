@@ -70,6 +70,10 @@ commit. A save updates the public page only when that show is already published.
 - Keeps **Set lists** and **Suggest a song** in the phone header while moving
   the owner editor to the footer, so public visitors get the two useful public
   actions without another menu.
+- Offers a keyboard skip link past the header so guests and the owner can
+  reach the show content without tabbing the whole nav.
+- Shows a visible keyboard focus ring on public header, share, resource, and
+  footer controls so tab order is obvious.
 - Pads sticky headers, the owner save dock, and the public footer for notched
   phones when the viewport covers the safe area.
 - Collects public song ideas without allowing suggestions to alter the set.
