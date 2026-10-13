@@ -120,6 +120,18 @@
 .topLinks { display: flex; align-items: center; gap: 22px; }
 .topLinks a { color: #d7d9d5; text-decoration: none; font-size: 0.87rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .topLinks a:hover { color: white; }
+.identity:focus-visible,
+.topLinks a:focus-visible,
+.primaryAction:focus-visible,
+.secondaryAction:focus-visible,
+.footerSurfaces a:focus-visible,
+.footerControl:focus-visible,
+.unavailableActions a:focus-visible,
+.resourceButton:focus-visible,
+.resourceLink:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
 .topLinks .controlLink { padding: 10px 14px; color: var(--black); background: var(--blue); }
 .topLinks .practiceLink { padding: 10px 14px; color: var(--black); background: var(--lime); }
 
