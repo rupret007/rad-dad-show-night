@@ -7,6 +7,7 @@ import { RUN_OF_SHOW } from "../lib/show-data.ts";
 import { buildShowSets } from "../lib/show-read-integrity.ts";
 import {
   buildShowNightUse,
+  currentShowIdentity,
   firstOpenAction,
   leftoverPublicActions,
   practicePositionKey,
@@ -139,6 +140,150 @@ test("practice resume only accepts a song that belongs to this show", () => {
   assert.equal(resumeSongFromSavedPosition(null, thisShowSongs), null);
 });
 
+test("current-show identity uses this night's title, date, and venue", () => {
+  assert.deepEqual(currentShowIdentity(SHOW_DETAILS), {
+    title: SHOW_DETAILS.title,
+    date: SHOW_DETAILS.date,
+    venue: SHOW_DETAILS.venue,
+  });
+  assert.equal(currentShowIdentity(SHOW_DETAILS).title, "Rad Dad + Friends");
+  assert.equal(currentShowIdentity(SHOW_DETAILS).date, "Saturday, September 19, 2026");
+  assert.equal(currentShowIdentity(SHOW_DETAILS).venue, "Guitars & Growlers");
+});
+
+test("empty-clone identity never borrows the canonical event facts", () => {
+  const clone = currentShowIdentity({
+    title: "Richardson Halloween",
+    date: "Saturday, October 31, 2026",
+    venue: "Local Tap",
+  });
+  assert.deepEqual(clone, {
+    title: "Richardson Halloween",
+    date: "Saturday, October 31, 2026",
+    venue: "Local Tap",
+  });
+  assert.doesNotMatch(
+    `${clone.title} ${clone.date} ${clone.venue}`,
+    /Guitars & Growlers|September 19|Rad Dad \+ Friends/,
+  );
+
+  const blankHoursClone = currentShowIdentity({
+    title: "Empty clone night",
+    date: "Friday, November 6, 2026",
+    venue: "",
+  });
+  assert.equal(blankHoursClone.title, "Empty clone night");
+  assert.equal(blankHoursClone.date, "Friday, November 6, 2026");
+  assert.equal(blankHoursClone.venue, "");
+  assert.notEqual(blankHoursClone.venue, SHOW_DETAILS.venue);
+  assert.notEqual(blankHoursClone.date, SHOW_DETAILS.date);
+  assert.notEqual(blankHoursClone.title, SHOW_DETAILS.title);
+
+  assert.deepEqual(currentShowIdentity({}), {
+    title: "",
+    date: "",
+    venue: "",
+  });
+  assert.deepEqual(currentShowIdentity(null), {
+    title: "",
+    date: "",
+    venue: "",
+  });
+  assert.deepEqual(
+    currentShowIdentity({ title: "  Clone night  ", date: " Friday ", venue: " Hall " }),
+    { title: "Clone night", date: "Friday", venue: "Hall" },
+  );
+});
+
+function cssMediaQueryBlock(css, query) {
+  const start = css.indexOf(query);
+  assert.ok(start >= 0, `missing ${query}`);
+  const brace = css.indexOf("{", start);
+  let depth = 0;
+  for (let i = brace; i < css.length; i += 1) {
+    if (css[i] === "{") depth += 1;
+    else if (css[i] === "}") {
+      depth -= 1;
+      if (depth === 0) return css.slice(brace + 1, i);
+    }
+  }
+  throw new Error(`unclosed ${query}`);
+}
+
+function cssRule(css, selector) {
+  const start = css.indexOf(`${selector} {`);
+  assert.ok(start >= 0, `missing ${selector}`);
+  const brace = css.indexOf("{", start);
+  const end = css.indexOf("}", brace);
+  assert.ok(end > brace, `unclosed ${selector}`);
+  return css.slice(brace + 1, end);
+}
+
+test("phone first open shows this show's identity before the one primary action", async () => {
+  const [page, styles, helper] = await Promise.all([
+    readFile(pageUrl, "utf8"),
+    readFile(showPageStylesUrl, "utf8"),
+    readFile(nextStepUrl, "utf8"),
+  ]);
+
+  assert.match(page, /currentShowIdentity/);
+  assert.match(page, /styles\.eventIdentity/);
+  assert.match(page, /data-event-identity="current-show"/);
+  assert.match(page, /eventIdentity\.title/);
+  assert.match(page, /eventIdentity\.date/);
+  assert.match(page, /eventIdentity\.venue/);
+  assert.match(helper, /export function currentShowIdentity/);
+  assert.doesNotMatch(helper, /SHOW_DETAILS/);
+
+  const identityAt = page.indexOf("styles.eventIdentity");
+  const actionAt = page.indexOf("styles.nextActions");
+  const restAt = page.indexOf("styles.heroRest");
+  assert.ok(identityAt >= 0 && actionAt >= 0 && restAt >= 0);
+  assert.ok(
+    identityAt < actionAt,
+    "current-show identity must precede the primary action in source",
+  );
+  assert.ok(actionAt < restAt, "the primary action stays before the later hero facts");
+
+  const identityBlock = page.slice(identityAt, actionAt);
+  assert.match(identityBlock, /\{eventIdentity\.title\}/);
+  assert.match(identityBlock, /\{eventIdentity\.date\}/);
+  assert.match(identityBlock, /\{eventIdentity\.venue\}/);
+  assert.doesNotMatch(identityBlock, /Guitars & Growlers|September 19/);
+  assert.doesNotMatch(identityBlock, /<h1|<h2/);
+  assert.doesNotMatch(identityBlock, /Owner: edit set|show-control/);
+  assert.doesNotMatch(identityBlock, /ShowFlyer|heroPosterWrap/);
+  assert.match(page, /data-next-action-count="1"/);
+
+  const beforePhone = styles.slice(0, styles.indexOf("@media (max-width: 720px)"));
+  assert.match(beforePhone, /\.eventIdentity \{\s*display: none;/);
+
+  const phone = cssMediaQueryBlock(styles, "@media (max-width: 720px)");
+  const phoneIdentity = cssRule(phone, ".eventIdentity");
+  const phoneIdentityText = cssRule(phone, ".eventIdentity strong,\n  .eventIdentity span");
+  const phoneIdentityTitle = cssRule(phone, ".eventIdentity strong");
+  assert.match(phoneIdentity, /order: 2;/);
+  assert.match(phoneIdentity, /display: grid;/);
+  assert.match(phoneIdentity, /overflow-wrap: anywhere;/);
+  assert.match(phoneIdentity, /min-width: 0;/);
+  assert.match(phoneIdentity, /max-width: 100%;/);
+  assert.match(phoneIdentityText, /overflow-wrap: anywhere;/);
+  assert.match(phoneIdentityText, /white-space: normal;/);
+  assert.match(phoneIdentityTitle, /font-size: 1\.12rem;/);
+  assert.doesNotMatch(phoneIdentityTitle, /clamp\(/);
+  assert.doesNotMatch(phoneIdentity, /white-space:\s*nowrap/);
+  assert.doesNotMatch(phoneIdentity, /overflow:\s*hidden/);
+  assert.doesNotMatch(phoneIdentityText, /white-space:\s*nowrap/);
+  assert.match(phone, /\.firstOpenLead \{ order: 1;/);
+  assert.match(phone, /\.nextActions \{ order: 3;/);
+  assert.match(phone, /\.heroPosterWrap \{ order: 4;/);
+  assert.match(phone, /\.heroRest \{ order: 5;/);
+
+  const desktop = cssMediaQueryBlock(styles, "@media (max-width: 960px)");
+  assert.doesNotMatch(desktop, /\.eventIdentity \{[\s\S]*?display: grid;/);
+  assert.doesNotMatch(desktop, /\.eventIdentity \{[\s\S]*?order:/);
+});
+
 test("the live page uses one first-open next step and honest empty sets", async () => {
   const [page, liveList, resume, nextStep, showData, showRoute, styles, readme] =
     await Promise.all([
@@ -163,9 +308,11 @@ test("the live page uses one first-open next step and honest empty sets", async 
   assert.match(page, /data-next-action-count="1"/);
   assert.match(page, /data-first-open-action/);
   assert.match(page, /styles\.firstOpenLead/);
+  assert.match(page, /styles\.eventIdentity/);
   assert.match(page, /styles\.heroRest/);
-  assert.match(styles, /\.nextActions \{ order: 2;/);
-  assert.match(styles, /\.heroPosterWrap \{ order: 3;/);
+  assert.match(styles, /\.nextActions \{ order: 3;/);
+  assert.match(styles, /\.heroPosterWrap \{ order: 4;/);
+  assert.match(styles, /\.heroRest \{ order: 5;/);
   assert.match(nextStep, /See the official sets/);
   assert.match(page, /openAction\.label/);
   assert.match(page, /Suggest a song/);
