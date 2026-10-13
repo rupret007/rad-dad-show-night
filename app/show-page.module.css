@@ -157,6 +157,7 @@
 
 .heroCopy { max-width: 660px; }
 .firstOpenLead { max-width: 660px; }
+.eventIdentity { display: none; }
 .heroRest { max-width: 660px; }
 .eyebrow { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 10px; color: var(--blue); font-size: 0.83rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
 .publicShareLine { margin: 0 0 16px; color: var(--lime); font-size: 0.86rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
@@ -375,9 +376,41 @@
   .heroCopy { display: contents; }
   .firstOpenLead { order: 1; }
   .firstOpenLead .publicShareLine { margin-bottom: 0; }
-  .nextActions { order: 2; margin-top: 0; }
-  .heroPosterWrap { order: 3; justify-self: center; align-self: center; width: min(72vw, 280px); }
-  .heroRest { order: 4; }
+  .eventIdentity {
+    display: grid;
+    order: 2;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+    padding: 2px 0 0;
+    overflow-wrap: anywhere;
+  }
+  .eventIdentity strong,
+  .eventIdentity span {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+  .eventIdentity strong {
+    font-size: 1.12rem;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .eventIdentity span {
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.35;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .nextActions { order: 3; margin-top: 0; }
+  .heroPosterWrap { order: 4; justify-self: center; align-self: center; width: min(72vw, 280px); }
+  .heroRest { order: 5; }
   .heroCopy { text-align: left; }
   .heroTitle { font-size: clamp(3.4rem, 16vw, 5.4rem); }
   .heroDek { margin-top: 28px; }
