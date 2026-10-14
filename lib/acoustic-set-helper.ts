@@ -1,8 +1,17 @@
 import { parseScheduledMinutes } from "./set-coach.ts";
+import { SHOW_TIME_ZONE } from "./show-read-integrity.ts";
 import type { SetSlug, ShowSong } from "./show-data";
 
 const OPENING_SET_SLUG: SetSlug = "jeff-story-friends";
-const TBD_TITLE_PATTERN = /\bTBD\b/;
+/** The September 15 opener keeps the second acoustic song in position 2. */
+export const DESIGNATED_ACOUSTIC_SLOT_POSITION = 2;
+export const SHOW_SLOT_TIME_ZONE = SHOW_TIME_ZONE;
+const ACOUSTIC_PLACEHOLDER_TITLE = /^acoustic song\s*[-–—]\s*tbd$/i;
+const SHOW_ZONE_LABEL = /^(?:CT|CDT|CST|America\/Chicago)$/i;
+const LABELED_CLOCK =
+  /^(.*\b(?:AM|PM))\s+([A-Za-z]{2,5}|[A-Za-z]+\/[A-Za-z_]+)$/i;
+const CLOCK_RANGE =
+  /^(\d{1,2}):(\d{2})\s*(AM|PM)?\s*[-–—]\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i;
 
 export type AcousticCandidate = {
   id: string;
@@ -28,6 +37,15 @@ export type TbdAcousticSlot = {
   hasTbdSlot: boolean;
   song: { id: ShowSong["id"]; position: number; title: string } | null;
 };
+
+export type ParsedSetTimeSlot = {
+  startMinutes: number;
+  endMinutes: number;
+  durationMinutes: number;
+  timeZone: typeof SHOW_SLOT_TIME_ZONE;
+};
+
+export type TimeSlotRelation = "equal" | "adjacent" | "overlap" | "separate";
 
 export type TbdAcousticHelperResult = {
   slot: TbdAcousticSlot;
@@ -67,17 +85,123 @@ function sortedOpeningSongs(songs: readonly ShowSong[]): ShowSong[] {
   return songs
     .filter((song) => song.setSlug === OPENING_SET_SLUG)
     .slice()
-    .sort((a, b) => a.position - b.position);
+    .sort((a, b) => {
+      if (a.position !== b.position) return a.position - b.position;
+      return String(a.id).localeCompare(String(b.id), "en");
+    });
 }
 
-/** Finds the placeholder "TBD" slot in Jeff Story & Friends. Never guesses which song fills it. */
-export function findTbdAcousticSlot(songs: readonly ShowSong[]): TbdAcousticSlot {
-  const song = sortedOpeningSongs(songs).find((candidate) =>
-    TBD_TITLE_PATTERN.test(candidate.title),
-  );
+function isAcousticPlaceholderTitle(title: string): boolean {
+  return ACOUSTIC_PLACEHOLDER_TITLE.test(title.trim());
+}
+
+function clockMinutes(hour: number, minute: number, period: string): number {
+  return (hour % 12) * 60 + minute + (period === "PM" ? 720 : 0);
+}
+
+function parseClockRange(clock: string): { startMinutes: number; endMinutes: number } | null {
+  const match = clock.trim().match(CLOCK_RANGE);
+  if (!match) return null;
+  const startHour = Number(match[1]);
+  const startMinute = Number(match[2]);
+  const endHour = Number(match[4]);
+  const endMinute = Number(match[5]);
+  if (
+    startHour < 1 || startHour > 12 || endHour < 1 || endHour > 12
+    || startMinute > 59 || endMinute > 59
+  ) {
+    return null;
+  }
+  const endPeriod = match[6].toUpperCase();
+  const startPeriod = (match[3] || endPeriod).toUpperCase();
   return {
-    hasTbdSlot: Boolean(song),
-    song: song ? { id: song.id, position: song.position, title: song.title } : null,
+    startMinutes: clockMinutes(startHour, startMinute, startPeriod),
+    endMinutes: clockMinutes(endHour, endMinute, endPeriod),
+  };
+}
+
+/**
+ * Parse one set window as America/Chicago wall-clock minutes.
+ * Missing times stay unconfirmed. A show-zone label is accepted and ignored.
+ * A foreign timezone is rejected rather than converted.
+ */
+export function parseSetTimeSlot(value: unknown): ParsedSetTimeSlot | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  let clock = trimmed;
+  const labeled = trimmed.match(LABELED_CLOCK);
+  if (labeled) {
+    if (!SHOW_ZONE_LABEL.test(labeled[2])) return null;
+    clock = labeled[1].trim();
+  }
+
+  const durationMinutes = parseScheduledMinutes(clock);
+  const bounds = parseClockRange(clock);
+  if (durationMinutes === null || !bounds) return null;
+  if (bounds.endMinutes - bounds.startMinutes !== durationMinutes) return null;
+
+  return {
+    ...bounds,
+    durationMinutes,
+    timeZone: SHOW_SLOT_TIME_ZONE,
+  };
+}
+
+export function relateTimeSlots(
+  left: ParsedSetTimeSlot,
+  right: ParsedSetTimeSlot,
+): TimeSlotRelation {
+  if (left.startMinutes === right.startMinutes && left.endMinutes === right.endMinutes) {
+    return "equal";
+  }
+  if (left.endMinutes === right.startMinutes || right.endMinutes === left.startMinutes) {
+    return "adjacent";
+  }
+  if (left.startMinutes < right.endMinutes && right.startMinutes < left.endMinutes) {
+    return "overlap";
+  }
+  return "separate";
+}
+
+/**
+ * One confirmed window only. Equal copies of the same clock range are fine.
+ * Adjacent or overlapping windows are not merged or converted.
+ */
+export function confirmedSetTime(times: readonly unknown[]): string {
+  const parsed: Array<{ raw: string; slot: ParsedSetTimeSlot }> = [];
+  for (const value of times) {
+    const slot = parseSetTimeSlot(value);
+    if (!slot || typeof value !== "string") continue;
+    parsed.push({ raw: value.trim(), slot });
+  }
+  if (!parsed.length) return "";
+  const first = parsed[0];
+  for (const other of parsed.slice(1)) {
+    if (relateTimeSlots(first.slot, other.slot) !== "equal") return "";
+  }
+  return first.raw;
+}
+
+/**
+ * Finds the placeholder acoustic slot in Jeff Story & Friends by the designated
+ * position. Adjacent TBD-looking titles and overlapping songs at other
+ * positions never steal this slot. Never guesses which song fills it.
+ */
+export function findTbdAcousticSlot(songs: readonly ShowSong[]): TbdAcousticSlot {
+  const opening = sortedOpeningSongs(songs);
+  const placeholders = opening.filter((song) => isAcousticPlaceholderTitle(song.title));
+  if (!placeholders.length) {
+    return { hasTbdSlot: false, song: null };
+  }
+  const designated = placeholders.find(
+    (song) => song.position === DESIGNATED_ACOUSTIC_SLOT_POSITION,
+  );
+  const song = designated ?? placeholders[0];
+  return {
+    hasTbdSlot: true,
+    song: { id: song.id, position: song.position, title: song.title },
   };
 }
 
@@ -132,7 +256,7 @@ export function assessTbdAcousticSlot({
   candidates = KNOWN_TBD_ACOUSTIC_OPTIONS,
 }: {
   songs: readonly ShowSong[];
-  setTime: string;
+  setTime: string | readonly string[];
   candidates?: readonly AcousticCandidate[];
 }): TbdAcousticHelperResult {
   const slot = findTbdAcousticSlot(songs);
@@ -140,7 +264,8 @@ export function assessTbdAcousticSlot({
   const confirmedSeconds = opening
     .filter((song) => !slot.song || song.id !== slot.song.id)
     .reduce((total, song) => total + safeDurationSeconds(song.durationSeconds), 0);
-  const scheduledMinutes = parseScheduledMinutes(setTime);
+  const window = Array.isArray(setTime) ? confirmedSetTime(setTime) : confirmedSetTime([setTime]);
+  const scheduledMinutes = parseSetTimeSlot(window)?.durationMinutes ?? null;
   const remainingSeconds =
     scheduledMinutes === null ? null : scheduledMinutes * 60 - confirmedSeconds;
 

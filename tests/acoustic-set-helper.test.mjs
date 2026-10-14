@@ -5,8 +5,13 @@ import test from "node:test";
 import { DEFAULT_SONGS } from "../lib/show-data.ts";
 import {
   assessTbdAcousticSlot,
+  confirmedSetTime,
+  DESIGNATED_ACOUSTIC_SLOT_POSITION,
   findTbdAcousticSlot,
   KNOWN_TBD_ACOUSTIC_OPTIONS,
+  parseSetTimeSlot,
+  relateTimeSlots,
+  SHOW_SLOT_TIME_ZONE,
 } from "../lib/acoustic-set-helper.ts";
 
 const helperUrl = new URL("../lib/acoustic-set-helper.ts", import.meta.url);
@@ -75,6 +80,49 @@ test("ignores songs outside Jeff Story & Friends", () => {
   assert.equal(slot.hasTbdSlot, false);
 });
 
+test("adjacent TBD-looking titles do not steal the designated acoustic slot", () => {
+  const songs = openingSet([
+    { id: 1, title: "Guest TBD cameo" },
+    { id: 3, title: "Another TBD cover" },
+  ]);
+  const slot = findTbdAcousticSlot(songs);
+  assert.equal(DESIGNATED_ACOUSTIC_SLOT_POSITION, 2);
+  assert.equal(slot.hasTbdSlot, true);
+  assert.deepEqual(slot.song, { id: 2, position: 2, title: "Acoustic song - TBD" });
+});
+
+test("an adjacent TBD-looking title is ignored once the designated slot is resolved", () => {
+  const songs = openingSet([
+    { id: 1, title: "Guest TBD cameo" },
+    { id: 2, title: "Badfish" },
+  ]);
+  const slot = findTbdAcousticSlot(songs);
+  assert.equal(slot.hasTbdSlot, false);
+  assert.equal(slot.song, null);
+});
+
+test("overlapping songs at the designated position keep the placeholder, not the neighbor", () => {
+  const songs = [
+    ...openingSet(),
+    song(20, "jeff-story-friends", 2, "Nutshell leftover"),
+  ];
+  const slot = findTbdAcousticSlot(songs);
+  assert.equal(slot.hasTbdSlot, true);
+  assert.deepEqual(slot.song, { id: 2, position: 2, title: "Acoustic song - TBD" });
+});
+
+test("overlapping placeholders at the designated position stay a TBD decision without guessing a fill", () => {
+  const songs = [
+    ...openingSet(),
+    song(21, "jeff-story-friends", 2, "Acoustic song - TBD"),
+  ];
+  const slot = findTbdAcousticSlot(songs);
+  assert.equal(slot.hasTbdSlot, true);
+  assert.equal(slot.song.position, 2);
+  assert.equal(slot.song.title, "Acoustic song - TBD");
+  assert.equal(["2", "21"].includes(String(slot.song.id)), true);
+});
+
 test("computes the remaining time budget from the confirmed songs and the set's own window", () => {
   const result = assessTbdAcousticSlot({ songs: openingSet(), setTime: "7:00-7:35 PM" });
   assert.equal(result.slot.hasTbdSlot, true);
@@ -129,6 +177,87 @@ test("does not score fit when the set has no confirmed start-to-end window", () 
   assert.equal(result.scheduledMinutes, null);
   assert.equal(result.remainingSeconds, null);
   assert.equal(result.candidates[0].fit, "window-unconfirmed");
+});
+
+test("missing or incomplete times stay window-unconfirmed instead of inventing minutes", () => {
+  for (const setTime of ["", "   ", "7:00 PM", "7:00-7:35", null, undefined]) {
+    const result = assessTbdAcousticSlot({
+      songs: openingSet(),
+      setTime: setTime ?? "",
+      candidates: [{ id: "known", title: "Known Runtime", estimatedSeconds: 120 }],
+    });
+    assert.equal(parseSetTimeSlot(setTime), null, String(setTime));
+    assert.equal(result.scheduledMinutes, null, String(setTime));
+    assert.equal(result.remainingSeconds, null, String(setTime));
+    assert.equal(result.candidates[0].fit, "window-unconfirmed", String(setTime));
+  }
+});
+
+test("show-zone labels keep America/Chicago wall-clock minutes and do not convert", () => {
+  const expected = parseSetTimeSlot("7:00-7:35 PM");
+  assert.deepEqual(expected, {
+    startMinutes: 19 * 60,
+    endMinutes: 19 * 60 + 35,
+    durationMinutes: 35,
+    timeZone: SHOW_SLOT_TIME_ZONE,
+  });
+  assert.equal(SHOW_SLOT_TIME_ZONE, "America/Chicago");
+  for (const labeled of ["7:00-7:35 PM CDT", "7:00-7:35 PM CST", "7:00-7:35 PM CT", "7:00-7:35 PM America/Chicago"]) {
+    assert.deepEqual(parseSetTimeSlot(labeled), expected, labeled);
+    const result = assessTbdAcousticSlot({ songs: openingSet(), setTime: labeled });
+    assert.equal(result.scheduledMinutes, 35, labeled);
+    assert.equal(result.remainingSeconds, 35 * 60 - 5 * 180, labeled);
+  }
+});
+
+test("a foreign timezone is rejected rather than converted", () => {
+  for (const foreign of ["7:00-7:35 PM UTC", "7:00-7:35 PM EST", "7:00-7:35 PM PT", "7:00-7:35 PM Europe/London"]) {
+    assert.equal(parseSetTimeSlot(foreign), null, foreign);
+    const result = assessTbdAcousticSlot({
+      songs: openingSet(),
+      setTime: foreign,
+      candidates: [{ id: "known", title: "Known Runtime", estimatedSeconds: 120 }],
+    });
+    assert.equal(result.scheduledMinutes, null, foreign);
+    assert.equal(result.candidates[0].fit, "window-unconfirmed", foreign);
+  }
+});
+
+test("adjacent time windows are not merged into one longer set budget", () => {
+  const opening = parseSetTimeSlot("7:00-7:35 PM");
+  const changeover = parseSetTimeSlot("7:35-7:45 PM");
+  assert.equal(relateTimeSlots(opening, changeover), "adjacent");
+  assert.equal(confirmedSetTime(["7:00-7:35 PM", "7:35-7:45 PM"]), "");
+  const result = assessTbdAcousticSlot({
+    songs: openingSet(),
+    setTime: ["7:00-7:35 PM", "7:35-7:45 PM"],
+    candidates: [{ id: "known", title: "Known Runtime", estimatedSeconds: 120 }],
+  });
+  assert.equal(result.scheduledMinutes, null);
+  assert.equal(result.candidates[0].fit, "window-unconfirmed");
+});
+
+test("overlapping time windows are not merged or scored", () => {
+  const opening = parseSetTimeSlot("7:00-7:40 PM");
+  const next = parseSetTimeSlot("7:35-7:45 PM");
+  assert.equal(relateTimeSlots(opening, next), "overlap");
+  assert.equal(confirmedSetTime(["7:00-7:40 PM", "7:35-7:45 PM"]), "");
+  const result = assessTbdAcousticSlot({
+    songs: openingSet(),
+    setTime: ["7:00-7:40 PM", "7:35-7:45 PM"],
+  });
+  assert.equal(result.scheduledMinutes, null);
+  assert.equal(result.remainingSeconds, null);
+});
+
+test("equal copies of the same window stay one confirmed slot", () => {
+  assert.equal(relateTimeSlots(parseSetTimeSlot("7:00-7:35 PM"), parseSetTimeSlot("7:00-7:35 PM CDT")), "equal");
+  assert.equal(confirmedSetTime(["7:00-7:35 PM", "7:00-7:35 PM CDT"]), "7:00-7:35 PM");
+  const result = assessTbdAcousticSlot({
+    songs: openingSet(),
+    setTime: ["7:00-7:35 PM", "7:00-7:35 PM"],
+  });
+  assert.equal(result.scheduledMinutes, 35);
 });
 
 test("an already-resolved slot returns no candidates, checklist, or decision requirement", () => {
@@ -187,6 +316,7 @@ test("the Acoustic Slot Helper panel is wired into Show Control for the opening 
   assert.match(component, /assessTbdAcousticSlot/);
   assert.match(component, /export default function AcousticSlotHelper/);
   assert.match(control, /import AcousticSlotHelper from ".\/acoustic-slot-helper"/);
+  assert.match(control, /confirmedSetTime/);
   assert.match(control, /activeSet === "jeff-story-friends" \? \(\s*<AcousticSlotHelper/);
   assert.match(styles, /\.acousticHelperPanel/);
   assert.match(guide, /Acoustic slot helper/i);

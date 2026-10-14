@@ -62,6 +62,7 @@ import {
 } from "../../lib/owner-set-review";
 import type { Suggestion } from "../song-board";
 import { parseSuggestionFeedPayload } from "../../lib/suggestion-board";
+import { confirmedSetTime } from "../../lib/acoustic-set-helper";
 import styles from "./show-control.module.css";
 import SetCoach from "./set-coach";
 import AcousticSlotHelper from "./acoustic-slot-helper";
@@ -1296,7 +1297,7 @@ export default function ShowControlClient({
             {activeSet === "jeff-story-friends" ? (
               <AcousticSlotHelper
                 songs={activeSongs}
-                setTime={activeCoachSets.length === 1 ? activeCoachSets[0].time : ""}
+                setTime={confirmedSetTime(activeCoachSets.map((set) => set.time))}
               />
             ) : null}
 

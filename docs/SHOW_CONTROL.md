@@ -183,8 +183,12 @@ Only the active set's titles and operational metadata are sent; lyrics are not.
 When Jeff Story & Friends still has an "Acoustic song - TBD" placeholder, the
 editor shows the **Acoustic slot helper** panel below Set Coach. It:
 
-- Names the still-open slot and the set's own time window (or says the window
-  is unconfirmed instead of borrowing another set's minutes).
+- Finds that placeholder by the designated second-acoustic position. Adjacent
+  titles that merely mention TBD, and overlapping songs at another position,
+  never steal the slot.
+- Names the still-open slot and the set's own America/Chicago time window (or
+  says the window is unconfirmed instead of borrowing another set's minutes,
+  merging adjacent/overlapping windows, or converting a foreign timezone).
 - Lists candidate songs (starting with Badfish and Nutshell, the two options
   recorded in the September 15 opener revision) with a runtime fit check
   against the minutes left in the set after every confirmed song.
