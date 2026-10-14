@@ -186,6 +186,34 @@ The smart timing review works without an AI key. When `OPENAI_API_KEY` is
 configured, the same button adds a concise OpenAI review of pacing and handoffs.
 Only the active set's titles and operational metadata are sent; lyrics are not.
 
+## Acoustic slot helper
+
+When Jeff Story & Friends still has an "Acoustic song - TBD" placeholder, the
+editor shows the **Acoustic slot helper** panel below Set Coach. It:
+
+- Finds that placeholder by the designated second-acoustic position only —
+  never by guessing a title or falling back to the first TBD-looking song.
+  An "Acoustic song - TBD" title at any other position is ignored. Adjacent
+  titles that merely mention TBD, and overlapping songs at another position,
+  never steal the slot.
+- Names the still-open slot and the set's own America/Chicago time window (or
+  says the window is unconfirmed instead of borrowing another set's minutes,
+  merging adjacent/overlapping windows, or converting a foreign timezone).
+- Lists candidate songs (starting with Badfish and Nutshell, the two titles
+  already on record for that slot) with a runtime fit check
+  against the minutes left in the set after every confirmed song.
+- Flags a candidate with no rehearsed runtime as **duration unconfirmed**
+  rather than guessing one, and flags a candidate that would blow the
+  remaining budget as **over budget**.
+- Ends with a fixed checklist: confirm the pick with Jeff, replace the TBD
+  title, add the confirmed key/tuning/runtime, then save the set.
+
+The panel is read-only. It never auto-picks a song, never writes a runtime it
+has not been given, and never saves or publishes by itself; the owner still
+makes the call and presses Save. The panel disappears once the TBD title is
+replaced with a real song. On the seeded September 19 set the helper stays
+hidden because slot 2 is already a real title.
+
 ## Public list review
 
 The editor names what the public share link will show for this browser draft.

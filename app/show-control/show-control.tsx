@@ -62,8 +62,10 @@ import {
 } from "../../lib/owner-set-review";
 import type { Suggestion } from "../song-board";
 import { parseSuggestionFeedPayload } from "../../lib/suggestion-board";
+import { confirmedSetTime } from "../../lib/acoustic-set-helper";
 import styles from "./show-control.module.css";
 import SetCoach from "./set-coach";
+import AcousticSlotHelper from "./acoustic-slot-helper";
 
 type SongMap = Record<SetSlug, ShowSong[]>;
 type DeletedSong = BoundUndoRemove | null;
@@ -1322,6 +1324,13 @@ export default function ShowControlClient({
               setTime={activeCoachSets.length === 1 ? activeCoachSets[0].time : ""}
               songs={activeSongs}
             />
+
+            {activeSet === "jeff-story-friends" ? (
+              <AcousticSlotHelper
+                songs={activeSongs}
+                setTime={confirmedSetTime(activeCoachSets.map((set) => set.time))}
+              />
+            ) : null}
 
             <section className={styles.publicSetReview} aria-label="Public list review" data-testid="owner-public-set-review">
               <span>Public list for this draft</span>
