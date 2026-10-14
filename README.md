@@ -72,6 +72,10 @@ commit. A save updates the public page only when that show is already published.
   actions without another menu.
 - Sizes practice-mode set jumps to the number of verified sets on this night
   instead of always forcing three columns.
+- Offers a keyboard skip link past the header so guests and the owner can
+  reach the show content without tabbing the whole nav.
+- Shows a visible keyboard focus ring on public header, share, resource, and
+  footer controls so tab order is obvious.
 - Collects public song ideas without allowing suggestions to alter the set.
 - Lets guests find existing ideas before sending, preserves uncertain drafts,
   and distinguishes a form response from an idea confirmed on the board.
