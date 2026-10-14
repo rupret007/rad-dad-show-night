@@ -15,6 +15,9 @@ export type CoachResult = {
 
 const SET_SLUGS = new Set(["jeff-story-friends", "stalemate", "rad-dad"]);
 
+/** Default duration in seconds assigned to new songs. Songs at this value have unconfirmed timing. */
+export const DEFAULT_DURATION_SECONDS = 180;
+
 function record(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -95,10 +98,17 @@ export function buildCoachCheck(input: CoachInput): CoachResult {
     tone: "action", title: `${missingExactVideos} covers have no saved YouTube reference`,
     detail: "Paste exact rehearsal versions only where the band needs one specific arrangement.",
   });
+  const defaultDurationSongs = input.songs.filter((song) => song.durationSeconds === DEFAULT_DURATION_SECONDS);
+  if (defaultDurationSongs.length) findings.push({
+    tone: "watch", title: `${defaultDurationSongs.length} song${defaultDurationSongs.length === 1 ? " has" : "s have"} default timing`,
+    detail: defaultDurationSongs.length === input.songs.length
+      ? "Every song uses the 3-minute default. Enter actual durations for accurate set timing."
+      : `${defaultDurationSongs.map((song) => song.title).slice(0, 3).join(", ")}${defaultDurationSongs.length > 3 ? ` and ${defaultDurationSongs.length - 3} more` : ""} still use${defaultDurationSongs.length === 1 ? "s" : ""} the 3-minute default.`,
+  });
   return {
     requestId: input.requestId, source: "smart-check",
     score: difference === null ? null : Math.max(45, Math.min(98, 92 - Math.max(0, Math.abs(difference) - 4) * 3)),
-    estimatedMinutes, scheduledMinutes, findings: findings.slice(0, 4), aiNotes: "",
+    estimatedMinutes, scheduledMinutes, findings: findings.slice(0, 5), aiNotes: "",
   };
 }
 
@@ -108,7 +118,7 @@ export function parseCoachResult(value: unknown, expectedRequestId: string): Coa
     || !identifier(expectedRequestId, 120) || value.requestId !== expectedRequestId
     || (value.source !== "smart-check" && value.source !== "openai")
     || !Number.isInteger(value.estimatedMinutes) || (value.estimatedMinutes as number) < 0 || (value.estimatedMinutes as number) > 7200
-    || !text(value.aiNotes, 6000) || !Array.isArray(value.findings) || !value.findings.length || value.findings.length > 4) return null;
+    || !text(value.aiNotes, 6000) || !Array.isArray(value.findings) || !value.findings.length || value.findings.length > 5) return null;
   if (value.scheduledMinutes === null) {
     if (value.score !== null) return null;
   } else if (!Number.isInteger(value.scheduledMinutes) || (value.scheduledMinutes as number) < 1 || (value.scheduledMinutes as number) > 240
