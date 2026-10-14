@@ -268,7 +268,7 @@
 .offlineStatus[data-state="degraded"] .offlineDot { background: var(--pink); box-shadow: 0 0 0 5px rgba(255, 61, 135, 0.12); }
 .offlineNotice { margin: -12px 0 0; padding: 11px 14px; color: var(--black); background: var(--pink); font-size: 0.82rem; font-weight: 800; letter-spacing: 0.04em; }
 .practiceToolbar { position: sticky; top: calc(72px + env(safe-area-inset-top, 0px)); z-index: 15; margin-bottom: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(5, 5, 6, 0.96); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55); backdrop-filter: blur(18px); }
-.practiceSetNav { padding: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+.practiceSetNav { padding: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
 .practiceSetNav a { min-height: 38px; padding: 8px 10px; display: grid; place-items: center; color: var(--paper); border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.035); font-size: 0.76rem; font-weight: 800; letter-spacing: 0.07em; text-align: center; text-decoration: none; text-transform: uppercase; }
 .practiceSetNav a:nth-child(1):hover { color: var(--black); border-color: var(--blue); background: var(--blue); }
 .practiceSetNav a:nth-child(2):hover { color: var(--black); border-color: var(--pink); background: var(--pink); }
