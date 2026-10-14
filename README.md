@@ -74,6 +74,8 @@ commit. A save updates the public page only when that show is already published.
   instead of always forcing three columns.
 - Announces share success or failure without treating a cancelled share sheet
   as an error.
+- Keeps lyrics, YouTube, leftover public actions, and practice Previous/Next
+  at a 44px tap target on phones.
 - Offers a keyboard skip link past the header so guests and the owner can
   reach the show content without tabbing the whole nav.
 - Shows a visible keyboard focus ring on public header, share, resource, and
