@@ -261,20 +261,12 @@ test("store, owner UI, and leftover CI keep this leftover real", async () => {
   assert.match(page, /visibleOfficialSets\(sets, songs\)/);
   assert.match(readme, /rehearsal notes stay in Show Control/i);
   assert.match(packageJson, /leftover:hosted/);
-  assert.match(packageJson, /"audit:high": "node scripts\/audit-high.mjs"/);
+  assert.match(packageJson, /"braces": "file:vendor\/braces"/);
   assert.match(packageJson, /"sharp": "0\.35\.5"/);
   assert.match(packageJson, /"undici": "7\.30\.0"/);
   assert.match(workflow, /npm run leftover:hosted/);
   assert.match(workflow, /npm run test:isolation/);
-  assert.match(workflow, /npm run audit:high/);
-  assert.doesNotMatch(workflow, /npm audit --audit-level=high/);
-
-  const auditHigh = await readFile(
-    new URL("../scripts/audit-high.mjs", import.meta.url),
-    "utf8",
-  );
-  assert.match(auditHigh, /GHSA-vfj7-8cjw-p6xm/);
-  assert.match(auditHigh, /IGNORED = new Set\(\["GHSA-vfj7-8cjw-p6xm"\]\)/);
+  assert.match(workflow, /npm audit --audit-level=high/);
 });
 
 test("this leftover does not rewrite Jeff's official set", async () => {
