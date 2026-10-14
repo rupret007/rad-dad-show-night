@@ -1,0 +1,21 @@
+{
+  "name": "braces",
+  "version": "3.0.4",
+  "description": "Patched braces 3.0.3 with micromatch/braces#72 depth guards (CVE-2026-93687) until npm publishes an official 3.0.4.",
+  "license": "MIT",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "lib"
+  ],
+  "engines": {
+    "node": ">=8.3"
+  },
+  "dependencies": {
+    "fill-range": "^7.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/micromatch/braces.git"
+  }
+}
