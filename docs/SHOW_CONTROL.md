@@ -170,6 +170,14 @@ scored**, alongside the estimated runtime and other readiness findings. Coach
 does not borrow another night's schedule. The estimate uses the draft's song
 durations, not measured rehearsal time.
 
+### Default duration hints
+
+New songs start with a 3-minute placeholder duration. Set Coach surfaces a
+**default timing** warning when songs still use this placeholder, listing up
+to three song titles so the owner knows which ones need actual timing data.
+Enter actual durations in each song's detail panel for accurate set timing
+estimates. The warning disappears once all songs have custom durations.
+
 A review has a ten-second deadline including its response body. A failed or
 unverified response keeps the draft and offers **Retry review**. Retries require
 a click; changing drafts never starts a review automatically.
