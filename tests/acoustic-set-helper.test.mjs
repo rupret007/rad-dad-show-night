@@ -101,6 +101,47 @@ test("an adjacent TBD-looking title is ignored once the designated slot is resol
   assert.equal(slot.song, null);
 });
 
+test("an exact Acoustic song - TBD title outside position 2 never opens the helper", () => {
+  const songs = openingSet([
+    { id: 2, title: "Nutshell" },
+    { id: 4, title: "Acoustic song - TBD" },
+  ]);
+  const slot = findTbdAcousticSlot(songs);
+  assert.equal(DESIGNATED_ACOUSTIC_SLOT_POSITION, 2);
+  assert.equal(slot.hasTbdSlot, false);
+  assert.equal(slot.song, null);
+
+  const result = assessTbdAcousticSlot({ songs, setTime: "7:00-7:35 PM" });
+  assert.equal(result.decisionRequired, false);
+  assert.deepEqual(result.candidates, []);
+  assert.deepEqual(result.readinessChecklist, []);
+});
+
+test("a lone placeholder at position 1, 3, or 5 is ignored without title-guessing", () => {
+  for (const position of [1, 3, 5]) {
+    const songs = [
+      song(1, "jeff-story-friends", 1, position === 1 ? "Acoustic song - TBD" : "The Drinking Song"),
+      song(2, "jeff-story-friends", 2, "Nutshell"),
+      song(3, "jeff-story-friends", 3, position === 3 ? "Acoustic song - TBD" : "Anyone Else but You"),
+      song(5, "jeff-story-friends", 5, position === 5 ? "Acoustic song - TBD" : "Heart-Shaped Box"),
+    ];
+    const slot = findTbdAcousticSlot(songs);
+    assert.equal(slot.hasTbdSlot, false, `position ${position}`);
+    assert.equal(slot.song, null, `position ${position}`);
+  }
+});
+
+test("when several placeholders exist, only the designated position 2 slot is used", () => {
+  const songs = [
+    song(11, "jeff-story-friends", 1, "Acoustic song - TBD"),
+    song(2, "jeff-story-friends", 2, "Acoustic song - TBD"),
+    song(10, "jeff-story-friends", 3, "Acoustic song - TBD"),
+  ];
+  const slot = findTbdAcousticSlot(songs);
+  assert.equal(slot.hasTbdSlot, true);
+  assert.deepEqual(slot.song, { id: 2, position: 2, title: "Acoustic song - TBD" });
+});
+
 test("overlapping songs at the designated position keep the placeholder, not the neighbor", () => {
   const songs = [
     ...openingSet(),
@@ -311,6 +352,19 @@ test("the seeded September 19 opening set from show-data has no open TBD acousti
   );
 });
 
+test("reopening a non-designated seeded slot as TBD does not open the helper", () => {
+  const reopenedElsewhere = DEFAULT_SONGS.map((song) => (
+    song.setSlug === "jeff-story-friends" && song.position === 4
+      ? { ...song, title: "Acoustic song - TBD" }
+      : song
+  ));
+  const result = assessTbdAcousticSlot({ songs: reopenedElsewhere, setTime: "7:00-7:35 PM" });
+  assert.equal(result.slot.hasTbdSlot, false);
+  assert.equal(result.slot.song, null);
+  assert.equal(result.decisionRequired, false);
+  assert.deepEqual(result.candidates, []);
+});
+
 test("reopening the seeded set's designated slot as TBD still finds it without guessing a fill", () => {
   const reopened = DEFAULT_SONGS.map((song) => (
     song.setSlug === "jeff-story-friends" && song.position === DESIGNATED_ACOUSTIC_SLOT_POSITION
@@ -351,10 +405,14 @@ test("the Acoustic Slot Helper panel is wired into Show Control for the opening 
   assert.match(styles, /\.acousticHelperPanel/);
   assert.match(guide, /Acoustic slot helper/i);
   assert.match(guide, /never (auto-)?picks?|never chooses|does not choose/i);
+  assert.match(guide, /designated second-acoustic position only/);
+  assert.match(guide, /never by guessing a title or falling back/);
 });
 
 test("the acoustic helper module documents itself as read-only and non-guessing", async () => {
   const source = await readFile(helperUrl, "utf8");
   assert.match(source, /Never (writes|guesses)/i);
   assert.match(source, /never auto-selects/i);
+  assert.doesNotMatch(source, /\?\? placeholders\[0\]/);
+  assert.match(source, /second-acoustic position only/);
 });

@@ -191,7 +191,9 @@ Only the active set's titles and operational metadata are sent; lyrics are not.
 When Jeff Story & Friends still has an "Acoustic song - TBD" placeholder, the
 editor shows the **Acoustic slot helper** panel below Set Coach. It:
 
-- Finds that placeholder by the designated second-acoustic position. Adjacent
+- Finds that placeholder by the designated second-acoustic position only —
+  never by guessing a title or falling back to the first TBD-looking song.
+  An "Acoustic song - TBD" title at any other position is ignored. Adjacent
   titles that merely mention TBD, and overlapping songs at another position,
   never steal the slot.
 - Names the still-open slot and the set's own America/Chicago time window (or
