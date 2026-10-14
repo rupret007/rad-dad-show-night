@@ -256,7 +256,8 @@ For the confirmed Rad Dad set, the intentional transitions are:
 
 Open a song's detail panel and paste a normal YouTube, `youtu.be`, Shorts, Live,
 or embed URL into **YouTube video**. Show Control extracts the video ID and
-enables a private preview.
+enables a private preview. Opening that preview moves keyboard focus to Close
+and returns it to **Preview video** when the dialog is dismissed.
 
 The public page uses links rather than embedding every video. This keeps the set
 list fast and uncluttered on phones.

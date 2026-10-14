@@ -250,7 +250,8 @@
 .previewTop span, .previewTop strong { display: block; }
 .previewTop span { color: var(--lime); font-size: 0.65rem; letter-spacing: 0.13em; text-transform: uppercase; }
 .previewTop strong { margin-top: 3px; font-size: 1.3rem; text-transform: uppercase; }
-.previewTop button { padding: 8px 12px; border: 1px solid rgba(255, 255, 255, 0.2); color: white; background: transparent; cursor: pointer; font: inherit; font-weight: 800; text-transform: uppercase; }
+.previewTop button { min-height: 44px; padding: 8px 12px; border: 1px solid rgba(255, 255, 255, 0.2); color: white; background: transparent; cursor: pointer; font: inherit; font-weight: 800; text-transform: uppercase; }
+.previewTop button:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 .previewFrame { position: relative; padding-top: 56.25%; background: black; }
 .previewFrame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .accessPage { display: grid; place-items: center; padding: 24px; }
