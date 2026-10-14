@@ -74,6 +74,8 @@ commit. A save updates the public page only when that show is already published.
   reach the show content without tabbing the whole nav.
 - Shows a visible keyboard focus ring on public header, share, resource, and
   footer controls so tab order is obvious.
+- Pads sticky headers, the owner save dock, and the public footer for notched
+  phones when the viewport covers the safe area.
 - Collects public song ideas without allowing suggestions to alter the set.
 - Lets guests find existing ideas before sending, preserves uncertain drafts,
   and distinguishes a form response from an idea confirmed on the board.
