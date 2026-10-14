@@ -72,6 +72,8 @@ commit. A save updates the public page only when that show is already published.
   actions without another menu.
 - Sizes practice-mode set jumps to the number of verified sets on this night
   instead of always forcing three columns.
+- Announces share success or failure without treating a cancelled share sheet
+  as an error.
 - Offers a keyboard skip link past the header so guests and the owner can
   reach the show content without tabbing the whole nav.
 - Shows a visible keyboard focus ring on public header, share, resource, and
