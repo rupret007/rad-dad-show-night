@@ -174,6 +174,33 @@ test("local D1: rejected foreign, missing, malformed, and duplicate IDs perform 
   }
 });
 
+test("local D1: an identity read without confirmed success cannot authorize a write", async () => {
+  const beforeRows = await allRows();
+  const storage = {
+    prepare(sql) {
+      const statement = db.prepare(sql);
+      if (!sql.startsWith("SELECT id, created_at, updated_at FROM songs")) return statement;
+      return {
+        bind(...values) {
+          const bound = statement.bind(...values);
+          return {
+            async all() {
+              const result = await bound.all();
+              return { results: result.results, meta: result.meta };
+            },
+          };
+        },
+      };
+    },
+    batch: (statements) => db.batch(statements),
+  };
+  const route = fixtureRoute({ storage });
+  const response = await route.POST(request([{ id: 11, title: "Unverified replacement" }]));
+  assert.equal(response.status, 500);
+  assert.equal(route.calls.batches, 0);
+  assert.deepEqual(await allRows(), beforeRows);
+});
+
 test("local D1: actual batch rollback preserves all rows if a later insertion fails", async () => {
   const beforeRows = await allRows();
   await db.prepare(`CREATE TRIGGER reject_fixture_song BEFORE INSERT ON songs
