@@ -186,22 +186,23 @@ export function confirmedSetTime(times: readonly unknown[]): string {
 
 /**
  * Finds the placeholder acoustic slot in Jeff Story & Friends by the designated
- * position. Adjacent TBD-looking titles and overlapping songs at other
- * positions never steal this slot. Never guesses which song fills it.
+ * second-acoustic position only. Songs at any other position — including an
+ * exact "Acoustic song - TBD" title — never open this helper. Adjacent
+ * TBD-looking titles and overlapping songs at another position never steal
+ * the slot. Never guesses a fill by scanning titles.
  */
 export function findTbdAcousticSlot(songs: readonly ShowSong[]): TbdAcousticSlot {
   const opening = sortedOpeningSongs(songs);
-  const placeholders = opening.filter((song) => isAcousticPlaceholderTitle(song.title));
-  if (!placeholders.length) {
-    return { hasTbdSlot: false, song: null };
-  }
-  const designated = placeholders.find(
+  const atDesignated = opening.filter(
     (song) => song.position === DESIGNATED_ACOUSTIC_SLOT_POSITION,
   );
-  const song = designated ?? placeholders[0];
+  const placeholder = atDesignated.find((song) => isAcousticPlaceholderTitle(song.title));
+  if (!placeholder) {
+    return { hasTbdSlot: false, song: null };
+  }
   return {
     hasTbdSlot: true,
-    song: { id: song.id, position: song.position, title: song.title },
+    song: { id: placeholder.id, position: placeholder.position, title: placeholder.title },
   };
 }
 

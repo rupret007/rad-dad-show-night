@@ -221,6 +221,8 @@ test("Show Control makes leftover work clickable on phones and keeps leftover co
   assert.match(control, /buildShowControlPosture/);
   assert.match(control, /leftoverActions/);
   assert.match(control, /Leftover on this show/);
+  assert.match(control, /role="region"/);
+  assert.match(control, /aria-labelledby="leftover-work-title"/);
   assert.match(control, /data-leftover-list="true"/);
   assert.match(control, /data-leftover-kind=\{action\.kind\}/);
   assert.match(control, /function runControlAction/);

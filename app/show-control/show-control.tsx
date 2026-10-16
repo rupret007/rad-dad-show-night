@@ -134,6 +134,8 @@ export default function ShowControlClient({
   const retiredVersions = useRef<Partial<Record<SetSlug, string[]>>>({});
   const mounted = useRef(true);
   const reviewRef = useRef<HTMLElement | null>(null);
+  const previewCloseRef = useRef<HTMLButtonElement | null>(null);
+  const previewReturnFocusRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; ownerOperation.current?.controller.abort(); ownerOperation.current = null; };
@@ -254,11 +256,39 @@ export default function ShowControlClient({
 
   useEffect(() => {
     if (!preview) return;
-    const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setPreview(null);
+    const previous = document.activeElement;
+    if (previous instanceof HTMLElement) previewReturnFocusRef.current = previous;
+    previewCloseRef.current?.focus();
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setPreview(null);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const root = previewCloseRef.current?.closest("[role='dialog']");
+      if (!(root instanceof HTMLElement)) return;
+      const focusable = [...root.querySelectorAll<HTMLElement>(
+        "button, [href], iframe, [tabindex]:not([tabindex=\"-1\"])",
+      )].filter((node) => !node.hasAttribute("disabled"));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
-    window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      previewReturnFocusRef.current?.focus();
+      previewReturnFocusRef.current = null;
+    };
   }, [preview]);
 
   const activeDefinition = SET_DEFINITIONS.find((set) => set.slug === activeSet)!;
@@ -1105,6 +1135,7 @@ export default function ShowControlClient({
                 <div
                   className={styles.leftoverWork}
                   data-leftover-count={controlPosture.leftoverActions.length}
+                  role="region"
                   aria-labelledby="leftover-work-title"
                 >
                   <span id="leftover-work-title">Leftover on this show</span>
@@ -1506,8 +1537,8 @@ export default function ShowControlClient({
 
       {preview?.youtubeVideoId ? (
         <div className={styles.previewBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreview(null); }}>
-          <div className={styles.previewModal} role="dialog" aria-modal="true" aria-label={`${preview.title} video preview`}>
-            <div className={styles.previewTop}><div><span>Video preview</span><strong>{preview.title}</strong></div><button type="button" onClick={() => setPreview(null)}>Close</button></div>
+          <div className={styles.previewModal} role="dialog" aria-modal="true" aria-labelledby="preview-title">
+            <div className={styles.previewTop}><div><span>Video preview</span><strong id="preview-title">{preview.title}</strong></div><button ref={previewCloseRef} type="button" onClick={() => setPreview(null)}>Close</button></div>
             <div className={styles.previewFrame}><iframe src={getYouTubeEmbedUrl(preview.youtubeVideoId)} title={`${preview.title} video`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /></div>
           </div>
         </div>

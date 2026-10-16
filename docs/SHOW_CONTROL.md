@@ -129,8 +129,8 @@ stays empty and never borrows another night's songs or set times.
 ## Leftover on this show
 
 Under the one next step, leftover work on this verified night stays listed and
-tappable. Leftover items reuse existing owner actions. They do not invent a
-booking, outreach, or send path.
+tappable as a named region. Leftover items reuse existing owner actions. They
+do not invent a booking, outreach, or send path.
 
 Leftover order is fixed:
 
@@ -170,6 +170,14 @@ scored**, alongside the estimated runtime and other readiness findings. Coach
 does not borrow another night's schedule. The estimate uses the draft's song
 durations, not measured rehearsal time.
 
+### Default duration hints
+
+New songs start with a 3-minute placeholder duration. Set Coach surfaces a
+**default timing** warning when songs still use this placeholder, listing up
+to three song titles so the owner knows which ones need actual timing data.
+Enter actual durations in each song's detail panel for accurate set timing
+estimates. The warning disappears once all songs have custom durations.
+
 A review has a ten-second deadline including its response body. A failed or
 unverified response keeps the draft and offers **Retry review**. Retries require
 a click; changing drafts never starts a review automatically.
@@ -183,7 +191,9 @@ Only the active set's titles and operational metadata are sent; lyrics are not.
 When Jeff Story & Friends still has an "Acoustic song - TBD" placeholder, the
 editor shows the **Acoustic slot helper** panel below Set Coach. It:
 
-- Finds that placeholder by the designated second-acoustic position. Adjacent
+- Finds that placeholder by the designated second-acoustic position only —
+  never by guessing a title or falling back to the first TBD-looking song.
+  An "Acoustic song - TBD" title at any other position is ignored. Adjacent
   titles that merely mention TBD, and overlapping songs at another position,
   never steal the slot.
 - Names the still-open slot and the set's own America/Chicago time window (or
@@ -273,7 +283,8 @@ For the confirmed Rad Dad set, the intentional transitions are:
 
 Open a song's detail panel and paste a normal YouTube, `youtu.be`, Shorts, Live,
 or embed URL into **YouTube video**. Show Control extracts the video ID and
-enables a private preview.
+enables a private preview. Opening that preview moves keyboard focus to Close
+and returns it to **Preview video** when the dialog is dismissed.
 
 The public page uses links rather than embedding every video. This keeps the set
 list fast and uncluttered on phones.

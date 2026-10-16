@@ -55,14 +55,22 @@ export function SharePageButton({
         await navigator.clipboard.writeText(window.location.href);
         setStatus("Link copied");
       }
-    } catch {
-      setStatus("");
+    } catch (error) {
+      const cancelled =
+        (error instanceof DOMException && error.name === "AbortError") ||
+        (error instanceof Error && error.name === "AbortError");
+      setStatus(cancelled ? "" : "Could not share");
     }
     window.setTimeout(() => setStatus(""), 2200);
   }
 
   return (
-    <button className={styles.secondaryAction} type="button" onClick={sharePage}>
+    <button
+      className={styles.secondaryAction}
+      type="button"
+      onClick={sharePage}
+      aria-live="polite"
+    >
       {status || label}
     </button>
   );
@@ -100,6 +108,51 @@ async function readBeforeAbort<T>(signal: AbortSignal, read: () => Promise<T>): 
   } finally {
     if (onAbort) signal.removeEventListener("abort", onAbort);
   }
+}
+
+function SongReferenceDetails({
+  song,
+  showCurrentFlag,
+  showTbdFlag = false,
+}: {
+  song: ShowSong;
+  showCurrentFlag: boolean;
+  showTbdFlag?: boolean;
+}) {
+  return (
+    <>
+      <div className={styles.songTitleLine}>
+        <strong className={styles.songTitle}>{song.title}</strong>
+        {showTbdFlag ? (
+          <span className={styles.tbdFlag}>TBD</span>
+        ) : null}
+        {showCurrentFlag ? (
+          <span className={styles.currentFlag}>Current</span>
+        ) : null}
+        {song.transition ? (
+          <span className={styles.flowArrow} title="Flows into next song">
+            {"\u2192"}
+          </span>
+        ) : null}
+      </div>
+      {song.artist ? (
+        <span className={styles.songArtist}>{song.artist}</span>
+      ) : null}
+      {song.performanceNote ? (
+        <span className={styles.songNote}>{song.performanceNote}</span>
+      ) : null}
+      {song.songKey || song.tuning ? (
+        <span className={styles.songDetails}>
+          {song.songKey ? `Key: ${song.songKey}` : ""}
+          {song.songKey && song.tuning ? " / " : ""}
+          {song.tuning ? `Tuning: ${song.tuning}` : ""}
+        </span>
+      ) : null}
+      {song.isOriginal ? (
+        <span className={styles.songDetails}>Original</span>
+      ) : null}
+    </>
+  );
 }
 
 function ShowLiveSetLists({
@@ -378,6 +431,7 @@ function ShowLiveSetLists({
   const placeLost = runPosition.kind === "missing" || runPosition.kind === "ambiguous";
   const hasVerifiedList = orderedSongs.length > 0;
   const listedSets = visibleOfficialSets(sets, songs);
+  const practiceJumpSets = sets.filter((set) => (grouped[set.slug] ?? []).length > 0);
 
   useEffect(() => {
     return () => {
@@ -451,10 +505,12 @@ function ShowLiveSetLists({
     <div className={`${styles.livePanel} ${practiceMode ? styles.practiceLivePanel : ""}`}>
       {practiceMode && (hasVerifiedList || placeLost) ? (
         <div className={styles.practiceToolbar} aria-label="Practice controls">
-          <div className={styles.practiceSetNav} aria-label="Jump to a set">
-            {sets
-              .filter((set) => (grouped[set.slug] ?? []).length > 0)
-              .map((set) => (
+          <div
+            className={styles.practiceSetNav}
+            aria-label="Jump to a set"
+            data-set-count={String(practiceJumpSets.length)}
+          >
+            {practiceJumpSets.map((set) => (
               <a href={`#set-${set.slug}`} key={set.slug}>
                 {set.title}
               </a>
@@ -647,46 +703,30 @@ function ShowLiveSetLists({
                     <span className={styles.songNumber}>
                       {String(song.position).padStart(2, "0")}
                     </span>
-                    <button
-                      className={`${styles.songMain} ${styles.songPick}`}
-                      type="button"
-                      onClick={() => practiceMode && selectSong(String(song.id))}
-                      disabled={practiceMode && runPosition.kind === "ambiguous"}
-                      aria-pressed={practiceMode ? runPosition.kind === "selected" && currentSongId === String(song.id) : undefined}
-                      aria-label={practiceMode ? `Mark ${song.title} as current song` : undefined}
-                      tabIndex={practiceMode ? 0 : -1}
-                    >
-                      <div className={styles.songTitleLine}>
-                        <strong className={styles.songTitle}>{song.title}</strong>
-                        {isTbdSlot ? (
-                          <span className={styles.tbdFlag}>TBD</span>
-                        ) : null}
-                        {practiceMode && runPosition.kind === "selected" && currentSongId === String(song.id) ? (
-                          <span className={styles.currentFlag}>Current</span>
-                        ) : null}
-                        {song.transition ? (
-                          <span className={styles.flowArrow} title="Flows into next song">
-                            {"\u2192"}
-                          </span>
-                        ) : null}
+                    {practiceMode ? (
+                      <button
+                        className={`${styles.songMain} ${styles.songPick}`}
+                        type="button"
+                        onClick={() => selectSong(String(song.id))}
+                        disabled={runPosition.kind === "ambiguous"}
+                        aria-pressed={runPosition.kind === "selected" && currentSongId === String(song.id)}
+                        aria-label={`Mark ${song.title} as current song`}
+                      >
+                        <SongReferenceDetails
+                          song={song}
+                          showCurrentFlag={runPosition.kind === "selected" && currentSongId === String(song.id)}
+                          showTbdFlag={isTbdSlot}
+                        />
+                      </button>
+                    ) : (
+                      <div className={styles.songMain}>
+                        <SongReferenceDetails
+                          song={song}
+                          showCurrentFlag={false}
+                          showTbdFlag={isTbdSlot}
+                        />
                       </div>
-                      {song.artist ? (
-                        <span className={styles.songArtist}>{song.artist}</span>
-                      ) : null}
-                      {song.performanceNote ? (
-                        <span className={styles.songNote}>{song.performanceNote}</span>
-                      ) : null}
-                      {song.songKey || song.tuning ? (
-                        <span className={styles.songDetails}>
-                          {song.songKey ? `Key: ${song.songKey}` : ""}
-                          {song.songKey && song.tuning ? " / " : ""}
-                          {song.tuning ? `Tuning: ${song.tuning}` : ""}
-                        </span>
-                      ) : null}
-                      {song.isOriginal ? (
-                        <span className={styles.songDetails}>Original</span>
-                      ) : null}
-                    </button>
+                    )}
                     {!song.isOriginal &&
                     (resources.lyricsUrl || resources.youtubeUrl || chordsUrl) ? (
                       <div className={styles.resourceBar} aria-label={`${song.title} resources`}>

@@ -70,10 +70,18 @@ commit. A save updates the public page only when that show is already published.
 - Keeps **Set lists** and **Suggest a song** in the phone header while moving
   the owner editor to the footer, so public visitors get the two useful public
   actions without another menu.
+- Sizes practice-mode set jumps to the number of verified sets on this night
+  instead of always forcing three columns.
+- Announces share success or failure without treating a cancelled share sheet
+  as an error.
+- Keeps lyrics, YouTube, leftover public actions, and practice Previous/Next
+  at a 44px tap target on phones.
 - Offers a keyboard skip link past the header so guests and the owner can
   reach the show content without tabbing the whole nav.
 - Shows a visible keyboard focus ring on public header, share, resource, and
   footer controls so tab order is obvious.
+- Pads sticky headers, the owner save dock, and the public footer for notched
+  phones when the viewport covers the safe area.
 - Collects public song ideas without allowing suggestions to alter the set.
 - Lets guests find existing ideas before sending, preserves uncertain drafts,
   and distinguishes a form response from an idea confirmed on the board.
@@ -82,10 +90,15 @@ commit. A save updates the public page only when that show is already published.
 - Keeps the established black, electric-blue, lime, and hot-pink Rad Dad brand.
 - Estimates set runtime from per-song durations.
 - Runs Set Coach for timing, transitions, guest load, and readiness checks.
-- Shows an Acoustic slot helper on Jeff Story & Friends while its second
-  acoustic song is still TBD: candidate songs, a runtime-fit check against the
-  set's own time window, and a fixed checklist. It never auto-picks a song or
-  guesses a runtime; the owner still chooses and saves.
+- Shows an Acoustic slot helper on Jeff Story & Friends while the designated
+  second-acoustic slot is still `Acoustic song - TBD`: candidate songs, a
+  runtime-fit check against the set's own time window, and a fixed checklist.
+  It finds that slot by position, never by guessing a title. It never
+  auto-picks a song or guesses a runtime; the owner still chooses and saves.
+- Moves keyboard focus into a video preview and returns it to Preview video
+  when the dialog closes.
+- Shows a visible keyboard focus ring on Show Control chrome, leftover
+  actions, set tabs, and the save dock.
 - Reviews the public list on the Show Control draft: saved YouTube/lyrics,
   search-only owner links, originals that hide both, and rehearsal notes that
   stay in Show Control.

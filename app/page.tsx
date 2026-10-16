@@ -175,7 +175,9 @@ export default async function Home({
               </>
             ) : (
               <>
-                <a href="#run-of-show">Run of show</a>
+                {hasRunOfShow ? (
+                  <a href="#run-of-show">Run of show</a>
+                ) : null}
                 <a className={styles.mobilePrimaryLink} href="#official-sets">
                   Set lists
                 </a>
