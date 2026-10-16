@@ -252,6 +252,7 @@ check. That public fallback also runs if the Data API finds no accepted match.
 Genius lyrics lookup runs alongside either YouTube path. A filled-in URL is a
 draft candidate until Save. If no direct match is accepted, Show Control keeps
 search links for manual paste. Lookups never appear on the public list until the owner Saves.
+Draft and archived shows stay private after Save; Publish opens their public share link.
 
 Set Coach always provides a local smart review. Add `OPENAI_API_KEY` as a Sites
 secret to enable the optional AI review, and optionally set `OPENAI_MODEL`

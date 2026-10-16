@@ -46,5 +46,6 @@ hosted run.
 Live owner sign-in, Sites, and provider enrich were not tested. Source push does
 not deploy Sites. Optional Find resources can fill a draft candidate from a
 curated match, the YouTube Data API when a key is set, or keyless public YouTube
-search / oEmbed and Genius. Search links are not stored as official media. Save
-remains the publication step.
+search / oEmbed and Genius. Search links are not stored as official media.
+For published shows, Save remains the publication step.
+Draft and archived shows stay private after Save; Publish opens their public share link.

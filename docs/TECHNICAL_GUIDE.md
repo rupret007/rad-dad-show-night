@@ -233,7 +233,8 @@ When `YOUTUBE_API_KEY` is absent or the Data API returns no accepted match,
 lookup still tries a public YouTube search and oEmbed check, plus Genius lyrics.
 The Data API key is an optional shortcut, not the only path. A filled-in URL is
 a draft candidate until Save. Search URLs stay in Show Control; only a saved
-direct URL becomes public media.
+direct URL on a published show becomes public media.
+Draft and archived shows stay private after Save; Publish opens their public share link.
 
 ## API behavior
 

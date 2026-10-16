@@ -300,10 +300,10 @@ export default function ShowControlClient({
     (SHOW_DETAILS as ManagedShow);
   const activeSongs = songsBySet[activeSet];
   const activeCoachSets = coachSets.filter((set) => set.slug === activeSet);
-  const currentShow = useRef({ id: activeShow.id, slug: activeShowSlug });
+  const currentShow = useRef({ id: activeShow.id, slug: activeShowSlug, status: activeShow.status });
   useLayoutEffect(() => {
-    currentShow.current = { id: activeShow.id, slug: activeShowSlug };
-  }, [activeShow.id, activeShowSlug]);
+    currentShow.current = { id: activeShow.id, slug: activeShowSlug, status: activeShow.status };
+  }, [activeShow.id, activeShowSlug, activeShow.status]);
   const totalSongs = useMemo(
     () => Object.values(songsBySet).reduce((total, setSongs) => total + setSongs.length, 0),
     [songsBySet],
@@ -426,7 +426,7 @@ export default function ShowControlClient({
         },
         song.setSlug,
       );
-      setNotice(resourceLookupCompletionNotice(song.title, result));
+      setNotice(resourceLookupCompletionNotice(song.title, result, currentShow.current.status));
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Resource lookup failed.");
     } finally {

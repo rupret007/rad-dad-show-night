@@ -25,7 +25,7 @@ test("completion copy names an applied direct match as a candidate, not a paste 
     source: "curated-exact",
     youtubeUrl: DIRECT_VIDEO,
     lyricsUrl: DIRECT_LYRICS,
-  });
+  }, "published");
   assert.doesNotMatch(curated, pastePrompt);
   assert.match(curated, /Candidate YouTube and lyrics filled in for Harbor Lights/);
   assert.match(curated, /Save to put them on the public list/);
@@ -35,14 +35,14 @@ test("completion copy names an applied direct match as a candidate, not a paste 
     source: "verified-providers",
     youtubeUrl: DIRECT_VIDEO,
     lyricsUrl: DIRECT_LYRICS,
-  });
+  }, "published");
   assert.equal(providers, curated);
 
   const videoOnly = resourceLookupCompletionNotice("Harbor Lights", {
     source: "partial-provider-match",
     youtubeUrl: DIRECT_VIDEO,
     lyricsUrl: SEARCH_LYRICS,
-  });
+  }, "published");
   assert.doesNotMatch(videoOnly, pastePrompt);
   assert.match(videoOnly, /Candidate YouTube filled in for Harbor Lights/);
   assert.match(videoOnly, /Save to put it on the public list/);
@@ -54,7 +54,7 @@ test("completion copy asks to paste only when no direct resource was applied", (
     source: "search-links",
     youtubeUrl: "",
     lyricsUrl: SEARCH_LYRICS,
-  });
+  }, "published");
   assert.match(searchLinks, pastePrompt);
   assert.doesNotMatch(searchLinks, /Candidate/);
   assert.equal(savedOfficialMediaUrl(SEARCH_LYRICS), "");
@@ -64,7 +64,7 @@ test("completion copy asks to paste only when no direct resource was applied", (
     source: "partial-provider-match",
     youtubeUrl: "",
     lyricsUrl: DIRECT_LYRICS,
-  });
+  }, "published");
   assert.doesNotMatch(lyricsOnly, pastePrompt);
   assert.match(lyricsOnly, /Candidate lyrics filled in for Harbor Lights/);
   assert.match(lyricsOnly, /Paste a YouTube video if you want one, then Save/);
@@ -74,7 +74,7 @@ test("a youtube-api source does not override whether a direct video was applied"
   const withVideo = resourceLookupCompletionNotice("Harbor Lights", {
     source: "youtube-api",
     youtubeUrl: DIRECT_VIDEO,
-  });
+  }, "published");
   assert.doesNotMatch(withVideo, pastePrompt);
   assert.match(withVideo, /Candidate YouTube filled in/);
 
@@ -82,14 +82,38 @@ test("a youtube-api source does not override whether a direct video was applied"
     source: "youtube-api",
     youtubeUrl: "",
     lyricsUrl: SEARCH_LYRICS,
-  });
+  }, "published");
   assert.match(withoutVideo, pastePrompt);
 });
+
+for (const status of ["draft", "archived"]) {
+  test(`${status} lookup candidates stay private after Save until Publish`, () => {
+    for (const [youtubeUrl, lyricsUrl] of [
+      [DIRECT_VIDEO, DIRECT_LYRICS],
+      [DIRECT_VIDEO, SEARCH_LYRICS],
+      ["", DIRECT_LYRICS],
+    ]) {
+      const notice = resourceLookupCompletionNotice("Harbor Lights", {
+        youtubeUrl,
+        lyricsUrl,
+      }, status);
+      assert.match(notice, /Candidate/);
+      assert.match(notice, /Save/);
+      assert.match(notice, /private/);
+      assert.match(notice, /Publish/);
+      assert.doesNotMatch(notice, /Save to put (?:it|them) on the public list/);
+    }
+    assert.match(resourceLookupCompletionNotice("Harbor Lights", {
+      youtubeUrl: SEARCH_YOUTUBE,
+      lyricsUrl: SEARCH_LYRICS,
+    }, status), pastePrompt);
+  });
+}
 
 test("Show Control uses lookup availability instead of a youtube-api source", async () => {
   const source = await readFile(controlUrl, "utf8");
   assert.doesNotMatch(source, /youtube-api/);
-  assert.match(source, /resourceLookupCompletionNotice\(song\.title, result\)/);
+  assert.match(source, /resourceLookupCompletionNotice\(song\.title, result, currentShow\.current\.status\)/);
   assert.match(source, /lib\/resource-lookup-notice/);
   assert.match(source, /savedOfficialMediaUrl\(result\.youtubeUrl\)/);
   assert.doesNotMatch(source, /lib\/song-resource-enrichment/);
@@ -124,6 +148,11 @@ test("README and owner docs describe optional-key and public-lookup paths", asyn
   assert.match(ownerGuide, /A filled-in URL is a candidate until you Save/);
   assert.match(handoff, /Search links are not stored as official media/);
   assert.match(handoff, /Save\s+remains the publication step/);
+
+  for (const documentation of [readme, guide, ownerGuide, handoff]) {
+    assert.match(documentation, /Draft and archived shows stay private after Save/);
+    assert.match(documentation, /Publish opens their public share link/);
+  }
 });
 
 test("keyless lookup still uses public YouTube search, oEmbed, and Genius", async () => {
@@ -181,7 +210,7 @@ test("keyless lookup still uses public YouTube search, oEmbed, and Genius", asyn
     assert.ok(requested.some((href) => href.includes("youtube.com/results")));
     assert.ok(requested.some((href) => href.includes("youtube.com/oembed")));
     assert.match(
-      resourceLookupCompletionNotice("Harbor Lights", result),
+      resourceLookupCompletionNotice("Harbor Lights", result, "published"),
       /Candidate YouTube and lyrics filled in/,
     );
   } finally {
@@ -214,7 +243,7 @@ test("keyless lookup keeps search links when providers do not match", async () =
     assert.equal(result.youtubeUrl, "");
     assert.equal(savedOfficialMediaUrl(result.lyricsUrl), "");
     assert.match(
-      resourceLookupCompletionNotice("Harbor Lights", result),
+      resourceLookupCompletionNotice("Harbor Lights", result, "published"),
       pastePrompt,
     );
   } finally {
@@ -235,7 +264,7 @@ test("curated exact matches skip provider fetches", async () => {
     assert.match(result.youtubeUrl, /youtube\.com\/watch\?v=/);
     assert.match(result.lyricsUrl, /genius\.com/);
     assert.doesNotMatch(
-      resourceLookupCompletionNotice("Badfish", result),
+      resourceLookupCompletionNotice("Badfish", result, "published"),
       pastePrompt,
     );
   } finally {
@@ -273,7 +302,7 @@ test("an accepted API video is a draft candidate and skips public YouTube lookup
     assert.equal(result.source, "partial-provider-match");
     assert.equal(requested.length, 2);
     assert.equal(requested.some((href) => href.includes("youtube.com/")), false);
-    assert.match(resourceLookupCompletionNotice("Harbor Lights", result),
+    assert.match(resourceLookupCompletionNotice("Harbor Lights", result, "published"),
       /Candidate YouTube filled in.*Save to put it on the public list/);
   } finally {
     globalThis.fetch = originalFetch;
@@ -314,7 +343,7 @@ for (const apiResult of ["no-match", "unavailable"]) {
       const publicIndex = requested.findIndex((href) => href.includes("youtube.com/results"));
       const oembedIndex = requested.findIndex((href) => href.includes("youtube.com/oembed"));
       assert.ok(apiIndex >= 0 && publicIndex > apiIndex && oembedIndex > publicIndex);
-      assert.doesNotMatch(resourceLookupCompletionNotice("Harbor Lights", result), pastePrompt);
+      assert.doesNotMatch(resourceLookupCompletionNotice("Harbor Lights", result, "published"), pastePrompt);
     } finally {
       globalThis.fetch = originalFetch;
       if (previousKey === undefined) delete process.env.YOUTUBE_API_KEY;
@@ -347,8 +376,8 @@ test("a public search video rejected by oEmbed is not announced as filled in", a
     assert.ok(requested.some((href) => href.includes("youtube.com/oembed")));
     assert.equal(result.youtubeUrl, "");
     assert.equal(result.source, "search-links");
-    assert.match(resourceLookupCompletionNotice("Harbor Lights", result), pastePrompt);
-    assert.doesNotMatch(resourceLookupCompletionNotice("Harbor Lights", result), /filled in/);
+    assert.match(resourceLookupCompletionNotice("Harbor Lights", result, "published"), pastePrompt);
+    assert.doesNotMatch(resourceLookupCompletionNotice("Harbor Lights", result, "published"), /filled in/);
   } finally {
     globalThis.fetch = originalFetch;
     if (previousKey === undefined) delete process.env.YOUTUBE_API_KEY;

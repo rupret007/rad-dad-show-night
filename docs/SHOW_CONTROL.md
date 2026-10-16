@@ -303,6 +303,7 @@ Without a configured YouTube Data API key, **Find resources** still tries the
 public YouTube search and oEmbed path, and Genius lyrics. A candidate video may
 be filled in for review; search links stay in Show Control if no direct match is
 accepted. Nothing becomes public until Save.
+Draft and archived shows stay private after Save; Publish opens their public share link.
 
 ## Use rehearsal details
 
