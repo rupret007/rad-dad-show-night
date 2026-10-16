@@ -90,9 +90,11 @@ function verifiedOwnerResponse(response: Response): boolean {
 }
 
 // The deadline covers headers and body, even if a late response ignores abort.
-function withinOwnerDeadline<T>(pending: Promise<T>, signal: AbortSignal): Promise<T> {
+function withinOwnerDeadline<T>(pending: Promise<T>, signal: AbortSignal,
+  message = "The saved list could not be verified before the check timed out. Check again; your draft is kept.",
+): Promise<T> {
   return new Promise((resolve, reject) => {
-    const abort = () => reject(new Error("The saved list could not be verified before the check timed out. Check again; your draft is kept."));
+    const abort = () => reject(new Error(message));
     signal.addEventListener("abort", abort, { once: true });
     pending.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
     if (signal.aborted) abort();
@@ -131,6 +133,7 @@ export default function ShowControlClient({
   const [reviewReadFailed, setReviewReadFailed] = useState<Partial<Record<SetSlug, boolean>>>({});
   const [checkingSet, setCheckingSet] = useState<SetSlug | null>(null);
   const ownerOperation = useRef<OwnerOperation | null>(null);
+  const ownerRead = useRef<AbortController | null>(null);
   const retiredVersions = useRef<Partial<Record<SetSlug, string[]>>>({});
   const mounted = useRef(true);
   const reviewRef = useRef<HTMLElement | null>(null);
@@ -138,7 +141,11 @@ export default function ShowControlClient({
   const previewReturnFocusRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; ownerOperation.current?.controller.abort(); ownerOperation.current = null; };
+    return () => {
+      mounted.current = false;
+      ownerOperation.current?.controller.abort(); ownerOperation.current = null;
+      ownerRead.current?.abort(); ownerRead.current = null;
+    };
   }, []);
   const songsBySetRef = useRef<SongMap>(emptySongMap());
   useEffect(() => {
@@ -164,10 +171,16 @@ export default function ShowControlClient({
 
   useEffect(() => {
     let active = true;
+    ownerRead.current?.abort();
+    const controller = new AbortController();
+    ownerRead.current = controller;
+    const deadline = window.setTimeout(() => controller.abort(), OWNER_SAVE_DEADLINE_MS);
+    const stillOwned = () => active && mounted.current && ownerRead.current === controller;
     const requestedShow =
       new URLSearchParams(window.location.search).get("show") || SHOW_DETAILS.slug;
-    Promise.all([
-      fetch(`/api/show?show=${encodeURIComponent(requestedShow)}&scope=owner`, { cache: "no-store" }).then((response) => {
+    withinOwnerDeadline(Promise.all([
+      fetch(`/api/show?show=${encodeURIComponent(requestedShow)}&scope=owner`, { cache: "no-store", signal: controller.signal }).then((response) => {
+        controller.signal.throwIfAborted();
         if (!verifiedOwnerResponse(response)) throw new Error("Could not verify the current owner set data.");
         return response.json() as Promise<{
           songs: ShowSong[];
@@ -176,12 +189,14 @@ export default function ShowControlClient({
           setWriteVersions?: unknown;
         }>;
       }),
-      fetch("/api/shows", { cache: "no-store" }).then((response) =>
-        response.json() as Promise<{ shows?: ManagedShow[] }>,
-      ),
-    ])
+      fetch("/api/shows", { cache: "no-store", signal: controller.signal }).then((response) => {
+        controller.signal.throwIfAborted();
+        if (!response.ok) throw new Error("Could not load the owner show list.");
+        return response.json() as Promise<{ shows?: ManagedShow[] }>;
+      }),
+    ]), controller.signal, "The owner show load timed out. Retry verified load.")
       .then(([showData, showList]) => {
-        if (!active) return;
+        if (!stillOwned() || controller.signal.aborted) return;
         if (!showPayloadBelongsToShow(showData, requestedShow)) {
           throw new Error("That show's set could not be verified.");
         }
@@ -202,15 +217,19 @@ export default function ShowControlClient({
         setShowVerified(true);
       })
       .catch((error) => {
-        if (active) setNotice(error instanceof Error ? error.message : "Could not load Show Control.");
+        if (stillOwned()) setNotice(error instanceof Error ? error.message : "Could not load Show Control.");
       })
       .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
+        window.clearTimeout(deadline);
+        if (stillOwned()) setLoading(false);
+        if (ownerRead.current === controller) ownerRead.current = null;
+        controller.abort();
       });
     return () => {
       active = false;
+      window.clearTimeout(deadline);
+      controller.abort();
+      if (ownerRead.current === controller) ownerRead.current = null;
     };
   }, []);
 
@@ -743,22 +762,30 @@ export default function ShowControlClient({
     );
   }
 
-  async function switchShow(slug: string) {
-    if (ownerOperation.current) return;
-    if (dirtySets.size && !window.confirm("Switch shows and discard unsaved changes?")) return;
+  async function switchShow(slug: string): Promise<"switched" | "cancelled" | "failed"> {
+    if (ownerOperation.current) return "cancelled";
+    if (dirtySets.size && !window.confirm("Switch shows and discard unsaved changes?")) return "cancelled";
+    ownerRead.current?.abort();
+    const controller = new AbortController();
+    ownerRead.current = controller;
+    const stillOwned = () => mounted.current && ownerRead.current === controller;
+    const deadline = window.setTimeout(() => controller.abort(), OWNER_SAVE_DEADLINE_MS);
+    const timeoutMessage = "The show switch timed out. Your current show and draft are kept. Try switching again.";
     setLoading(true);
     setNotice("");
     try {
-      const response = await fetch(`/api/show?show=${encodeURIComponent(slug)}&scope=owner`, {
+      const response = await withinOwnerDeadline(fetch(`/api/show?show=${encodeURIComponent(slug)}&scope=owner`, {
         cache: "no-store",
-      });
+        signal: controller.signal,
+      }), controller.signal, timeoutMessage);
       if (!verifiedOwnerResponse(response)) throw new Error("Could not verify that show's current owner data.");
-      const data = (await response.json()) as {
+      const data = (await withinOwnerDeadline(response.json(), controller.signal, timeoutMessage)) as {
         songs: ShowSong[];
         show: ManagedShow;
         sets?: ShowSetDefinition[];
         setWriteVersions?: unknown;
       };
+      if (!stillOwned() || controller.signal.aborted) return "failed";
       if (!showPayloadBelongsToShow(data, slug)) {
         throw new Error("That show's set could not be verified.");
       }
@@ -776,10 +803,15 @@ export default function ShowControlClient({
       setCoachSets(parseShowSets(data.sets) ?? []);
       setDirtySets(new Set());
       window.history.replaceState(null, "", `/show-control?show=${encodeURIComponent(data.show.slug)}`);
+      return "switched";
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Could not load that show.");
+      if (stillOwned()) setNotice(error instanceof Error ? error.message : "Could not load that show.");
+      return "failed";
     } finally {
-      setLoading(false);
+      window.clearTimeout(deadline);
+      if (stillOwned()) setLoading(false);
+      if (ownerRead.current === controller) ownerRead.current = null;
+      controller.abort();
     }
   }
 
@@ -816,7 +848,9 @@ export default function ShowControlClient({
       if (!response.ok || !result.show) throw new Error(result.error || "Could not clone the show.");
       setShows((current) => [result.show!, ...current]);
       setCloneOpen(false);
-      await switchShow(result.show.slug);
+      // Creation may succeed while the destination owner read fails. Keep that
+      // recovery notice so the owner can retry the switch without cloning again.
+      if (await switchShow(result.show.slug) === "failed") return;
       setNotice(
         data.copySongs === "on"
           ? "New draft created. It has its own copy of the sets. The original show is unchanged. The public share link stays closed until you publish."

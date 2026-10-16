@@ -52,17 +52,26 @@ function RunFixtureSurface() {
   );
 }
 
+function OwnerFixtureSurface() {
+  const [generation, setGeneration] = useState(0);
+  return <>
+    {new URLSearchParams(window.location.search).has("lifecycle") &&
+      <button type="button" onClick={() => setGeneration((current) => current + 1)}>Remount owner fixture</button>}
+    <ShowControlClient key={generation}
+      userName="Offline test owner"
+      userEmail="owner@example.test"
+      signOutHref="/#test-sign-out"
+    />
+  </>;
+}
+
 const content = (
   publicSurface ? (
     <PublicFixtureSurface />
   ) : runSurface ? (
     <RunFixtureSurface />
   ) : ownerSurface ? (
-    <ShowControlClient
-      userName="Offline test owner"
-      userEmail="owner@example.test"
-      signOutHref="/#test-sign-out"
-    />
+    <OwnerFixtureSurface />
   ) : (
     <main className="audience-fixture">
       <SongBoard />
