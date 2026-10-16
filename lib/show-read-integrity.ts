@@ -145,7 +145,7 @@ export function formatShowSetTime(time: string): string {
 }
 
 export function buildShowSets(
-  timeline: Array<{
+  timeline: ReadonlyArray<{
     time: string;
     title: string;
     note?: string;

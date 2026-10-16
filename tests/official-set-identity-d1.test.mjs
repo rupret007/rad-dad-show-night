@@ -4,6 +4,7 @@ import { after, before, beforeEach, test } from "node:test";
 import { Miniflare } from "miniflare";
 import { INITIAL_OFFICIAL_SET_VERSION, officialSetRevision } from "../lib/owner-set-save.ts";
 import { loadOfficialSetRoute, loadOfficialShowStore } from "./fixtures/official-set-route.mjs";
+import { ShowNotFoundError } from "../lib/show-visibility.ts";
 
 const SHOW = { id: "identity-fixture-show", slug: "identity-fixture-night", status: "draft" };
 const SET = "rad-dad";
@@ -60,6 +61,16 @@ beforeEach(async () => {
 async function allRows() {
   return (await db.prepare("SELECT * FROM songs ORDER BY id").all()).results;
 }
+
+test("a populated database with no default show cannot serve the canonical fallback", async () => {
+  await db.prepare("UPDATE shows SET status = 'published', is_default = 0").run();
+  const store = loadOfficialShowStore(db);
+
+  for (const scope of ["public", "owner"]) {
+    await assert.rejects(() => store.getShowRecord(null, scope), ShowNotFoundError);
+    await assert.rejects(() => store.getShowPayload(null, scope), ShowNotFoundError);
+  }
+});
 
 function fixtureRoute({ owner = true, beforeBatch, afterBatch, clock, storage = db } = {}) {
   const calls = { prepares: 0, batches: 0, scope: [] };
