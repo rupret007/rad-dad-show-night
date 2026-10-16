@@ -31,6 +31,8 @@ type YouTubeMatch = {
   score: number;
 };
 
+const MIN_YOUTUBE_MATCH_SCORE = 13;
+
 export async function enrichSongResources(title: string, artist: string) {
   const searches = buildSongResourceLinks(title, artist);
   const curated = getCuratedSongResources(title, artist);
@@ -148,7 +150,7 @@ async function findYouTubeVideo(title: string, artist: string) {
       .filter((match): match is YouTubeMatch => Boolean(match))
       .sort((a, b) => b.score - a.score);
     const best = matches[0];
-    if (!best || best.score < 13) return null;
+    if (!best || best.score < MIN_YOUTUBE_MATCH_SCORE) return null;
 
     return (await verifyYouTubeMatch(best, wantedTitle, wantedArtist))
       ? best
@@ -196,7 +198,8 @@ async function findYouTubeWithApi(title: string, artist: string) {
       })
       .filter((match): match is YouTubeMatch => Boolean(match))
       .sort((a, b) => b.score - a.score);
-    return matches[0]?.score && matches[0].score >= 13 ? matches[0] : null;
+    const best = matches[0];
+    return best && best.score >= MIN_YOUTUBE_MATCH_SCORE ? best : null;
   } catch {
     return null;
   }
@@ -224,16 +227,17 @@ function scoreYouTubeText(
   wantedTitle: string,
   wantedArtist: string,
 ) {
+  if (!wantedTitle || !wantedArtist) return null;
   if (!/^[A-Za-z0-9_-]{11}$/.test(id)) return null;
   const normalizedTitle = normalizeSongValue(title);
   const normalizedChannel = normalizeSongValue(channel);
   if (!normalizedTitle.includes(wantedTitle)) return null;
-  const channelMatchesArtist = normalizedChannel.includes(wantedArtist);
-  const trustedMusicChannel = /\b(official|topic|vevo)\b/.test(normalizedChannel);
-  if (!channelMatchesArtist && !trustedMusicChannel) return null;
+  // Channel branding is only a ranking hint, never evidence of artist identity.
+  // Match the complete artist phrase, including the common ArtistVEVO form.
+  const artistChannel = normalizedChannel.replace(/vevo$/, " vevo");
+  if (!` ${artistChannel} `.includes(` ${wantedArtist} `)) return null;
 
-  let score = 8;
-  score += channelMatchesArtist ? 5 : 4;
+  let score = 13;
   if (/\b(official|audio|topic|vevo)\b/.test(`${normalizedTitle} ${normalizedChannel}`)) {
     score += 2;
   }
@@ -262,15 +266,14 @@ async function verifyYouTubeMatch(
       title?: string;
       author_name?: string;
     };
-    return Boolean(
-      scoreYouTubeText(
-        match.id,
-        metadata.title ?? match.title,
-        metadata.author_name ?? match.channel,
-        wantedTitle,
-        wantedArtist,
-      ),
+    const verifiedMatch = scoreYouTubeText(
+      match.id,
+      metadata.title ?? "",
+      metadata.author_name ?? "",
+      wantedTitle,
+      wantedArtist,
     );
+    return Boolean(verifiedMatch && verifiedMatch.score >= MIN_YOUTUBE_MATCH_SCORE);
   } catch {
     return false;
   }
