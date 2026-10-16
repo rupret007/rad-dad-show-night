@@ -267,7 +267,16 @@ async function showHtmlMatchesRequest(requestUrl, response) {
     if (closing || inertElements.length || tag !== "div") continue;
     const attributes = new Map();
     const duplicates = new Set();
-    for (const attribute of match[0].matchAll(/[\t\n\f\r ]+([^\t\n\f\r =/>]+)(?:[\t\n\f\r ]*=[\t\n\f\r ]*(?:"([^"]*)"|'([^']*)'|([^\t\n\f\r "'=<>`]+)))?/g)) {
+    const attributeText = match[0].slice(4, -1);
+    const attributePattern = /[\t\n\f\r ]+([^\t\n\f\r "'=<>/`]+)(?:[\t\n\f\r ]*=[\t\n\f\r ]*(?:"([^"]*)"|'([^']*)'|([^\t\n\f\r "'=<>`]+)))?/gy;
+    let attributeEnd = 0;
+    while (!/^[\t\n\f\r ]*\/?$/.test(attributeText.slice(attributeEnd))) {
+      // Consume attributes without gaps. Searching ahead could mistake proof
+      // inside a malformed, slash-delimited or adjacent quoted value for attrs.
+      attributePattern.lastIndex = attributeEnd;
+      const attribute = attributePattern.exec(attributeText);
+      if (!attribute) return false;
+      attributeEnd = attributePattern.lastIndex;
       const name = attribute[1].toLowerCase();
       if (attributes.has(name)) duplicates.add(name);
       attributes.set(name, attribute[2] ?? attribute[3] ?? attribute[4] ?? "");

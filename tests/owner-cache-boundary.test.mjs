@@ -267,6 +267,8 @@ const rejectedPages = [
   ["script proof", () => htmlResponse(`<script>const example = ${JSON.stringify(showHtml())};</script>`) ],
   ["inert template proof", () => htmlResponse(`<template>${showHtml()}</template>`) ],
   ["quoted attribute proof", () => htmlResponse(`<div title='${showHtml()}'>Unavailable</div>`) ],
+  ["slash-delimited quoted attribute proof", () => htmlResponse(`<div/title=" data-show-source='database' data-show-slug='synthetic-night'">Unavailable</div>`) ],
+  ["adjacent quoted attribute proof", () => htmlResponse(`<div title="fixture"id=" data-show-source='database' data-show-slug='synthetic-night'">Unavailable</div>`) ],
   ["non-HTML raw-text delimiter", () => htmlResponse('<script></script\u00a0><div data-show-slug="synthetic-night" data-show-source="database">Unavailable</div>')],
   ["non-HTML attribute separator", () => htmlResponse('<div data-show-source="database"\u00a0data-show-slug="synthetic-night">Unavailable</div>')],
   ["lookalike tag name", () => htmlResponse('<div.example data-show-slug="synthetic-night" data-show-source="database">Unavailable</div.example>')],

@@ -66,7 +66,9 @@ its saved copy. The worker requires successful `text/html`, refuses redirects,
 changed final URLs and offline-marked responses, and ignores proof-like text in
 comments, scripts, attributes, inert templates, and select elements. The worker
 uses HTML whitespace and tag boundaries, and rejects malformed tag prefixes,
-frameset documents, and legacy script-comment syntax. Missing, ambiguous,
+attribute separators, frameset documents, and legacy script-comment syntax.
+Attribute parsing consumes each complete value before advancing, so quoted
+text cannot supply proof after a malformed separator. Missing, ambiguous,
 fallback, unavailable, wrong-show or unrelated HTML leaves that URL's previous
 verified copy untouched and cannot announce fresh readiness. Ordinary
 network-first navigation responses never replace saved HTML. The ready
