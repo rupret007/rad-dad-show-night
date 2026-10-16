@@ -81,6 +81,13 @@ const emptySongMap = (): SongMap => ({
   "rad-dad": [],
 });
 
+// A verified detail read is newer authority than the show-picker list.
+function upsertVerifiedShow(shows: ManagedShow[], verified: ManagedShow): ManagedShow[] {
+  return shows.some((show) => show.id === verified.id)
+    ? shows.map((show) => show.id === verified.id ? verified : show)
+    : [...shows, verified];
+}
+
 // An offline/public copy is never authority for an owner write or review.
 function verifiedOwnerResponse(response: Response): boolean {
   return response.ok
@@ -195,7 +202,7 @@ export default function ShowControlClient({
         setSetReviews({}); setReviewReadFailed({});
         setSaveHolds({});
         setDeleted(null);
-        setShows(showList.shows ?? [showData.show]);
+        setShows(upsertVerifiedShow(showList.shows ?? [], showData.show));
         setActiveShowSlug(showData.show.slug);
         if (showData.sets?.length) setShowSets(showData.sets);
         setCoachSets(parseShowSets(showData.sets) ?? []);
@@ -647,7 +654,7 @@ export default function ShowControlClient({
         setNotice("The saved official list could not be verified. Try checking again.");
         return;
       }
-      setShows((current) => current.map((show) => show.id === operation.showId ? data.show : show));
+      setShows((current) => upsertVerifiedShow(current, data.show));
       if (reconciled.stillDirty) {
         setSetReviews((current) => ({ ...current, [setSlug]: {
           showId: operation.showId, showSlug: operation.showSlug, setSlug, songs: official,
@@ -771,6 +778,7 @@ export default function ShowControlClient({
       setSetReviews({}); setReviewReadFailed({});
       setSaveHolds({});
       setDeleted(null);
+      setShows((current) => upsertVerifiedShow(current, data.show));
       setActiveShowSlug(data.show.slug);
       setShowSets(data.sets?.length ? data.sets : [...SET_DEFINITIONS]);
       setCoachSets(parseShowSets(data.sets) ?? []);
