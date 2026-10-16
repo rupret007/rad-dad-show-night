@@ -9,8 +9,16 @@ export default function OfflineSupport() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
     let active = true;
+    let preparing = false;
+    let prepareAgain = false;
 
     async function prepareOfflineCopy() {
+      if (!active) return;
+      if (preparing) {
+        prepareAgain = true;
+        return;
+      }
+      preparing = true;
       try {
         await navigator.serviceWorker.register("/sw.js", { scope: "/" });
         const registration = await navigator.serviceWorker.ready;
@@ -24,10 +32,26 @@ export default function OfflineSupport() {
         if (!showSlug) return;
         if (showRoot?.dataset.showSource !== "database") return;
 
+        // A refresh can replace HTML before all of its new assets are saved.
+        // Retire the previous readiness claim until this attempt completes.
+        localStorage.removeItem(offlineReadyKey(showSlug));
+        window.dispatchEvent(
+          new CustomEvent(READY_EVENT, { detail: { showSlug, cachedAt: null } }),
+        );
+
         const showQuery = encodeURIComponent(showSlug);
-        const resources = performance
-          .getEntriesByType("resource")
-          .map((entry) => entry.name)
+        // Resource timing may omit early loads when its buffer fills. Include
+        // document scripts/styles and their preloads even without timing entries.
+        const documentAssets = Array.from(
+          document.querySelectorAll<HTMLScriptElement | HTMLLinkElement>(
+            'script[src], link[rel~="stylesheet"][href], link[rel~="modulepreload"][href], link[rel~="preload"][as="script"][href], link[rel~="preload"][as="style"][href]',
+          ),
+          (element) => element instanceof HTMLScriptElement ? element.src : element.href,
+        );
+        const resources = [
+          ...documentAssets,
+          ...performance.getEntriesByType("resource").map((entry) => entry.name),
+        ]
           .filter((value) => {
             try {
               const url = new URL(value);
@@ -59,6 +83,14 @@ export default function OfflineSupport() {
         void navigator.storage?.persist?.();
       } catch {
         // The local song snapshot still works if installation is blocked.
+      } finally {
+        // Serialize client preparations and coalesce online events so an older
+        // success cannot restore readiness during the next attempt.
+        preparing = false;
+        if (active && prepareAgain) {
+          prepareAgain = false;
+          void prepareOfflineCopy();
+        }
       }
     }
 

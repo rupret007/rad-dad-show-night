@@ -219,6 +219,17 @@ page reports that the show is temporarily unavailable instead. Live refresh,
 offline snapshots, and cached API responses also refuse another show's payload,
 so a clone cannot inherit another event's set after first paint.
 
+Offline preparation requires a successful cache write for every requested public
+resource, including document scripts, stylesheets, preloads, and resources observed
+in resource timing, as well as both show pages and the verified public API. Even
+artwork in that request is required; a missing resource keeps readiness false
+until a later successful preparation (retried when the device comes online).
+Cache version 4 retires earlier readiness markers, and a refresh clears readiness
+while the replacement copy is prepared. Owner URLs remain excluded. This asset
+check preserves the existing rendered-page database-source gate and API validation;
+it does not independently validate the source of each subsequently fetched HTML
+response.
+
 The hero names one next step for this show from this show's verified list.
 First open starts with the first official set. Leftover suggest and practice
 stay after that step. A show with no verified songs stays empty instead of
