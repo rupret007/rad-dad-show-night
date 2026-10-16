@@ -18,11 +18,11 @@ run() {
 }
 
 run node --experimental-strip-types --test tests/owner-song-tools.test.mjs tests/control-focus-visible.test.mjs tests/show-lifecycle-guard.test.mjs
-run npm run test:browser -- tests/browser/owner-song-tools.spec.ts
+run npm run test:browser
 run npm run lint
 run npm run typecheck:suggestions
-# Keep the full production check visible; existing R12/R16 errors must fail.
-run ./node_modules/.bin/tsc --noEmit --incremental false
+# Full production type checking is mandatory; preserve any failure.
+run npm run typecheck
 # The project uses Vinext, not a Next CLI. npm test includes its production
 # build, the isolation suite, and local D1 tests. Build exactly once.
 if ! run npm test; then
