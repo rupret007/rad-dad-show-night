@@ -17,7 +17,9 @@
     "leftover:hosted": "node scripts/hosted-leftover-honesty.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern vendor",
     "db:generate": "drizzle-kit generate",
-    "test:worker": "node scripts/worker-image-smoke.mjs"
+    "test:worker": "node scripts/worker-image-smoke.mjs",
+    "typecheck": "tsc --noEmit --incremental false",
+    "test:types": "node --experimental-strip-types --test tests/production-typecheck.test.mjs tests/production-server-contract.test.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
