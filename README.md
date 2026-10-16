@@ -67,9 +67,9 @@ commit. A save updates the public page only when that show is already published.
   with the first official set, or suggest a song when this night is empty.
   Practice and leftover suggest stay after that step. An empty clone stays
   empty instead of borrowing another night.
-- Keeps **Set lists** and **Suggest a song** in the phone header while moving
-  the owner editor to the footer, so public visitors get the two useful public
-  actions without another menu.
+- Keeps **Set lists** and **Suggest a song** in the phone header at least 14px,
+  wrapping beside the RD mark, while moving the owner editor to the footer, so
+  public visitors get the two useful public actions without another menu.
 - Sizes practice-mode set jumps to the number of verified sets on this night
   instead of always forcing three columns.
 - Announces share success or failure without treating a cancelled share sheet
