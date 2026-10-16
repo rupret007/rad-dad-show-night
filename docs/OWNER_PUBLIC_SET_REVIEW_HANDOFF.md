@@ -44,5 +44,7 @@ gates. The PR and coordination AFTER record the executed counts, exact tip, and
 hosted run.
 
 Live owner sign-in, Sites, and provider enrich were not tested. Source push does
-not deploy Sites. Optional Find resources still prepares a search when no API
-key is configured; that search is not stored as official media.
+not deploy Sites. Optional Find resources can fill a draft candidate from a
+curated match, the YouTube Data API when a key is set, or keyless public YouTube
+search / oEmbed and Genius. Search links are not stored as official media. Save
+remains the publication step.

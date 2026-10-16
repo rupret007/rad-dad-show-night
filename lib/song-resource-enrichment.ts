@@ -3,7 +3,7 @@ import {
   getCuratedSongResources,
   normalizeSongValue,
   primarySongArtist,
-} from "./song-resources";
+} from "./song-resources.ts";
 
 type GeniusResult = {
   title?: string;

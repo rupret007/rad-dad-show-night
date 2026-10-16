@@ -28,7 +28,7 @@ media fails closed. The public band site stays at
 | `app/api/show/route.ts` | Public show reads and authenticated set writes |
 | `app/api/shows/route.ts` | Owner show listing, cloning, and lifecycle status |
 | `app/api/coach/route.ts` | Local set review and optional OpenAI analysis |
-| `app/api/enrich/route.ts` | Authenticated YouTube lookup and search fallback |
+| `app/api/enrich/route.ts` | Authenticated resource lookup: curated match, optional YouTube key, keyless public search/oEmbed, Genius, search links |
 | `app/api/suggestions/route.ts` | Canonical public suggestion GET and POST route |
 | `lib/show-data.ts` | Event constants and initial confirmed songs |
 | `lib/show-store.ts` | Database seeding, reads, and song hydration |
@@ -222,15 +222,18 @@ The index `idx_songs_set_position` supports ordered reads by set.
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `ADMIN_EMAIL` | Yes | Comma-separated owner email allowlist for official-set writes |
-| `YOUTUBE_API_KEY` | No | Enables automatic selection of an embeddable YouTube result |
+| `YOUTUBE_API_KEY` | No | Optional YouTube Data API shortcut; public search and oEmbed run when no API match is accepted |
 | `OPENAI_API_KEY` | No | Adds OpenAI pacing and handoff analysis to Set Coach |
 | `OPENAI_MODEL` | No | Overrides the Set Coach model; defaults to `gpt-5.4-mini` |
 
 Production values belong in Sites environment settings. Do not put API keys in
 Git, `.openai/hosting.json`, client components, or documentation.
 
-When `YOUTUBE_API_KEY` is absent or lookup fails, the API returns a deterministic
-YouTube search URL. The owner can choose and paste the correct version.
+When `YOUTUBE_API_KEY` is absent or the Data API returns no accepted match,
+lookup still tries a public YouTube search and oEmbed check, plus Genius lyrics.
+The Data API key is an optional shortcut, not the only path. A filled-in URL is
+a draft candidate until Save. Search URLs stay in Show Control; only a saved
+direct URL becomes public media.
 
 ## API behavior
 
@@ -289,9 +292,14 @@ on another owner's browser.
 
 ### `POST /api/enrich`
 
-Owner-only. Accepts a title and artist. With `YOUTUBE_API_KEY`, it asks YouTube
-for one embeddable, syndicated video. Without a key or match, it returns a safe
-search fallback.
+Owner-only. Accepts a title and artist. Tries a curated exact match first. With
+`YOUTUBE_API_KEY`, it can ask the YouTube Data API for an embeddable video.
+Without a key it still tries public YouTube search plus oEmbed, and Genius
+lyrics. Public search also runs if the Data API is unavailable or finds no
+accepted match. Genius runs alongside either YouTube path. It returns
+`curated-exact`, `verified-providers`, `partial-provider-match`, or `search-links`.
+A direct URL is a draft candidate until the owner Saves. Search fallbacks are
+not stored as official media.
 
 ### `GET /api/suggestions`
 

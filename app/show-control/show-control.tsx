@@ -19,6 +19,7 @@ import {
   ownerPublicSongReview,
   savedOfficialMediaUrl,
 } from "../../lib/song-resources";
+import { resourceLookupCompletionNotice } from "../../lib/resource-lookup-notice";
 import {
   showEditorLiveState,
   showOwnerCheckedKeptDraftNotice,
@@ -425,11 +426,7 @@ export default function ShowControlClient({
         },
         song.setSlug,
       );
-      setNotice(
-        result.source === "youtube-api"
-          ? `YouTube match found for ${song.title}.`
-          : `YouTube search is ready for ${song.title}. Paste the video you want to feature.`,
-      );
+      setNotice(resourceLookupCompletionNotice(song.title, result));
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Resource lookup failed.");
     } finally {
