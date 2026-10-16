@@ -5,7 +5,7 @@ import vm from "node:vm";
 
 const source = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
 const ORIGIN = "https://offline-fixture.invalid";
-const CACHE = "rad-dad-show-offline-v3";
+const CACHE = "rad-dad-show-offline-v4";
 const API = `${ORIGIN}/api/show?show=synthetic-night`;
 const OWNER = `${API}&scope=owner`;
 const resources = [`${ORIGIN}/?show=synthetic-night`, `${ORIGIN}/?show=synthetic-night&practice=1`, API];
@@ -23,6 +23,14 @@ function publicResponse(payload = publicPayload(), headers = {}) {
   return Response.json(payload, { headers: {
     "X-Rad-Dad-Data-Source": "database", "X-Rad-Dad-Read-Scope": "public", "Cache-Control": "no-store", ...headers,
   } });
+}
+
+function showHtml({ slug = "synthetic-night", source = "database", body = "Verified fixture page" } = {}) {
+  return `<!doctype html><html><head></head><body><div class="show" data-show-slug="${slug}" data-show-source="${source}">${body}</div></body></html>`;
+}
+
+function htmlResponse(html = showHtml(), headers = {}) {
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...headers } });
 }
 
 // Execute the actual shipped service worker. Every fetch is an explicit synthetic
@@ -114,14 +122,14 @@ test("actual SW: scoped owner GET never intercepts, reads cache or manufactures 
 });
 
 test("actual SW: CACHE_SHOW cannot fetch or cache owner URLs, even alongside valid public copies", async () => {
-  const fixture = worker(async (url) => url.includes("/api/show") ? publicResponse() : new Response("Public fixture page"));
+  const fixture = worker(async (url) => url.includes("/api/show") ? publicResponse() : htmlResponse());
   const refused = await fixture.message([OWNER, `${ORIGIN}/show-control?show=synthetic-night`]);
   assert.equal(refused.ready, false);
-  assert.equal(refused.cacheVersion, 3);
+  assert.equal(refused.cacheVersion, 4);
   assert.equal(fixture.calls.fetch.length, 0);
   const result = await fixture.message([...resources, OWNER]);
   assert.equal(result.ready, true);
-  assert.equal(result.cacheVersion, 3);
+  assert.equal(result.cacheVersion, 4);
   assert.equal(result.cached, 3);
   assert.equal(await fixture.cached(OWNER), undefined);
   assert.ok(fixture.calls.fetch.every((call) => call.credentials === "omit" && call.url !== OWNER));
@@ -224,23 +232,107 @@ test("actual SW: every additional public API URL in CACHE_SHOW must independentl
   const secondary = `${API}&extra=second`;
   const fixture = worker(async (url) => url === secondary
     ? publicResponse(publicPayload({ setWriteVersions: {} }))
-    : url.includes("/api/show") ? publicResponse() : new Response("Public fixture page"));
+    : url.includes("/api/show") ? publicResponse() : htmlResponse());
   assert.equal((await fixture.message([...resources, secondary])).ready, false);
   assert.equal(await fixture.cached(secondary), undefined);
   assert.ok(fixture.calls.fetch.every((call) => call.credentials === "omit"));
 });
 
-test("actual SW: activating v3 purges old app caches, including owner-contaminated API and HTML, only", async () => {
+test("actual SW: activating v4 purges old app caches, including owner-contaminated API and HTML, only", async () => {
   const fixture = worker();
   fixture.seed("rad-dad-show-offline-v1", API, publicResponse());
   fixture.seed("rad-dad-show-offline-v2", API, publicResponse(publicPayload({ setWriteVersions: {} })));
   fixture.seed("rad-dad-show-offline-v2", resources[0], new Response("Previously private fixture HTML"));
+  fixture.seed("rad-dad-show-offline-v3", resources[0], htmlResponse(showHtml({ source: "confirmed-fallback" })));
   fixture.seed("unrelated-fixture-cache", API, new Response("Unrelated data stays"));
   fixture.seed(CACHE, API, publicResponse());
   await fixture.activate();
-  assert.deepEqual(fixture.calls.removedCaches.sort(), ["rad-dad-show-offline-v1", "rad-dad-show-offline-v2"]);
+  assert.deepEqual(fixture.calls.removedCaches.sort(), ["rad-dad-show-offline-v1", "rad-dad-show-offline-v2", "rad-dad-show-offline-v3"]);
   assert.equal(fixture.calls.claimed, 1);
   assert.deepEqual(await (await fixture.cached(API)).json(), publicPayload());
   assert.equal(await (await fixture.cached(API, "unrelated-fixture-cache")).text(), "Unrelated data stays");
   assert.equal(await fixture.cached(API, "rad-dad-show-offline-v2"), undefined);
+  assert.equal(await fixture.cached(resources[0], "rad-dad-show-offline-v3"), undefined);
+});
+
+const rejectedPages = [
+  ["confirmed fallback", () => htmlResponse(showHtml({ source: "confirmed-fallback" }))],
+  ["unavailable", () => htmlResponse(showHtml({ source: "unavailable" }))],
+  ["unavailable without proof", () => htmlResponse("<h1>Show temporarily unavailable</h1>")],
+  ["wrong show", () => htmlResponse(showHtml({ slug: "another-night" }))],
+  ["unrelated 200", () => htmlResponse("<h1>Sign in</h1>")],
+  ["missing source", () => htmlResponse('<div data-show-slug="synthetic-night">No source</div>')],
+  ["split proof", () => htmlResponse('<div data-show-slug="synthetic-night"></div><div data-show-source="database"></div>')],
+  ["comment proof", () => htmlResponse(`<!-- ${showHtml()} --><h1>Unavailable</h1>`) ],
+  ["script proof", () => htmlResponse(`<script>const example = ${JSON.stringify(showHtml())};</script>`) ],
+  ["inert template proof", () => htmlResponse(`<template>${showHtml()}</template>`) ],
+  ["quoted attribute proof", () => htmlResponse(`<div title='${showHtml()}'>Unavailable</div>`) ],
+  ["non-HTML raw-text delimiter", () => htmlResponse('<script></script\u00a0><div data-show-slug="synthetic-night" data-show-source="database">Unavailable</div>')],
+  ["non-HTML attribute separator", () => htmlResponse('<div data-show-source="database"\u00a0data-show-slug="synthetic-night">Unavailable</div>')],
+  ["lookalike tag name", () => htmlResponse('<div.example data-show-slug="synthetic-night" data-show-source="database">Unavailable</div.example>')],
+  ["unclosed quoted attribute proof", () => htmlResponse(`<span title='<div data-show-slug="synthetic-night" data-show-source="database">Unavailable</div>`) ],
+  ["frameset-contained proof", () => htmlResponse('<html><head></head><frameset><div data-show-slug="synthetic-night" data-show-source="database">Unavailable</div></frameset></html>')],
+  ["after-frameset proof", () => htmlResponse('<html><head></head><frameset></frameset><div data-show-slug="synthetic-night" data-show-source="database">Unavailable</div></html>')],
+  ["select-contained proof", () => htmlResponse('<select><div data-show-slug="synthetic-night" data-show-source="database">Unavailable</div></select>')],
+  ["double-escaped script proof", () => htmlResponse('<script><!--<script></script><div data-show-slug="synthetic-night" data-show-source="database">Unavailable</div></script>')],
+  ["duplicate source", () => htmlResponse(showHtml().replace('data-show-source="database"', 'data-show-source="confirmed-fallback" data-show-source="database"'))],
+  ["ambiguous roots", () => htmlResponse(showHtml() + showHtml({ slug: "another-night" }))],
+  ["JSON with HTML text", () => new Response(JSON.stringify(showHtml()), { headers: { "Content-Type": "application/json" } })],
+  ["missing content type", () => new Response(showHtml(), { headers: {} })],
+  ["offline marked", () => htmlResponse(showHtml(), { "X-Rad-Dad-Offline": "1" })],
+  ["HTTP error", () => new Response(showHtml(), { status: 503, headers: { "Content-Type": "text/html" } })],
+  ["redirect to unrelated page", () => {
+    const response = htmlResponse();
+    Object.defineProperties(response, { redirected: { value: true }, url: { value: `${ORIGIN}/show-control` } });
+    return response;
+  }],
+  ["unexpected final URL", () => {
+    const response = htmlResponse();
+    Object.defineProperty(response, "url", { value: `${ORIGIN}/?show=another-night` });
+    return response;
+  }],
+  ["unreadable body", () => new Response(new ReadableStream({ start(controller) { controller.error(new Error("Synthetic body failure")); } }), { headers: { "Content-Type": "text/html" } })],
+];
+
+for (const [reason, response] of rejectedPages) {
+  for (const rejectedUrl of resources.slice(0, 2)) {
+    test(`actual SW: ${reason} cannot replace ${rejectedUrl.includes("practice") ? "practice" : "show"} HTML or announce fresh readiness`, async () => {
+      const fixture = worker(async (url) => url === API ? publicResponse() : url === rejectedUrl ? response() : htmlResponse());
+      const saved = showHtml({ body: "Previously verified page" });
+      for (const url of resources.slice(0, 2)) fixture.seed(CACHE, url, htmlResponse(saved));
+      const result = await fixture.message(resources);
+      assert.equal(result.ready, false);
+      assert.equal(await (await fixture.cached(rejectedUrl)).text(), saved);
+      assert.ok(fixture.calls.put.every(([, url]) => url !== rejectedUrl));
+      assert.equal(await (await fixture.cached(resources.find((url) => url !== API && url !== rejectedUrl))).text(), showHtml());
+    });
+  }
+}
+
+test("actual SW: both independently verified HTML responses replace old pages and report ready", async () => {
+  const fixture = worker(async (url) => url === API ? publicResponse() : htmlResponse(showHtml({ body: url })));
+  for (const url of resources.slice(0, 2)) fixture.seed(CACHE, url, htmlResponse(showHtml({ body: "Older verified page" })));
+  const result = await fixture.message(resources);
+  assert.equal(result.ready, true);
+  assert.equal(result.cached, 3);
+  for (const url of resources.slice(0, 2)) assert.equal(await (await fixture.cached(url)).text(), showHtml({ body: url }));
+});
+
+test("actual SW: refused HTML is not stored on first preparation and a later verified retry recovers", async () => {
+  let verified = false;
+  const fixture = worker(async (url) => url === API ? publicResponse() : htmlResponse(showHtml({ source: verified ? "database" : "confirmed-fallback" })));
+  assert.equal((await fixture.message(resources)).ready, false);
+  for (const url of resources.slice(0, 2)) assert.equal(await fixture.cached(url), undefined);
+  verified = true;
+  assert.equal((await fixture.message(resources)).ready, true);
+});
+
+test("actual SW: HTML proof accepts serialized attribute order, quoting and surrounding framework content", async () => {
+  const html = `<!doctype html><html><head><script>const text = '<div data-show-slug="wrong-night" data-show-source="database">';</script></head><body>
+    <!-- framework boundary --><template><template><div data-show-slug="wrong-night"></div></template></template>
+    <div title="A > B" data-show-source = 'database' class="show" data-show-slug = 'synthetic-night'>Verified page</div>
+    <script>/* serialized props are not another root */</script></body></html>`;
+  const fixture = worker(async (url) => url === API ? publicResponse() : htmlResponse(html));
+  assert.equal((await fixture.message(resources)).ready, true);
+  for (const url of resources.slice(0, 2)) assert.equal(await (await fixture.cached(url)).text(), html);
 });

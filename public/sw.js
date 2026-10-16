@@ -1,5 +1,5 @@
-// v2 could cache an authenticated owner response under a public show URL.
-const CACHE_NAME = "rad-dad-show-offline-v3";
+// v2 could retain owner data; v3 could retain unverified HTML.
+const CACHE_NAME = "rad-dad-show-offline-v4";
 const APP_SHELL = [
   "/offline.html",
   "/manifest.webmanifest",
@@ -36,7 +36,7 @@ self.addEventListener("message", (event) => {
   if (event.data?.type !== "CACHE_SHOW" || !Array.isArray(event.data.urls)) return;
   event.waitUntil(
     cacheShowResources(event.data.urls).then((result) => {
-      event.ports[0]?.postMessage({ ...result, cacheVersion: 3 });
+      event.ports[0]?.postMessage({ ...result, cacheVersion: 4 });
     }),
   );
 });
@@ -102,6 +102,9 @@ async function cacheShowResources(values) {
         if (!response.ok) return null;
         if (new URL(url, self.location.origin).pathname === "/api/show" &&
             !(await showApiMatchesRequest(url, response))) return null;
+        if ((new URL(url, self.location.origin).pathname === "/" ||
+             response.headers.get("Content-Type")?.split(";")[0].trim().toLowerCase() === "text/html") &&
+            !(await showHtmlMatchesRequest(url, response))) return null;
         await cache.put(url, response.clone());
         return url;
       } catch {
@@ -137,8 +140,8 @@ async function networkFirst(request, timeoutMs, navigation) {
         (response.ok && !verifiedShowApi && !(await showApiMatchesRequest(request.url, response, true))))) {
       throw new Error("Unverified public show response");
     }
-    // Navigations are cached only by CACHE_SHOW after the rendered page proves
-    // it came from D1. A transient fallback must never replace that copy.
+    // Navigations are cached only by CACHE_SHOW after each fetched HTML body
+    // proves its own show and database source, independently of the open page.
     if (response.ok && !navigation && verifiedShowApi) {
       await cache.put(request, response.clone());
     }
@@ -199,6 +202,82 @@ function withTimeout(promise, timeoutMs) {
 function isPublicShowUrl(url) {
   return url.origin === self.location.origin && url.pathname === "/api/show" &&
     !url.searchParams.has("scope");
+}
+
+async function showHtmlMatchesRequest(requestUrl, response) {
+  const url = new URL(requestUrl, self.location.origin);
+  const slug = url.searchParams.get("show");
+  if (url.origin !== self.location.origin || url.pathname !== "/" ||
+      !slug || url.searchParams.getAll("show").length !== 1 ||
+      !response.ok || response.redirected ||
+      (response.url && response.url !== url.href) ||
+      response.headers.get("X-Rad-Dad-Offline") === "1" ||
+      response.headers.get("Content-Type")?.split(";")[0].trim().toLowerCase() !== "text/html") return false;
+
+  const html = await response.clone().text();
+  // Service workers have no DOMParser. Tokenize the server's HTML tags, keeping
+  // quoted attributes intact and ignoring comments and inert/raw-text content.
+  // Proof must be on one real div, never assembled from unrelated text/props.
+  const tags = /<!--[\s\S]*?(?:-->|$)|<![^>]*>|<\/?([a-z][\w:-]*)(?=[\t\n\f\r />])(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi;
+  const inertElements = [];
+  let scannedUntil = 0;
+  let roots = 0;
+  let match;
+  const escapedSlug = slug.replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#x27;",
+  })[char]);
+  while ((match = tags.exec(html))) {
+    // A global regexp can resume inside a malformed tag/quoted attribute. Such
+    // text is not a fresh tag in the browser, so never skip an unmatched "<".
+    if (html.slice(scannedUntil, match.index).includes("<")) return false;
+    scannedUntil = tags.lastIndex;
+    const tag = match[1]?.toLowerCase();
+    if (!tag) {
+      if (!match[0].startsWith("<!--") && !/^<!doctype\s+html\s*>$/i.test(match[0])) return false;
+      continue;
+    }
+    // Frameset documents use different tree-building rules even after the
+    // frameset closes. This app emits body documents, so decline them entirely.
+    if (tag === "frame" || tag === "frameset") return false;
+    const closing = match[0].startsWith("</");
+    // Templates and form select contents cannot supply a rendered show-page
+    // root. Keep matched contexts so neither can supply page proof.
+    if (tag === "template" || tag === "select") {
+      if (closing) {
+        if (inertElements.pop() !== tag) return false;
+      } else {
+        inertElements.push(tag);
+      }
+      continue;
+    }
+    if (!closing && /^(script|style|textarea|title|xmp|iframe|noembed|noframes|noscript)$/.test(tag)) {
+      const end = new RegExp(`</${tag}[\\t\\n\\f\\r ]*>`, "gi");
+      end.lastIndex = tags.lastIndex;
+      const endMatch = end.exec(html);
+      if (!endMatch) return false;
+      // Legacy script comments can enter HTML's double-escaped script state,
+      // where the first </script> is still text. The app emits ordinary scripts;
+      // decline this ambiguous serialization instead of trusting apparent tags.
+      if (tag === "script" && html.slice(tags.lastIndex, endMatch.index).includes("<!--")) return false;
+      tags.lastIndex = end.lastIndex;
+      scannedUntil = end.lastIndex;
+      continue;
+    }
+    if (!closing && tag === "plaintext") return false;
+    if (closing || inertElements.length || tag !== "div") continue;
+    const attributes = new Map();
+    const duplicates = new Set();
+    for (const attribute of match[0].matchAll(/[\t\n\f\r ]+([^\t\n\f\r =/>]+)(?:[\t\n\f\r ]*=[\t\n\f\r ]*(?:"([^"]*)"|'([^']*)'|([^\t\n\f\r "'=<>`]+)))?/g)) {
+      const name = attribute[1].toLowerCase();
+      if (attributes.has(name)) duplicates.add(name);
+      attributes.set(name, attribute[2] ?? attribute[3] ?? attribute[4] ?? "");
+    }
+    if (!attributes.has("data-show-slug") && !attributes.has("data-show-source")) continue;
+    if (duplicates.size || attributes.get("data-show-slug") !== escapedSlug ||
+        attributes.get("data-show-source") !== "database") return false;
+    roots += 1;
+  }
+  return roots === 1 && inertElements.length === 0 && !html.slice(scannedUntil).includes("<");
 }
 
 async function showApiMatchesRequest(requestUrl, response, allowConfirmedFallback = false) {
