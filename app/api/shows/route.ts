@@ -28,7 +28,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    await ensureShowSeeded();
     const payload = (await request.json()) as {
       action?: string;
       sourceSlug?: string;
@@ -42,6 +41,24 @@ export async function POST(request: Request) {
       endTime?: string;
     };
 
+    const showDate = payload.showDate ?? "";
+    const startTime = clean(payload.startTime, 40);
+    const endTime = clean(payload.endTime, 40);
+    if (payload.action === "clone") {
+      if (!isCalendarDate(showDate)) {
+        return Response.json({ error: "Choose a valid show date." }, { status: 400 });
+      }
+      if (Boolean(startTime) !== Boolean(endTime)) {
+        return Response.json(
+          { error: "Enter both start and end times, or clear both to leave hours optional. No draft was created." },
+          { status: 400 },
+        );
+      }
+    }
+
+    // Validate clones before seeding, which can itself write a batch.
+    await ensureShowSeeded();
+
     if (payload.action === "clone") {
       const source = await env.DB
         .prepare("SELECT * FROM shows WHERE slug = ? LIMIT 1")
@@ -53,13 +70,6 @@ export async function POST(request: Request) {
 
       const title = clean(payload.title, 140) || String(source.title);
       const venue = clean(payload.venue, 140) || String(source.venue);
-      const showDate = /^\d{4}-\d{2}-\d{2}$/.test(payload.showDate ?? "")
-        ? payload.showDate!
-        : "";
-      if (!showDate) {
-        return Response.json({ error: "Choose a show date." }, { status: 400 });
-      }
-
       const slug = await uniqueSlug(`${venue}-${showDate}`);
       const id = `show-${crypto.randomUUID()}`;
       const now = new Date().toISOString();
@@ -69,8 +79,8 @@ export async function POST(request: Request) {
         sourceStartTime: source.start_time,
         sourceEndTime: source.end_time,
         sourceExpectedWrap: source.expected_wrap,
-        startTime: payload.startTime,
-        endTime: payload.endTime,
+        startTime,
+        endTime,
       });
       const statements = [
         env.DB.prepare(
@@ -182,6 +192,14 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 80);
+}
+
+function isCalendarDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  // Date parsing rolls impossible days forward; require the same UTC date back.
+  return Number.isFinite(date.getTime()) && date.getUTCFullYear() > 0 &&
+    date.toISOString().slice(0, 10) === value;
 }
 
 function clean(value: unknown, maxLength: number) {
