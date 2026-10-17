@@ -14,8 +14,8 @@ import {
 } from "./show-data";
 import { hydrateOfficialSongMedia } from "./song-resources";
 import {
-  ShowNotFoundError,
   isShowNotFoundError,
+  ShowNotFoundError,
   requireVisibleShow,
   type ShowReadScope,
 } from "./show-visibility";
@@ -248,7 +248,7 @@ export async function getShowPayload(
         .orderBy(asc(showBlocks.position)),
     ]);
     const officialSongs = officialSnapshot.songs;
-    const mappedTimeline = blocks.map((block) => ({
+    const mappedTimeline: RunOfShowBlock[] = blocks.map((block) => ({
       time: `${block.startTime}-${block.endTime}`,
       duration: block.duration,
       title: block.title,
@@ -256,7 +256,7 @@ export async function getShowPayload(
       type: block.type as "performance" | "changeover",
       accent: block.accent as "blue" | "lime" | "pink",
       setSlug: block.setSlug,
-    })) as RunOfShowBlock[];
+    }));
     const timeline = mappedTimeline.length
       ? mappedTimeline
       : canUseConfirmedShowFallback(slug, resolvedShowSlug)

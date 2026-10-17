@@ -5,7 +5,6 @@
     "types": ["node", "vite/client", "vinext/types"]
   },
   "include": [
-    "worker/cloudflare-bindings.d.ts",
     "worker/image-response.ts",
     "lib/set-coach.ts",
     "lib/acoustic-set-helper.ts",
