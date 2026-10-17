@@ -30,7 +30,9 @@ function harness({ local, online = false, initialDataSource = "database" } = {})
   if (local) storage.set(integrity.showSnapshotKey(SHOW_DETAILS.slug), JSON.stringify(local));
   let cursor = 0, dirty = false, tree, timerId = 0;
   let reply = null, offline = true;
-  const react = {
+  const Fragment = Symbol("react.fragment");
+  const reactApi = {
+    Fragment,
     useState(initial) {
       const index = cursor++;
       if (!(index in hooks)) hooks[index] = typeof initial === "function" ? initial() : initial;
@@ -48,9 +50,10 @@ function harness({ local, online = false, initialDataSource = "database" } = {})
       }
     },
   };
-  const jsx = (type, props) => ({ type, props });
+  const react = { ...reactApi, default: reactApi };
+  const jsx = (type, props) => (type === Fragment ? props.children : { type, props });
   const modules = {
-    react, "react/jsx-runtime": { jsx, jsxs: jsx },
+    react, "react/jsx-runtime": { jsx, jsxs: jsx, Fragment },
     "../lib/show-read-integrity": integrity, "../lib/song-resources": resources,
     "../lib/show-night-use": night, "../lib/run-position": position,
     "../lib/show-public": publicShow, "./show-page.module.css": { default: {} },
