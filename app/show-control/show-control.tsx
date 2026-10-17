@@ -60,6 +60,7 @@ import {
   readOwnerSetSongs, readOwnerShowSongs, removedDraftSongs,
   stageReviewedOwnerDraft,
 } from "../../lib/owner-set-review";
+import { OWNER_STATUS_DEADLINE_MS, OWNER_STATUS_UNCERTAIN, readLifecycleShow, verifiedLifecycleNotice } from "../../lib/owner-show-status";
 import type { Suggestion } from "../song-board";
 import { parseSuggestionFeedPayload } from "../../lib/suggestion-board";
 import { confirmedSetTime } from "../../lib/acoustic-set-helper";
@@ -131,6 +132,12 @@ export default function ShowControlClient({
   const [reviewReadFailed, setReviewReadFailed] = useState<Partial<Record<SetSlug, boolean>>>({});
   const [checkingSet, setCheckingSet] = useState<SetSlug | null>(null);
   const ownerOperation = useRef<OwnerOperation | null>(null);
+  const lifecycleHold = useRef(false);
+  const lifecycleOperation = useRef<{ controller: AbortController; showId: string; showSlug: string } | null>(null);
+  const [statusUnverified, setStatusUnverified] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [statusReadFailed, setStatusReadFailed] = useState(false);
+  const statusCheckRef = useRef<HTMLButtonElement | null>(null);
   const retiredVersions = useRef<Partial<Record<SetSlug, string[]>>>({});
   const mounted = useRef(true);
   const reviewRef = useRef<HTMLElement | null>(null);
@@ -138,7 +145,7 @@ export default function ShowControlClient({
   const previewReturnFocusRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; ownerOperation.current?.controller.abort(); ownerOperation.current = null; };
+    return () => { mounted.current = false; lifecycleOperation.current?.controller.abort(); lifecycleOperation.current = null; ownerOperation.current?.controller.abort(); ownerOperation.current = null; };
   }, []);
   const songsBySetRef = useRef<SongMap>(emptySongMap());
   useEffect(() => {
@@ -157,6 +164,9 @@ export default function ShowControlClient({
   const [cloning, setCloning] = useState(false);
   const [coachSets, setCoachSets] = useState<ShowSetDefinition[]>([]);
   const [statusChanging, setStatusChanging] = useState<ShowLifecycleStatus | null>(null);
+  useEffect(() => {
+    if (statusUnverified && !statusChanging && !checkingStatus) statusCheckRef.current?.focus();
+  }, [statusUnverified, statusChanging, checkingStatus]);
   const dragIndex = useRef<number | null>(null);
   const draftTitleRef = useRef<HTMLInputElement | null>(null);
   const draftIdPrefix = useId().replace(/[^a-z0-9-]/gi, "");
@@ -493,7 +503,7 @@ export default function ShowControlClient({
   }
 
   async function saveSet(setSlug: SetSlug) {
-    if (saveHolds[setSlug] || setReviews[setSlug] || checkingSet || ownerOperation.current || !showVerified) return;
+    if (lifecycleHold.current || saveHolds[setSlug] || setReviews[setSlug] || checkingSet || ownerOperation.current || !showVerified) return;
     const setDefinition =
       showSets.find((set) => set.slug === setSlug) ??
       SET_DEFINITIONS.find((set) => set.slug === setSlug)!;
@@ -603,7 +613,7 @@ export default function ShowControlClient({
   }
 
   async function checkSavedSet(setSlug: SetSlug) {
-    if (saving || checkingSet || ownerOperation.current || !showVerified) return;
+    if (lifecycleHold.current || saving || checkingSet || ownerOperation.current || !showVerified) return;
     const setDefinition =
       showSets.find((set) => set.slug === setSlug) ??
       SET_DEFINITIONS.find((set) => set.slug === setSlug)!;
@@ -744,7 +754,7 @@ export default function ShowControlClient({
   }
 
   async function switchShow(slug: string) {
-    if (ownerOperation.current) return;
+    if (lifecycleHold.current || ownerOperation.current) return;
     if (dirtySets.size && !window.confirm("Switch shows and discard unsaved changes?")) return;
     setLoading(true);
     setNotice("");
@@ -785,6 +795,7 @@ export default function ShowControlClient({
 
   async function cloneShow(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (lifecycleHold.current) return;
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
     const hasStart = Boolean(String(data.startTime ?? "").trim());
@@ -830,6 +841,7 @@ export default function ShowControlClient({
   }
 
   async function changeShowStatus(status: ManagedShow["status"]) {
+    if (lifecycleHold.current || cloning || loading || !showVerified) return;
     if (ownerOperation.current || saving || checkingSet || Object.keys(saveHolds).length || Object.keys(setReviews).length) {
       setNotice("Finish the saved-list check or review before changing this show's public link. No lifecycle change was made.");
       return;
@@ -846,30 +858,77 @@ export default function ShowControlClient({
     }
     if (!window.confirm(showStatusChangeConfirmation(activeShow.title, status))) return;
 
+    lifecycleHold.current = true;
+    setStatusUnverified(true);
     setStatusChanging(status);
-    setNotice(`${status === "published" ? "Publishing" : "Archiving"} ${activeShow.title}...`);
+    setNotice(OWNER_STATUS_UNCERTAIN);
+    const controller = new AbortController();
+    const operation = { controller, showId: activeShow.id, showSlug: activeShowSlug };
+    lifecycleOperation.current = operation;
+    const deadline = window.setTimeout(() => controller.abort(), OWNER_STATUS_DEADLINE_MS);
     try {
-      const response = await fetch("/api/shows", {
+      const response = await withinOwnerDeadline(fetch("/api/shows", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "status", showSlug: activeShowSlug, status }),
-      });
-      const result = (await response.json()) as { show?: ManagedShow; error?: string };
-      if (!response.ok || !result.show) {
-        throw new Error(result.error || "Could not update show status.");
+        signal: controller.signal,
+        body: JSON.stringify({ action: "status", showSlug: operation.showSlug, status }),
+      }), controller.signal);
+      if (!response.ok || response.status !== 200 || response.headers.get("X-Rad-Dad-Offline") === "1") {
+        throw new Error("Unverified status response");
       }
-      setShows((current) =>
-        current.map((show) => (show.slug === result.show!.slug ? result.show! : show)),
-      );
-      setNotice(
-        status === "published"
-          ? `${activeShow.title} is public at its saved share link.`
-          : `${activeShow.title} is archived. Its public share link is now closed.`,
-      );
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Could not update show status.");
+      const result = await withinOwnerDeadline(response.json(), controller.signal);
+      const verified = readLifecycleShow(result?.show, { id: operation.showId, slug: operation.showSlug });
+      if (!verified) throw new Error("Unverified status receipt");
+      if (!mounted.current || lifecycleOperation.current !== operation || controller.signal.aborted) return;
+      setShows((current) => current.map((show) => show.id === operation.showId ? verified : show));
+      setNotice(verifiedLifecycleNotice(verified));
+      lifecycleHold.current = false;
+      setStatusUnverified(false);
+    } catch {
+      if (mounted.current && lifecycleOperation.current === operation) setNotice(OWNER_STATUS_UNCERTAIN);
     } finally {
-      setStatusChanging(null);
+      window.clearTimeout(deadline);
+      if (lifecycleOperation.current === operation) {
+        lifecycleOperation.current = null;
+        if (mounted.current) setStatusChanging(null);
+      }
+    }
+  }
+
+  async function checkShowStatus() {
+    if (!lifecycleHold.current || lifecycleOperation.current || ownerOperation.current) return;
+    const controller = new AbortController();
+    const operation = { controller, showId: activeShow.id, showSlug: activeShowSlug };
+    lifecycleOperation.current = operation;
+    setCheckingStatus(true);
+    setStatusReadFailed(false);
+    setNotice(OWNER_STATUS_UNCERTAIN);
+    const deadline = window.setTimeout(() => controller.abort(), OWNER_STATUS_DEADLINE_MS);
+    try {
+      const response = await withinOwnerDeadline(fetch(`/api/show?show=${encodeURIComponent(operation.showSlug)}&scope=owner`, {
+        cache: "no-store",
+        signal: controller.signal,
+      }), controller.signal);
+      if (!verifiedOwnerResponse(response)) throw new Error("Unverified owner read");
+      const data = await withinOwnerDeadline(response.json(), controller.signal);
+      const verified = readLifecycleShow(data?.show, { id: operation.showId, slug: operation.showSlug });
+      if (!verified) throw new Error("Unverified lifecycle");
+      if (!mounted.current || lifecycleOperation.current !== operation || controller.signal.aborted) return;
+      // Refresh lifecycle authority only. Unsaved lists and their write versions stay intact.
+      setShows((current) => current.map((show) => show.id === operation.showId ? verified : show));
+      setNotice(`Status checked. ${verifiedLifecycleNotice(verified)} Your browser draft is kept.`);
+      lifecycleHold.current = false;
+      setStatusUnverified(false);
+    } catch {
+      if (mounted.current && lifecycleOperation.current === operation) {
+        setStatusReadFailed(true);
+      }
+    } finally {
+      window.clearTimeout(deadline);
+      if (lifecycleOperation.current === operation) {
+        lifecycleOperation.current = null;
+        if (mounted.current) setCheckingStatus(false);
+      }
     }
   }
 
@@ -890,6 +949,25 @@ export default function ShowControlClient({
               Retry verified load
             </button>
             <Link href="/">Back to the public show</Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (statusUnverified) {
+    return (
+      <main className={styles.accessPage} data-show-control="status-unverified">
+        <section className={styles.loadFailureCard} aria-labelledby="status-recovery-title">
+          <span>Owner only · {activeShow.title}</span>
+          <h1 id="status-recovery-title">Show status unverified</h1>
+          <p role="status">{statusReadFailed ? "Could not verify the current show status. " : ""}{OWNER_STATUS_UNCERTAIN}</p>
+          <p>Editing is paused. This check only reads the current status; it does not publish or archive again.</p>
+          <div>
+            <button ref={statusCheckRef} type="button" disabled={Boolean(statusChanging) || checkingStatus}
+              onClick={() => void checkShowStatus()}>
+              {statusChanging ? "Waiting for show status..." : checkingStatus ? "Checking show status..." : "Check show status"}
+            </button>
           </div>
         </section>
       </main>
