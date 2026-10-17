@@ -394,11 +394,33 @@
 }
 
 @media (max-width: 720px) {
-  .topBarInner { width: min(100% - 24px, 1180px); }
+  .topBarInner {
+    width: min(100% - 24px, 1180px);
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .identity { flex: 0 0 auto; }
   .identity > span:last-child { display: none; }
   .identity small { display: none; }
-  .topLinks { gap: 8px; }
-  .topLinks .mobilePrimaryLink { padding: 9px 2px; font-size: 0.68rem; }
+  .topLinks {
+    flex: 1 1 10rem;
+    min-width: 0;
+    gap: 8px 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+  }
+  .topLinks .mobilePrimaryLink {
+    padding: 9px 4px;
+    font-size: max(14px, 0.875rem);
+    line-height: 1.2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    max-width: 100%;
+  }
   .topLinks .practiceLink { padding: 9px 10px; font-size: 0.68rem; }
   .topLinks .mobileOptionalLink { display: none; }
   .hero { width: min(100% - 28px, 1180px); padding: 28px 0 48px; display: flex; flex-direction: column; gap: 22px; }
