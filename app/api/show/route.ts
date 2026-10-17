@@ -105,7 +105,7 @@ export async function POST(request: Request) {
       "SELECT id, created_at, updated_at FROM songs WHERE show_id = ? AND set_slug = ?",
     ).bind(show.id, setSlug).all<StoredSongIdentity>();
     if (
-      existing.success === false || !Array.isArray(existing.results) ||
+      existing.success !== true || !Array.isArray(existing.results) ||
       existing.results.some((row: StoredSongIdentity) => !Number.isSafeInteger(row.id) || row.id <= 0 || typeof row.created_at !== "string" || !row.created_at || typeof row.updated_at !== "string" || !row.updated_at)
     ) {
       throw new Error("The official song identities could not be verified.");
@@ -222,7 +222,9 @@ export async function POST(request: Request) {
     }
     try {
       const versions = result[result.length - 2].results;
-      if (!Array.isArray(versions) || versions.length !== 1 || versions[0].version !== writeVersion) {
+      if (!Array.isArray(versions) || versions.length !== 1 ||
+        !versions[0] || typeof versions[0] !== "object" ||
+        !("version" in versions[0]) || versions[0].version !== writeVersion) {
         throw new Error("The written version could not be verified.");
       }
       const saved = readOfficialSongRows(result[result.length - 1].results, show.id, setSlug);

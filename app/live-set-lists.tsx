@@ -94,6 +94,15 @@ export default function LiveSetLists(props: LiveSetListsProps) {
 
 const LIVE_READ_DEADLINE_MS = 10_000;
 
+// Compare content timestamps, never the time a cached response was reopened.
+// The API timestamp may name only one set, so include every song's timestamp.
+function snapshotTime(songs: ShowSong[], updatedAt = ""): number {
+  return songs.reduce(
+    (latest, song) => Math.max(latest, Date.parse(song.updatedAt) || 0),
+    Date.parse(updatedAt) || 0,
+  );
+}
+
 async function readBeforeAbort<T>(signal: AbortSignal, read: () => Promise<T>): Promise<T> {
   if (signal.aborted) throw new Error("Read interrupted");
   let onAbort: (() => void) | undefined;
@@ -181,8 +190,14 @@ function ShowLiveSetLists({
   const [showInstallHint, setShowInstallHint] = useState(false);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [sessionReadReceived, setSessionReadReceived] = useState(false);
   const refreshSavedList = useRef<() => void>(() => undefined);
-  const verifiedReadReceived = useRef(initialDataSource === "database");
+  // Database provenance in HTML can itself be cached. Only a successful
+  // network read in this page session closes offline snapshot recovery.
+  const verifiedReadReceived = useRef(false);
+  const displayedSnapshotTime = useRef<number | null>(
+    initialDataSource === "database" ? snapshotTime(initialSongs) : null,
+  );
   const wakeLockRef = useRef<WakeLockHandle | null>(null);
   const [updatedAt, setUpdatedAt] = useState(
     initialSongs.reduce(
@@ -250,13 +265,19 @@ function ShowLiveSetLists({
           markLiveDataUnavailable();
           return;
         }
-        if (servedOffline && verifiedReadReceived.current) {
+        const nextSnapshotTime = snapshotTime(normalized.songs, normalized.updatedAt);
+        if (servedOffline && (verifiedReadReceived.current
+          || (displayedSnapshotTime.current !== null && nextSnapshotTime <= displayedSnapshotTime.current))) {
           // A cached response is useful at first open, but must never rewind
           // a fresher live list already accepted in this page session.
           markLiveDataUnavailable();
           return;
         }
-        if (!servedOffline) verifiedReadReceived.current = true;
+        if (!servedOffline) {
+          verifiedReadReceived.current = true;
+          setSessionReadReceived(true);
+        }
+        displayedSnapshotTime.current = nextSnapshotTime;
         setSongs(normalized.songs);
         setSets(nextSets);
         setUpdatedAt(normalized.updatedAt);
@@ -331,6 +352,7 @@ function ShowLiveSetLists({
       );
       const snapshotBelongs = Boolean(
         snapshot &&
+          (!showId || !snapshot.showId || snapshot.showId === showId) &&
           songsBelongToShow(snapshot.songs, {
             id: showId || snapshot.showId || "",
           }),
@@ -339,14 +361,19 @@ function ShowLiveSetLists({
         snapshotBelongs &&
         snapshot &&
         !verifiedReadReceived.current &&
-        (!online || initialDataSource === "confirmed-fallback")
+        (displayedSnapshotTime.current === null ||
+          snapshotTime(snapshot.songs, snapshot.updatedAt) > displayedSnapshotTime.current)
       ) {
+        displayedSnapshotTime.current = snapshotTime(snapshot.songs, snapshot.updatedAt);
         setSongs(snapshot.songs);
         setUpdatedAt(snapshot.updatedAt);
         setDisplaySource("saved-snapshot");
         setLiveDataAvailable(false);
       } else if (!online) {
         setLiveDataAvailable(false);
+        setDisplaySource((current) =>
+          current === "confirmed-fallback" ? current : "saved-snapshot",
+        );
       }
       setClientReady(true);
     };
@@ -376,10 +403,11 @@ function ShowLiveSetLists({
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("rad-dad-offline-ready", onOfflineReady);
     };
-  }, [initialDataSource, showId, showSlug]);
+  }, [showId, showSlug]);
 
   useEffect(() => {
     if (!clientReady || !liveDataAvailable || displaySource !== "database") return;
+    if (!verifiedReadReceived.current) return;
     if (showId && !songsBelongToShow(songs, { id: showId })) return;
     try {
       const publicSnapshot = parseStoredShowSnapshot(
@@ -422,8 +450,9 @@ function ShowLiveSetLists({
   const resolvedPosition = resolveRunPosition(orderedSongs, currentSongId);
   // React retries this component before committing the render. Once a missing
   // identity is observed, replaying an older list cannot silently resume it.
+  // Cached HTML alone cannot establish removal before recovery finishes.
   // Only a deliberate song tap below clears this page-local hold.
-  if (resolvedPosition.kind === "missing" && displaySource === "database" && !requiresManualChoice) setRequiresManualChoice(true);
+  if (resolvedPosition.kind === "missing" && sessionReadReceived && displaySource === "database" && !requiresManualChoice) setRequiresManualChoice(true);
   const runPosition = requiresManualChoice && resolvedPosition.kind === "selected"
     ? { ...resolvedPosition, kind: "missing" as const, currentIndex: -1, currentSong: null, previousSong: null, nextSong: null }
     : resolvedPosition;
