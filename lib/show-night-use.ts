@@ -117,6 +117,7 @@ export function leftoverPublicActions(
 export type StageCue = {
   label: string;
   afterPosition: number;
+  beforePosition: number;
   accent: "solo" | "duet" | "guests";
 };
 
@@ -172,6 +173,7 @@ export function openingSetStageCues(
       cues.push({
         label,
         afterPosition: phases[i - 1].position,
+        beforePosition: phases[i].position,
         accent: phases[i].phase,
       });
     }
@@ -207,10 +209,10 @@ export function publicProductionNotes({
         : `Protect the ${guest} setup window.`,
     );
   }
-  if (openingFlow?.hasStageCues) {
-    notes.push(
-      "Candace joins Jeff after the solo acoustic songs. Cue her before song 3.",
-    );
+  for (const cue of openingFlow?.stageCues ?? []) {
+    if (cue.accent === "duet") {
+      notes.push(`Candace joins Jeff. Cue her before song ${cue.beforePosition}.`);
+    }
   }
   if (openingFlow?.hasTbdSlot) {
     notes.push(
