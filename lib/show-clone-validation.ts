@@ -31,7 +31,7 @@ export function isCalendarDateUtcMidnight(value: string): boolean {
 }
 
 /**
- * True when value is a real YYYY-MM-DD on the America/Chicago show calendar.
+ * True when value is a real YYYY-MM-DD civil calendar date (Gregorian).
  * Impossible month lengths are rejected without UTC Date rollover.
  */
 export function isShowCalendarDate(value: unknown): value is string {

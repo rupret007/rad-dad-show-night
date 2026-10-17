@@ -4,6 +4,8 @@ import { SHOW_TIME_ZONE } from "../lib/show-read-integrity.ts";
 import {
   isCalendarDateUtcMidnight,
   isShowCalendarDate,
+  pairedShowHoursError,
+  parseShowClock,
   showCalendarYmdFromInstant,
   SHOW_CALENDAR_TIME_ZONE,
 } from "../lib/show-clone-validation.ts";
@@ -106,7 +108,7 @@ test("clone POST accepts paired hours across midnight as an overnight span", asy
   assert.deepEqual(route.calls.batches[0][0].values.slice(5, 7), ["9:00 PM", "1:00 AM"]);
 });
 
-test("show calendar dates use America/Chicago wall days, not UTC midnight parsing", () => {
+test("isShowCalendarDate validates civil Gregorian dates without UTC Date rollover", () => {
   assert.equal(SHOW_CALENDAR_TIME_ZONE, SHOW_TIME_ZONE);
   assert.equal(SHOW_CALENDAR_TIME_ZONE, "America/Chicago");
   assert.equal(isShowCalendarDate("2026-04-31"), false);
@@ -115,6 +117,26 @@ test("show calendar dates use America/Chicago wall days, not UTC midnight parsin
   const utcJuneFifteenMidnight = Date.UTC(2026, 5, 15, 0, 0, 0);
   assert.equal(showCalendarYmdFromInstant(utcJuneFifteenMidnight), "2026-06-14");
   assert.equal(isShowCalendarDate("2026-06-15"), true);
+});
+
+test("parseShowClock maps 12-hour show clocks to minutes since midnight", () => {
+  assert.equal(parseShowClock("12:00 AM"), 0);
+  assert.equal(parseShowClock("12:00 PM"), 720);
+  assert.equal(parseShowClock("1:00 AM"), 60);
+  assert.equal(parseShowClock("1:00 PM"), 780);
+  assert.equal(parseShowClock("13:00 PM"), null);
+  assert.equal(parseShowClock("9:60 PM"), null);
+  assert.equal(parseShowClock("20:00"), null);
+});
+
+test("pairedShowHoursError enforces same-night and overnight span limits", () => {
+  assert.equal(pairedShowHoursError("5:00 AM", "11:00 PM"), null);
+  assert.ok(pairedShowHoursError("5:00 AM", "11:01 PM"));
+  assert.equal(pairedShowHoursError("6:00 PM", "6:00 AM"), null);
+  assert.ok(pairedShowHoursError("6:00 PM", "6:01 AM"));
+  assert.ok(pairedShowHoursError("7:00 PM", "7:00 PM"));
+  assert.equal(pairedShowHoursError("11:59 PM", "12:00 AM"), null);
+  assert.ok(pairedShowHoursError("20:00", "22:00"));
 });
 
 test("clone POST retains owner and missing-source guards", async () => {
