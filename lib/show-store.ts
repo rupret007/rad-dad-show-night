@@ -14,6 +14,7 @@ import {
 } from "./show-data";
 import { hydrateOfficialSongMedia } from "./song-resources";
 import {
+  ShowNotFoundError,
   isShowNotFoundError,
   requireVisibleShow,
   type ShowReadScope,

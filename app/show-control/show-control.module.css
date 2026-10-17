@@ -20,6 +20,9 @@
 .controlTopbar { position: sticky; top: 0; z-index: 30; min-height: 68px; padding: env(safe-area-inset-top, 0px) max(24px, calc((100vw - 1400px) / 2), env(safe-area-inset-right, 0px)) 0 max(24px, calc((100vw - 1400px) / 2), env(safe-area-inset-left, 0px)); display: flex; align-items: center; justify-content: space-between; gap: 22px; border-bottom: 1px solid rgba(255, 255, 255, 0.13); background: rgba(5, 5, 6, 0.94); backdrop-filter: blur(16px); }
 .controlBrand:focus-visible,
 .ownerStrip a:focus-visible,
+.quickTools button:focus-visible,
+.quickTools a:focus-visible,
+.deleteButton:focus-visible,
 .showSelect select:focus-visible,
 .showActions a:focus-visible,
 .showActions button:focus-visible,
@@ -41,8 +44,8 @@
 .controlBrand strong, .controlBrand small { display: block; }
 .controlBrand strong { font-size: 1rem; letter-spacing: 0.1em; }
 .controlBrand small { color: var(--muted); font-size: 0.65rem; letter-spacing: 0.13em; }
-.ownerStrip { display: flex; align-items: center; gap: 14px; color: #c6c9c6; font-size: 0.78rem; }
-.ownerStrip a { color: #c6c9c6; font-weight: 800; letter-spacing: 0.06em; text-decoration: none; text-transform: uppercase; }
+.ownerStrip { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 14px; color: #c6c9c6; font-size: 0.78rem; }
+.ownerStrip a { min-height: 44px; max-width: 100%; box-sizing: border-box; padding: 6px 8px; display: inline-flex; align-items: center; color: #c6c9c6; font-size: 0.875rem; line-height: 1.3; font-weight: 800; letter-spacing: 0.06em; text-align: right; overflow-wrap: anywhere; text-decoration: none; text-transform: uppercase; }
 .ownerStrip a:hover { color: var(--blue); }
 .privateBadge { padding: 6px 9px; color: var(--black); background: var(--pink); font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
 .ownerName { color: white; font-weight: 700; }
@@ -198,8 +201,8 @@
 .primaryFields input { height: 40px; padding: 0 10px; font-size: 1rem; font-weight: 700; }
 .primaryFields label:first-child input { font-size: 1.12rem; text-transform: uppercase; }
 .composer input:focus, .primaryFields input:focus, .detailGrid input:focus, .detailGrid textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(24, 170, 245, 0.11); }
-.quickTools { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
-.quickTools button, .quickTools a { min-height: 30px; padding: 0 8px; display: inline-flex; align-items: center; border: 1px solid rgba(255, 255, 255, 0.14); color: #afb3b2; background: transparent; cursor: pointer; font: inherit; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.05em; text-decoration: none; text-transform: uppercase; }
+.quickTools { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+.quickTools button, .quickTools a { min-height: 44px; max-width: 100%; box-sizing: border-box; padding: 6px 8px; display: inline-flex; align-items: center; border: 1px solid rgba(255, 255, 255, 0.14); color: #afb3b2; background: transparent; cursor: pointer; font: inherit; font-size: 0.875rem; line-height: 1.3; font-weight: 800; letter-spacing: 0.05em; overflow-wrap: anywhere; text-decoration: none; text-transform: uppercase; }
 .quickTools button:hover, .quickTools a:hover { color: var(--black); border-color: var(--blue); background: var(--blue); }
 .quickTools button:disabled { cursor: default; opacity: 0.3; }
 .flowToggle { min-height: 30px; padding: 0 8px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(184, 245, 39, 0.25); color: var(--lime); font-size: 0.66rem; font-weight: 800; text-transform: uppercase; }
@@ -212,7 +215,7 @@
 .wideField { grid-column: 1 / -1; }
 .urlField { display: grid; grid-template-columns: 1fr auto auto; gap: 5px; }
 .urlField button, .urlField a { min-height: 40px; padding: 0 10px; display: inline-flex; align-items: center; border: 0; color: var(--black); background: var(--blue); cursor: pointer; font: inherit; font-size: 0.67rem; font-weight: 900; text-decoration: none; text-transform: uppercase; }
-.deleteButton { margin-top: 18px; padding: 8px; border: 1px solid rgba(255, 61, 135, 0.25); color: #c9819c; background: transparent; cursor: pointer; font: inherit; font-size: 0.62rem; font-weight: 800; text-transform: uppercase; }
+.deleteButton { min-height: 44px; margin-top: 18px; padding: 8px; border: 1px solid rgba(255, 61, 135, 0.25); color: #c9819c; background: transparent; cursor: pointer; font: inherit; font-size: 0.875rem; font-weight: 800; text-transform: uppercase; }
 .deleteButton:hover { color: var(--black); background: var(--pink); }
 .suggestionInbox { position: sticky; top: 90px; overflow: hidden; }
 .inboxHeader { min-height: 69px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }

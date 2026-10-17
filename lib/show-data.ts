@@ -50,7 +50,15 @@ export type ManagedShow = {
   isDefault: boolean;
 };
 
-export type RunOfShowBlock = (typeof RUN_OF_SHOW)[number];
+export type RunOfShowBlock = {
+  time: string;
+  duration: string;
+  title: string;
+  note: string;
+  type: "performance" | "changeover";
+  accent: "blue" | "lime" | "pink";
+  setSlug?: string | null;
+};
 
 export const RUN_OF_SHOW = [
   {
@@ -109,7 +117,7 @@ export const RUN_OF_SHOW = [
     type: "performance",
     accent: "lime",
   },
-] as const;
+] as const satisfies readonly RunOfShowBlock[];
 
 export const SET_DEFINITIONS = [
   {

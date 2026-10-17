@@ -4,6 +4,7 @@ import { after, before, beforeEach, test } from "node:test";
 import { Miniflare } from "miniflare";
 import { INITIAL_OFFICIAL_SET_VERSION, officialSetRevision } from "../lib/owner-set-save.ts";
 import { loadOfficialSetRoute, loadOfficialShowStore } from "./fixtures/official-set-route.mjs";
+import { ShowNotFoundError } from "../lib/show-visibility.ts";
 
 const SHOW = { id: "identity-fixture-show", slug: "identity-fixture-night", status: "draft" };
 const SET = "rad-dad";
@@ -60,6 +61,16 @@ beforeEach(async () => {
 async function allRows() {
   return (await db.prepare("SELECT * FROM songs ORDER BY id").all()).results;
 }
+
+test("a populated database with no default show cannot serve the canonical fallback", async () => {
+  await db.prepare("UPDATE shows SET status = 'published', is_default = 0").run();
+  const store = loadOfficialShowStore(db);
+
+  for (const scope of ["public", "owner"]) {
+    await assert.rejects(() => store.getShowRecord(null, scope), ShowNotFoundError);
+    await assert.rejects(() => store.getShowPayload(null, scope), ShowNotFoundError);
+  }
+});
 
 function fixtureRoute({ owner = true, beforeBatch, afterBatch, clock, storage = db } = {}) {
   const calls = { prepares: 0, batches: 0, scope: [] };
@@ -161,6 +172,33 @@ test("local D1: rejected foreign, missing, malformed, and duplicate IDs perform 
     assert.equal(route.calls.batches, 0);
     assert.deepEqual(await allRows(), beforeRows);
   }
+});
+
+test("local D1: an identity read without confirmed success cannot authorize a write", async () => {
+  const beforeRows = await allRows();
+  const storage = {
+    prepare(sql) {
+      const statement = db.prepare(sql);
+      if (!sql.startsWith("SELECT id, created_at, updated_at FROM songs")) return statement;
+      return {
+        bind(...values) {
+          const bound = statement.bind(...values);
+          return {
+            async all() {
+              const result = await bound.all();
+              return { results: result.results, meta: result.meta };
+            },
+          };
+        },
+      };
+    },
+    batch: (statements) => db.batch(statements),
+  };
+  const route = fixtureRoute({ storage });
+  const response = await route.POST(request([{ id: 11, title: "Unverified replacement" }]));
+  assert.equal(response.status, 500);
+  assert.equal(route.calls.batches, 0);
+  assert.deepEqual(await allRows(), beforeRows);
 });
 
 test("local D1: actual batch rollback preserves all rows if a later insertion fails", async () => {

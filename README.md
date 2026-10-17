@@ -264,6 +264,7 @@ Verify the source without live provider or owner writes:
 ```bash
 npm test
 npm run lint
+npm run typecheck
 npm run typecheck:suggestions
 npx playwright install chromium
 npm run test:browser
@@ -272,9 +273,10 @@ npm run leftover:hosted
 
 Browser tests render the actual suggestion and owner components with intercepted
 fixtures. They block unmocked APIs and external services; they do not verify live
-sign-in, Google Forms/Sheets, or Sites deployment. The focused typecheck covers
-the changed suggestion surfaces; the full standalone check still has existing
-Worker declarations and show-store errors described in the handoff.
+sign-in, Google Forms/Sheets, or Sites deployment. The full typecheck covers the
+application, Worker entry point, and browser fixtures using the checked-in D1
+declarations. The focused typecheck remains available for the suggestion and
+related interactive surfaces.
 
 ## Hosting
 
