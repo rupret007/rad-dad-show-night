@@ -397,10 +397,70 @@ test("production notes include Candace join cue and TBD slot when opening flow p
     openingFlow: flow,
   });
   assert.equal(notes.some((n) => /Candace joins Jeff/.test(n)), true);
+  assert.equal(notes.some((n) => /Cue her before song 3\./.test(n)), true);
   assert.equal(notes.some((n) => /Slot 2 is TBD/.test(n)), true);
   assert.equal(notes.some((n) => /Jeff picks the second acoustic/.test(n)), true);
   assert.equal(notes.includes("Share the backline where practical."), true);
   assert.equal(notes.includes("Confirm guest keys and endings before show day."), true);
+});
+
+function productionNotesForSongs(songs) {
+  return publicProductionNotes({
+    canonicalShow: false,
+    expectedWrap: "",
+    openingFlow: openingSetStageCues(songs),
+  });
+}
+
+function openingSongs(notes) {
+  return notes.map((performanceNote, index) => ({
+    setSlug: "jeff-story-friends",
+    position: index + 1,
+    title: `Fixture song ${index + 1}`,
+    performanceNote,
+  }));
+}
+
+test("production notes do not invent Candace for solo-to-guest cues", () => {
+  const songs = openingSongs(["Jeff solo", "Guest guitar", "Guest vocals"]);
+  assert.equal(openingSetStageCues(songs).hasStageCues, true);
+  assert.doesNotMatch(productionNotesForSongs(songs).join(" "), /Candace|duet|Cue her/);
+});
+
+test("production notes cue a later duet before its current song position", () => {
+  const songs = openingSongs(["Jeff solo", "Jeff solo", "Jeff solo", "Candace duet"]);
+  const notes = productionNotesForSongs(songs);
+  assert.deepEqual(notes.filter((note) => /Candace/.test(note)), [
+    "Candace joins Jeff. Cue her before song 4.",
+  ]);
+});
+
+test("production notes follow reordered opening cues without changing songs or owner order", () => {
+  const officialBefore = structuredClone(DEFAULT_SONGS);
+  const opening = DEFAULT_SONGS.filter((song) => song.setSlug === "jeff-story-friends");
+  // Move the guest songs before the duets, as an owner can do in Show Control.
+  const reordered = [opening[0], opening[1], opening[4], opening[5], opening[2], opening[3]]
+    .map((song, index) => ({ ...song, position: index + 1 }));
+  const before = structuredClone(reordered);
+  const notes = productionNotesForSongs(reordered);
+  assert.deepEqual(notes.filter((note) => /Candace/.test(note)), [
+    "Candace joins Jeff. Cue her before song 5.",
+  ]);
+  assert.doesNotMatch(notes.join(" "), /after the solo acoustic songs/);
+  assert.deepEqual(reordered, before);
+  assert.deepEqual(DEFAULT_SONGS, officialBefore);
+});
+
+test("production notes follow every duet entry and actual destination positions", () => {
+  const songs = openingSongs(["Jeff solo", "Candace duet", "Guest guitar", "Candace duet"])
+    .map((song, index) => ({ ...song, position: [1, 3, 5, 8][index] }))
+    .reverse();
+  const before = structuredClone(songs);
+  assert.deepEqual(productionNotesForSongs(songs).filter((note) => /Candace/.test(note)), [
+    "Candace joins Jeff. Cue her before song 3.",
+    "Candace joins Jeff. Cue her before song 8.",
+  ]);
+  assert.deepEqual(songs, before);
 });
 
 test("production notes omit Candace cue when no opening flow is provided", () => {
