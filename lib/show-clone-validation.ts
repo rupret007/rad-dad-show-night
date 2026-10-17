@@ -1,8 +1,3 @@
-import { SHOW_TIME_ZONE } from "./show-read-integrity.ts";
-
-/** Show dates are wall-calendar days in the venue time zone. */
-export const SHOW_CALENDAR_TIME_ZONE = SHOW_TIME_ZONE;
-
 const MAX_SAME_DAY_MINUTES = 18 * 60;
 const MAX_OVERNIGHT_MINUTES = 12 * 60;
 const MIN_SPAN_MINUTES = 1;
@@ -32,7 +27,9 @@ export function isCalendarDateUtcMidnight(value: string): boolean {
 
 /**
  * True when value is a real YYYY-MM-DD civil calendar date (Gregorian).
- * Impossible month lengths are rejected without UTC Date rollover.
+ * Plain civil-date validity only: time-zone independent (no venue zone,
+ * no America/Chicago conversion). Impossible month lengths are rejected
+ * without UTC Date rollover.
  */
 export function isShowCalendarDate(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -40,16 +37,6 @@ export function isShowCalendarDate(value: unknown): value is string {
   const month = Number(value.slice(5, 7));
   const day = Number(value.slice(8, 10));
   return gregorianValid(year, month, day);
-}
-
-/** Wall-calendar YYYY-MM-DD for an instant in the show time zone (tests). */
-export function showCalendarYmdFromInstant(ms: number): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: SHOW_CALENDAR_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(ms);
 }
 
 export function parseShowClock(value: string): number | null {

@@ -1,13 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SHOW_TIME_ZONE } from "../lib/show-read-integrity.ts";
 import {
   isCalendarDateUtcMidnight,
   isShowCalendarDate,
   pairedShowHoursError,
   parseShowClock,
-  showCalendarYmdFromInstant,
-  SHOW_CALENDAR_TIME_ZONE,
 } from "../lib/show-clone-validation.ts";
 import { cloneRequest, loadShowsRoute } from "./fixtures/shows-route.mjs";
 
@@ -109,13 +106,9 @@ test("clone POST accepts paired hours across midnight as an overnight span", asy
 });
 
 test("isShowCalendarDate validates civil Gregorian dates without UTC Date rollover", () => {
-  assert.equal(SHOW_CALENDAR_TIME_ZONE, SHOW_TIME_ZONE);
-  assert.equal(SHOW_CALENDAR_TIME_ZONE, "America/Chicago");
   assert.equal(isShowCalendarDate("2026-04-31"), false);
   assert.equal(isShowCalendarDate("0001-01-01"), true);
   assert.equal(isCalendarDateUtcMidnight("0001-01-01"), true);
-  const utcJuneFifteenMidnight = Date.UTC(2026, 5, 15, 0, 0, 0);
-  assert.equal(showCalendarYmdFromInstant(utcJuneFifteenMidnight), "2026-06-14");
   assert.equal(isShowCalendarDate("2026-06-15"), true);
 });
 
