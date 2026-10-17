@@ -58,11 +58,24 @@ The server renders the current set from D1. `LiveSetLists` then requests
 `GET /api/show` every 30 seconds and after the tab returns to the foreground.
 This lets an already-open page receive changes made in Show Control. The
 service worker caches `/api/show` only when its response carries the verified
-database source header. Navigation responses are cached by the explicit
-offline-preparation flow only after the rendered page identifies a database
-source; ordinary network-first fallback responses cannot overwrite the saved
-show page. The ready indicator is versioned with the cache and turns on only
-after the full show page, practice page, and verified show API are all stored.
+database source header and passes the public payload checks. The open page's
+database marker only starts offline preparation: each newly fetched show and
+practice HTML response must independently carry the requested `data-show-slug`
+and `data-show-source="database"` on the same rendered root div before replacing
+its saved copy. The worker requires successful `text/html`, refuses redirects,
+changed final URLs and offline-marked responses, and ignores proof-like text in
+comments, scripts, attributes, inert templates, and select elements. The worker
+uses HTML whitespace and tag boundaries, and rejects malformed tag prefixes,
+attribute separators, frameset documents, and legacy script-comment syntax.
+Attribute parsing consumes each complete value before advancing, so quoted
+text cannot supply proof after a malformed separator. Missing, ambiguous,
+fallback, unavailable, wrong-show or unrelated HTML leaves that URL's previous
+verified copy untouched and cannot announce fresh readiness. Ordinary
+network-first navigation responses never replace saved HTML. The ready
+indicator is versioned with the cache and requires the show page, practice
+page, and verified API to be stored successfully in the current preparation
+attempt; existing entries do not count as fresh successes. Asset completeness
+is a separate requirement not established by these HTML checks.
 
 The owner editor explicitly requests `scope=owner`; the default show-read URL
 always serves public data, even for a signed-in owner. Owner reads require
@@ -71,9 +84,11 @@ authorization and carry `private, no-store`, `X-Rad-Dad-Read-Scope: owner`, and
 The service worker bypasses scoped API reads. Public cache preparation omits
 credentials and validates public scope, show ownership, and absence of owner
 notes/receipts before caching or returning an offline API copy. Cache/readiness
-version 3 replaces the older Rad Dad cache namespace, which could retain an
-owner response under a public URL. This cleanup occurs only when the new source
-is separately deployed and its service worker activates.
+version 4 replaces older Rad Dad cache namespaces: versions through 2 could
+retain owner data and version 3 could retain unverified HTML. Earlier readiness
+receipts and worker acknowledgements do not establish version 4 readiness.
+Cleanup occurs only when the new source is separately deployed and its service
+worker activates; offline preparation must then save new verified copies.
 
 The public list renders YouTube and lyrics actions for songs not marked
 original only when the official set has a saved direct URL. A local covers
