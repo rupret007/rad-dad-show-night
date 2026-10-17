@@ -14,6 +14,7 @@
     "lib/official-set-identity.ts",
     "lib/owner-set-save.ts",
     "lib/song-resources.ts",
+    "lib/resource-lookup-notice.ts",
     "lib/show-control-posture.ts",
     "lib/show-lifecycle.ts",
     "app/live-set-lists.tsx",

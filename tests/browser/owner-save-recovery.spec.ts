@@ -158,6 +158,46 @@ async function checkActive(page: Page) {
   await page.getByRole("button", { name: "Check saved Rad Dad", exact: true }).first().click();
 }
 
+for (const [before, after] of [["published", "archived"], ["draft", "published"]] as const) {
+  test(`lookup completion uses ${after} status after a pending ${before} lookup`, async ({ page }) => {
+    await openOwner(page, { shows: [{ ...SHOW_A, status: before }] });
+    let release!: () => void;
+    const pendingLookup = new Promise<void>((resolve) => { release = resolve; });
+    const videoUrl = "https://www.youtube.com/watch?v=FixVideo000";
+    await page.route((url) => url.pathname === "/api/enrich", async (route) => {
+      await pendingLookup;
+      await route.fulfill({ json: { youtubeUrl: videoUrl, youtubeVideoId: "FixVideo000" } });
+    });
+    await page.route((url) => url.pathname === "/api/shows", async (route) => {
+      expect(route.request().postDataJSON()).toEqual({ action: "status", showSlug: SHOW_A.slug, status: after });
+      await route.fulfill({ json: { show: { ...SHOW_A, status: after } } });
+    });
+
+    await page.getByText("Details, song resources, and rehearsal notes").first().click();
+    await page.getByRole("button", { name: "Find resources", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Finding...", exact: true })).toBeVisible();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", {
+      name: after === "published" ? "Publish saved show" : "Archive show",
+      exact: true,
+    }).first().click();
+    await expect(page.locator(`[data-status="${after}"]`).first()).toBeVisible();
+    release();
+
+    await expect(page.getByPlaceholder("Paste a YouTube link")).toHaveValue(videoUrl);
+    const notice = page.getByText(/^Candidate YouTube filled in/);
+    await expect(notice).toBeVisible();
+    if (after === "published") {
+      await expect(notice).toContainText("Save to put it on the public list");
+      await expect(notice).not.toContainText("private show");
+    } else {
+      await expect(notice).toContainText("private show");
+      await expect(notice).toContainText("Publish opens its public list");
+      await expect(notice).not.toContainText("Save to put it on the public list");
+    }
+  });
+}
+
 test("later edits typed during Save stay unsaved after the sent list writes", async ({ page }, testInfo) => {
   const published = { ...SHOW_A, status: "published" as const };
   let release: (() => void) | undefined;

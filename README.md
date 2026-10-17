@@ -245,9 +245,14 @@ ADMIN_EMAIL=jeffstory007@gmail.com
 YOUTUBE_API_KEY=
 ```
 
-`ADMIN_EMAIL` is required for owner writes. `YOUTUBE_API_KEY` is optional. When
-the key is absent, Show Control creates a YouTube search link and lets the owner
-paste the preferred video URL.
+`ADMIN_EMAIL` is required for owner writes. `YOUTUBE_API_KEY` is optional. Find
+resources first uses a curated exact match. With a key it can query the YouTube
+Data API; without a key it still tries a public YouTube search plus oEmbed
+check. That public fallback also runs if the Data API finds no accepted match.
+Genius lyrics lookup runs alongside either YouTube path. A filled-in URL is a
+draft candidate until Save. If no direct match is accepted, Show Control keeps
+search links for manual paste. Lookups never appear on the public list until the owner Saves.
+Draft and archived shows stay private after Save; Publish opens their public share link.
 
 Set Coach always provides a local smart review. Add `OPENAI_API_KEY` as a Sites
 secret to enable the optional AI review, and optionally set `OPENAI_MODEL`

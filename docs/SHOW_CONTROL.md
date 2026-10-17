@@ -245,10 +245,11 @@ For every editable song, the owner can change:
 2. Enter the title and artist in **Add a song**.
 3. Select **Add + find**.
 4. The song is added to the bottom of the draft.
-5. Show Control attempts to find YouTube automatically when the optional API
-   connection is available. Otherwise it prepares a YouTube search.
-6. Paste the exact video URL if the search result is not the band's preferred
-   version.
+5. Show Control looks up candidate YouTube and lyrics. A YouTube Data API key is
+   optional: without it, Find resources still uses public YouTube search, oEmbed,
+   and Genius. Public search also runs if the Data API finds no accepted match.
+   A filled-in URL is a candidate until you Save.
+6. If no direct video was applied, paste the exact video URL you want.
 7. Move the song into position and save the set.
 
 Adding a song creates a draft. It is not public until that set is saved.
@@ -297,9 +298,11 @@ The confirmed originals are The Drinking Song, all Stalemate songs, and The Way
 I Love You. The remaining Rad Dad songs are covers and can show both resources
 when a direct URL exists.
 
-Without a configured YouTube Data API key, **Find YouTube** opens or prepares a
-search instead of choosing a video without the owner's review. This is the
-expected fallback behavior.
+Without a configured YouTube Data API key, **Find resources** still tries the
+public YouTube search and oEmbed path, and Genius lyrics. A candidate video may
+be filled in for review; search links stay in Show Control if no direct match is
+accepted. Nothing becomes public until Save.
+Draft and archived shows stay private after Save; Publish opens their public share link.
 
 ## Use rehearsal details
 
