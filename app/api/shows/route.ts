@@ -1,6 +1,10 @@
 import { env } from "cloudflare:workers";
 import { getAdminUser } from "../../../lib/admin-access";
 import { showStatusChangeBlockReason } from "../../../lib/show-lifecycle";
+import {
+  isShowCalendarDate,
+  pairedShowHoursError,
+} from "../../../lib/show-clone-validation";
 import { cloneShowNightHours, shouldCopyCloneSongs } from "../../../lib/show-public";
 import { ensureShowSeeded, getManagedShows } from "../../../lib/show-store";
 
@@ -45,7 +49,7 @@ export async function POST(request: Request) {
     const startTime = clean(payload.startTime, 40);
     const endTime = clean(payload.endTime, 40);
     if (payload.action === "clone") {
-      if (!isCalendarDate(showDate)) {
+      if (!isShowCalendarDate(showDate)) {
         return Response.json({ error: "Choose a valid show date." }, { status: 400 });
       }
       if (Boolean(startTime) !== Boolean(endTime)) {
@@ -53,6 +57,12 @@ export async function POST(request: Request) {
           { error: "Enter both start and end times, or clear both to leave hours optional. No draft was created." },
           { status: 400 },
         );
+      }
+      if (startTime && endTime) {
+        const hoursError = pairedShowHoursError(startTime, endTime);
+        if (hoursError) {
+          return Response.json({ error: hoursError }, { status: 400 });
+        }
       }
     }
 
@@ -192,14 +202,6 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 80);
-}
-
-function isCalendarDate(value: unknown): value is string {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00.000Z`);
-  // Date parsing rolls impossible days forward; require the same UTC date back.
-  return Number.isFinite(date.getTime()) && date.getUTCFullYear() > 0 &&
-    date.toISOString().slice(0, 10) === value;
 }
 
 function clean(value: unknown, maxLength: number) {

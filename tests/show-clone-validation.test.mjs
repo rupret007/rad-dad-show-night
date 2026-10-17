@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { SHOW_TIME_ZONE } from "../lib/show-read-integrity.ts";
+import {
+  isCalendarDateUtcMidnight,
+  isShowCalendarDate,
+  showCalendarYmdFromInstant,
+  SHOW_CALENDAR_TIME_ZONE,
+} from "../lib/show-clone-validation.ts";
 import { cloneRequest, loadShowsRoute } from "./fixtures/shows-route.mjs";
 
 function fixture({ owner = true, sourceExists = true } = {}) {
@@ -76,6 +83,39 @@ for (const showDate of ["2026-02-28", "2028-02-29", "2000-02-29", "2026-04-30", 
     assert.equal(route.calls.batches[0][0].values[4], showDate);
   });
 }
+
+test("clone POST accepts paired hours when end is after start on the same night", async () => {
+  const route = fixture();
+  const response = await route.POST(cloneRequest({ startTime: "7:00 PM", endTime: "10:30 PM" }));
+  assert.equal(response.status, 201);
+  assert.deepEqual(route.calls.batches[0][0].values.slice(5, 7), ["7:00 PM", "10:30 PM"]);
+});
+
+test("clone POST rejects paired hours when end is before start without a valid overnight span", async () => {
+  const route = fixture();
+  const response = await route.POST(cloneRequest({ startTime: "3:00 PM", endTime: "1:00 PM" }));
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error, /after start|overnight/i);
+  assert.deepEqual(route.calls, { seeds: 0, prepares: 0, batches: [] });
+});
+
+test("clone POST accepts paired hours across midnight as an overnight span", async () => {
+  const route = fixture();
+  const response = await route.POST(cloneRequest({ startTime: "9:00 PM", endTime: "1:00 AM" }));
+  assert.equal(response.status, 201);
+  assert.deepEqual(route.calls.batches[0][0].values.slice(5, 7), ["9:00 PM", "1:00 AM"]);
+});
+
+test("show calendar dates use America/Chicago wall days, not UTC midnight parsing", () => {
+  assert.equal(SHOW_CALENDAR_TIME_ZONE, SHOW_TIME_ZONE);
+  assert.equal(SHOW_CALENDAR_TIME_ZONE, "America/Chicago");
+  assert.equal(isShowCalendarDate("2026-04-31"), false);
+  assert.equal(isShowCalendarDate("0001-01-01"), true);
+  assert.equal(isCalendarDateUtcMidnight("0001-01-01"), true);
+  const utcJuneFifteenMidnight = Date.UTC(2026, 5, 15, 0, 0, 0);
+  assert.equal(showCalendarYmdFromInstant(utcJuneFifteenMidnight), "2026-06-14");
+  assert.equal(isShowCalendarDate("2026-06-15"), true);
+});
 
 test("clone POST retains owner and missing-source guards", async () => {
   const anonymous = fixture({ owner: false });

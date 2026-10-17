@@ -43,10 +43,11 @@ else
 fi
 # npm test includes the declared Vinext production build, isolation, and D1 suites.
 run npm test
-if [ -x node_modules/.bin/next ]; then
-  run ./node_modules/.bin/next build
+# Vinext production build (package.json "build"); npm test already runs it once.
+if node -e 'process.exit(JSON.parse(require("fs").readFileSync("package.json", "utf8")).scripts.build ? 0 : 1)'; then
+  run npm run build
 else
-  printf '\nNOT RUN: next build (Next CLI absent; declared build uses Vinext). Required literal Next gate remains unmet.\n'
+  printf '\nFAIL: package.json has no build script for this Vinext app.\n'
   result=1
 fi
 exit "$result"

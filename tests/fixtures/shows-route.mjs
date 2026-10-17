@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import { webcrypto } from "node:crypto";
 import ts from "typescript";
+import * as showCloneValidation from "../../lib/show-clone-validation.ts";
 import * as showPublic from "../../lib/show-public.ts";
 import * as lifecycle from "../../lib/show-lifecycle.ts";
 
@@ -19,6 +20,7 @@ export function loadShowsRoute({ db, getAdminUser, store }) {
     require(id) {
       if (id === "cloudflare:workers") return { env: { DB: db } };
       if (id === "../../../lib/admin-access") return { getAdminUser };
+      if (id === "../../../lib/show-clone-validation") return showCloneValidation;
       if (id === "../../../lib/show-public") return showPublic;
       if (id === "../../../lib/show-lifecycle") return lifecycle;
       if (id === "../../../lib/show-store") return store;
