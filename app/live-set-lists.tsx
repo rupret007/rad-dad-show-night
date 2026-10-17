@@ -1,6 +1,6 @@
 "use client";
 
-import {
+import React, {
   useEffect,
   useMemo,
   useRef,
@@ -25,7 +25,7 @@ import {
   type ShowDisplaySource,
   type ShowSetDefinition,
 } from "../lib/show-read-integrity";
-import { practicePositionKey } from "../lib/show-night-use";
+import { practicePositionKey, type OpeningSetFlow } from "../lib/show-night-use";
 import { resolveRunPosition } from "../lib/run-position";
 import { visibleOfficialSets } from "../lib/show-public";
 import styles from "./show-page.module.css";
@@ -83,6 +83,7 @@ type LiveSetListsProps = {
   showSlug: string;
   showId?: string;
   practiceMode?: boolean;
+  openingFlow?: OpeningSetFlow | null;
 };
 
 // A client navigation to another night must retire the old read and position,
@@ -112,14 +113,19 @@ async function readBeforeAbort<T>(signal: AbortSignal, read: () => Promise<T>): 
 function SongReferenceDetails({
   song,
   showCurrentFlag,
+  showTbdFlag = false,
 }: {
   song: ShowSong;
   showCurrentFlag: boolean;
+  showTbdFlag?: boolean;
 }) {
   return (
     <>
       <div className={styles.songTitleLine}>
         <strong className={styles.songTitle}>{song.title}</strong>
+        {showTbdFlag ? (
+          <span className={styles.tbdFlag}>TBD</span>
+        ) : null}
         {showCurrentFlag ? (
           <span className={styles.currentFlag}>Current</span>
         ) : null}
@@ -156,6 +162,7 @@ function ShowLiveSetLists({
   showSlug,
   showId,
   practiceMode = false,
+  openingFlow,
 }: LiveSetListsProps) {
   const [songs, setSongs] = useState(initialSongs);
   const [sets, setSets] = useState(initialSets);
@@ -678,13 +685,20 @@ function ShowLiveSetLists({
                   practiceMode && song.chordsUrl && !isSearchResourceUrl(song.chordsUrl)
                     ? song.chordsUrl
                     : "";
+                const stageCue = openingFlow?.hasStageCues && set.slug === "jeff-story-friends"
+                  ? openingFlow.stageCues.find((cue) => cue.afterPosition === song.position)
+                  : null;
+                const isTbdSlot = openingFlow?.hasTbdSlot && set.slug === "jeff-story-friends"
+                  && song.position === openingFlow.tbdSlotPosition;
+                const songKey = runPosition.kind === "ambiguous" ? `${set.slug}:${songIndex}` : song.id;
                 return (
+                  <React.Fragment key={songKey}>
                   <li
                     className={`${styles.songRow} ${
                       song.transition ? styles.flowSong : ""
-                    } ${runPosition.kind === "selected" && currentSongId === String(song.id) ? styles.currentSong : ""}`}
+                    } ${isTbdSlot ? styles.tbdSong : ""} ${runPosition.kind === "selected" && currentSongId === String(song.id) ? styles.currentSong : ""}`}
                     id={practiceMode && runPosition.kind !== "ambiguous" ? `practice-song-${song.id}` : undefined}
-                    key={runPosition.kind === "ambiguous" ? `${set.slug}:${songIndex}` : song.id}
+                    data-tbd={isTbdSlot ? "true" : undefined}
                   >
                     <span className={styles.songNumber}>
                       {String(song.position).padStart(2, "0")}
@@ -701,11 +715,16 @@ function ShowLiveSetLists({
                         <SongReferenceDetails
                           song={song}
                           showCurrentFlag={runPosition.kind === "selected" && currentSongId === String(song.id)}
+                          showTbdFlag={isTbdSlot}
                         />
                       </button>
                     ) : (
                       <div className={styles.songMain}>
-                        <SongReferenceDetails song={song} showCurrentFlag={false} />
+                        <SongReferenceDetails
+                          song={song}
+                          showCurrentFlag={false}
+                          showTbdFlag={isTbdSlot}
+                        />
                       </div>
                     )}
                     {!song.isOriginal &&
@@ -747,6 +766,14 @@ function ShowLiveSetLists({
                       </div>
                     ) : null}
                   </li>
+                  {stageCue ? (
+                    <li className={styles.stageCueDivider} data-cue-accent={stageCue.accent} aria-label={`Stage cue: ${stageCue.label}`}>
+                      <span className={styles.stageCueLine} aria-hidden="true" />
+                      <span className={styles.stageCueLabel}>{stageCue.label}</span>
+                      <span className={styles.stageCueLine} aria-hidden="true" />
+                    </li>
+                  ) : null}
+                  </React.Fragment>
                 );
               })}
             </ol>

@@ -20,7 +20,10 @@ test("public song rows are not buttons; practice rows keep the picker contract",
 
   assert.match(source, /practiceMode \? \(/);
   assert.match(source, /<div className=\{styles\.songMain\}>/);
-  assert.match(source, /<SongReferenceDetails song=\{song\} showCurrentFlag=\{false\} \/>/);
+  assert.match(
+    source,
+    /<SongReferenceDetails\s+song=\{song\}\s+showCurrentFlag=\{false\}\s+showTbdFlag=\{isTbdSlot\}/,
+  );
   assert.match(source, /aria-label=\{`Mark \$\{song\.title\} as current song`\}/);
   assert.match(
     source,
