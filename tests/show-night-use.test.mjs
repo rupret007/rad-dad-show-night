@@ -237,16 +237,32 @@ test("phone first open shows this show's identity before the one primary action"
   assert.doesNotMatch(helper, /SHOW_DETAILS/);
 
   const identityAt = page.indexOf("styles.eventIdentity");
+  const showTitleAt = page.indexOf("styles.heroShowTitle");
   const actionAt = page.indexOf("styles.nextActions");
   const restAt = page.indexOf("styles.heroRest");
-  assert.ok(identityAt >= 0 && actionAt >= 0 && restAt >= 0);
+  const nextStepH2At = page.indexOf("<h2>{openAction.title}</h2>");
   assert.ok(
-    identityAt < actionAt,
-    "current-show identity must precede the primary action in source",
+    identityAt >= 0 &&
+      showTitleAt >= 0 &&
+      actionAt >= 0 &&
+      restAt >= 0 &&
+      nextStepH2At >= 0,
+  );
+  assert.ok(
+    identityAt < showTitleAt,
+    "current-show identity must precede the show title in source",
+  );
+  assert.ok(
+    showTitleAt < actionAt,
+    "the show h1 must precede the one next step section in DOM order",
+  );
+  assert.ok(
+    showTitleAt < nextStepH2At,
+    "the show h1 must precede the one next step h2 in DOM order",
   );
   assert.ok(actionAt < restAt, "the primary action stays before the later hero facts");
 
-  const identityBlock = page.slice(identityAt, actionAt);
+  const identityBlock = page.slice(identityAt, showTitleAt);
   assert.match(identityBlock, /\{eventIdentity\.title\}/);
   assert.match(identityBlock, /\{eventIdentity\.date\}/);
   assert.match(identityBlock, /\{eventIdentity\.venue\}/);
@@ -258,6 +274,8 @@ test("phone first open shows this show's identity before the one primary action"
 
   const beforePhone = styles.slice(0, styles.indexOf("@media (max-width: 720px)"));
   assert.match(beforePhone, /\.eventIdentity \{\s*display: none;/);
+  assert.match(beforePhone, /\.heroShowTitle \{ order: 4;/);
+  assert.match(beforePhone, /\.nextActions \{ order: 3;/);
 
   const phone = cssMediaQueryBlock(styles, "@media (max-width: 720px)");
   const phoneIdentity = cssRule(phone, ".eventIdentity");
@@ -278,6 +296,7 @@ test("phone first open shows this show's identity before the one primary action"
   assert.match(phone, /\.firstOpenLead \{ order: 1;/);
   assert.match(phone, /\.nextActions \{ order: 3;/);
   assert.match(phone, /\.heroPosterWrap \{ order: 4;/);
+  assert.match(phone, /\.heroShowTitle \{ order: 5;/);
   assert.match(phone, /\.heroRest \{ order: 5;/);
 
   const desktop = cssMediaQueryBlock(styles, "@media (max-width: 960px)");
