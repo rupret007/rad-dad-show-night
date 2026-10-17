@@ -19,6 +19,7 @@ const supportCode = ts.transpileModule(supportSource, {
 
 async function offlineSupportFixture({ deferReplies = false } = {}) {
   const storage = new Map([[integrity.offlineReadyKey("synthetic-night"), "previous-copy"]]);
+  const storageWrites = [];
   const events = [];
   const messages = [];
   const replyPorts = [];
@@ -49,7 +50,10 @@ async function offlineSupportFixture({ deferReplies = false } = {}) {
       },
     },
     performance: { getEntriesByType() { return [{ name: `${ORIGIN}/assets/dynamic-chunk.js` }]; } },
-    localStorage: { removeItem(key) { storage.delete(key); }, setItem(key, value) { storage.set(key, value); } },
+    localStorage: { removeItem(key) { storage.delete(key); }, setItem(key, value) {
+      storageWrites.push([key, value]);
+      storage.set(key, value);
+    } },
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
     MessageChannel: class { constructor() { this.port1 = {}; this.port2 = this.port1; } },
     navigator: { serviceWorker: {
@@ -73,7 +77,7 @@ async function offlineSupportFixture({ deferReplies = false } = {}) {
   context.exports.default();
   timers.get(1)();
   await new Promise(setImmediate);
-  return { storage, events, messages, async replyTo(index, result) {
+  return { storage, storageWrites, events, messages, async replyTo(index, result) {
     replyPorts[index].onmessage({ data: result });
     await new Promise(setImmediate);
   }, async retry(result) {
@@ -111,8 +115,28 @@ test("offline client cannot restore readiness from an older success while a newe
   assert.equal(fixture.messages.length, 2, "The online event still triggers a replacement attempt");
   assert.equal(fixture.storage.has(key), false, "An older success cannot certify an incomplete refresh");
   assert.equal(fixture.events.at(-1).detail.cachedAt, null);
+  assert.deepEqual(fixture.storageWrites, [], "No stale readiness may be written, even temporarily");
+  assert.ok(fixture.events.every((event) => event.detail.cachedAt === null), "No stale ready event may be announced");
   await fixture.replyTo(1, { ready: false, cacheVersion: 5 });
   assert.equal(fixture.storage.has(key), false, "A failed replacement leaves readiness cleared");
+});
+
+test("offline client announces only the latest success when online retries start before the older attempt resolves", async () => {
+  const fixture = await offlineSupportFixture({ deferReplies: true });
+  const key = integrity.offlineReadyKey("synthetic-night");
+  await fixture.retry({ ready: true, cacheVersion: 5 });
+  await fixture.retry({ ready: true, cacheVersion: 5 });
+  assert.equal(fixture.messages.length, 1, "Worker preparations remain serialized");
+  await fixture.replyTo(0, { ready: true, cacheVersion: 5 });
+  assert.equal(fixture.messages.length, 2, "Pending online retries coalesce into a fresh attempt");
+  assert.equal(fixture.storage.has(key), false);
+  assert.deepEqual(fixture.storageWrites, [], "The older reply must never restore readiness");
+  assert.ok(fixture.events.every((event) => event.detail.cachedAt === null));
+  await fixture.replyTo(1, { ready: true, cacheVersion: 5 });
+  assert.ok(fixture.storage.get(key), "The latest successful attempt can certify readiness");
+  assert.equal(fixture.storageWrites.length, 1);
+  assert.equal(fixture.events.filter((event) => event.detail.cachedAt !== null).length, 1);
+  assert.equal(fixture.events.at(-1).detail.cachedAt, fixture.storage.get(key));
 });
 
 function publicPayload(extra = {}) {
@@ -237,7 +261,8 @@ for (const asset of ["/assets/page.js", "/assets/page.css", "/assets/chunk.mjs?v
           if (failure === "network") throw new Error("Synthetic asset fetch failure");
           if (failure === "http") return new Response("Missing asset", { status: 404 });
         }
-        return url === API ? publicResponse() : new Response("Synthetic public resource");
+        if (url === API) return publicResponse();
+        return new URL(url).pathname === "/" ? htmlResponse() : new Response("Synthetic public resource");
       }, (url) => {
         if (url === assetUrl && failing && failure === "cache-write") throw new Error("Synthetic quota failure");
       });
@@ -263,11 +288,11 @@ test("actual SW: CACHE_SHOW cannot fetch or cache owner URLs, even alongside val
   const fixture = worker(async (url) => url.includes("/api/show") ? publicResponse() : htmlResponse());
   const refused = await fixture.message([OWNER, `${ORIGIN}/show-control?show=synthetic-night`]);
   assert.equal(refused.ready, false);
-  assert.equal(refused.cacheVersion, 4);
+  assert.equal(refused.cacheVersion, 5);
   assert.equal(fixture.calls.fetch.length, 0);
   const result = await fixture.message([...resources, OWNER]);
   assert.equal(result.ready, true);
-  assert.equal(result.cacheVersion, 4);
+  assert.equal(result.cacheVersion, 5);
   assert.equal(result.cached, 3);
   assert.equal(await fixture.cached(OWNER), undefined);
   assert.ok(fixture.calls.fetch.every((call) => call.credentials === "omit" && call.url !== OWNER));

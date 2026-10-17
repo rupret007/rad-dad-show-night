@@ -74,7 +74,9 @@ export default function OfflineSupport() {
         );
 
         const result = await sendCacheMessage(registration.active, urls);
-        if (!active || !result.ready) return;
+        // A queued refresh supersedes this result before it can announce or
+        // persist readiness, even while preparations remain serialized.
+        if (!active || prepareAgain || !result.ready) return;
         const cachedAt = new Date().toISOString();
         localStorage.setItem(offlineReadyKey(showSlug), cachedAt);
         window.dispatchEvent(

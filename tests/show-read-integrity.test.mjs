@@ -157,8 +157,8 @@ test("only the matching worker version can mark this offline cache ready", async
   }
   const support = await readFile(offlineSupportUrl, "utf8");
   assert.match(support, /ready: canConfirmOfflineReady\(event\.data\)/);
-  assert.match(support, /if \(!active \|\| !result\.ready\) return/);
-  assert.ok(support.indexOf("if (!active || !result.ready) return") < support.indexOf("localStorage.setItem(offlineReadyKey"));
+  assert.match(support, /if \(!active \|\| prepareAgain \|\| !result\.ready\) return/);
+  assert.ok(support.indexOf("if (!active || prepareAgain || !result.ready) return") < support.indexOf("localStorage.setItem(offlineReadyKey"));
 });
 
 test("set times come from this show's timeline, not another event's defaults", () => {

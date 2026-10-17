@@ -37,7 +37,7 @@ self.addEventListener("message", (event) => {
   if (event.data?.type !== "CACHE_SHOW" || !Array.isArray(event.data.urls)) return;
   event.waitUntil(
     cacheShowResources(event.data.urls).then((result) => {
-      event.ports[0]?.postMessage({ ...result, cacheVersion: 4 });
+      event.ports[0]?.postMessage({ ...result, cacheVersion: 5 });
     }),
   );
 });
