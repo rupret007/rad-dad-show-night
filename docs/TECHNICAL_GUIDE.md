@@ -211,11 +211,19 @@ URLs are exposed for covers and hidden for originals.
 
 ### `site_settings`
 
-Stores the one-time seed marker. On the first successful database request,
-`lib/show-store.ts` inserts the 32 confirmed baseline songs and records
-`show-control-seed-v1`. Future requests do not reseed deleted or changed songs.
+Stores the `show-control-seed-v1` marker checked by `ensureShowSeeded` in
+`lib/show-store.ts`. A database read, including `GET /api/show`, can have a
+one-time seed side effect when that marker is absent: it attempts to insert
+the 32 confirmed baseline songs with `INSERT OR IGNORE` and records the marker
+in the same D1 batch. Existing song IDs are not overwritten. Once the marker
+is present, future requests do not reseed deleted or changed songs.
 
-The index `idx_songs_set_position` supports ordered reads by set.
+The index `idx_songs_show_set_position` on `(show_id, set_slug, position)`
+supports ordered set reads within a show. It is defined in `db/schema.ts`;
+`drizzle/0002_multi_show_manager.sql` replaces the earlier set/position index.
+
+These descriptions reflect repository source and migration definitions;
+live database validation is **NOT RUN** for this documentation correction.
 
 ## Environment variables
 
@@ -236,7 +244,13 @@ YouTube search URL. The owner can choose and paste the correct version.
 
 ### `GET /api/show`
 
-Read-only and uncached. Returns show metadata, set definitions, songs, and the
+Returns `Cache-Control: no-store`. `getShowPayload` calls `ensureShowSeeded`
+before resolving the requested show, so GET can have a one-time database seed
+side effect when the `show-control-seed-v1` marker is absent (see `site_settings`
+above). It is read-only after the seed marker is present; subsequent reads do
+not restore deleted songs or overwrite owner changes.
+
+Returns show metadata, set definitions, songs, and the
 most recent update timestamp plus `dataSource`. Public reads return published
 shows only and omit owner rehearsal notes.
 Draft and archived slugs return the same not-found response as an unknown slug.
