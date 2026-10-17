@@ -20,6 +20,8 @@ jobs:
       - run: npm run test:d1
       - run: npm run lint
       - run: npm run typecheck:suggestions
+      - run: npm run typecheck
+      - run: npm run test:types
       - run: npm run build
       - run: npm run test:worker
       - run: npx playwright install --with-deps chromium
