@@ -1,5 +1,6 @@
-// v2 could retain owner data; v3 could retain unverified HTML.
-const CACHE_NAME = "rad-dad-show-offline-v4";
+// v2 could cache owner responses; v3 could announce readiness without JS/CSS;
+// v4 shipped separately (R13 HTML verification), so R14 readiness rules take v5.
+const CACHE_NAME = "rad-dad-show-offline-v5";
 const APP_SHELL = [
   "/offline.html",
   "/manifest.webmanifest",
@@ -36,7 +37,7 @@ self.addEventListener("message", (event) => {
   if (event.data?.type !== "CACHE_SHOW" || !Array.isArray(event.data.urls)) return;
   event.waitUntil(
     cacheShowResources(event.data.urls).then((result) => {
-      event.ports[0]?.postMessage({ ...result, cacheVersion: 4 });
+      event.ports[0]?.postMessage({ ...result, cacheVersion: 5 });
     }),
   );
 });
@@ -116,13 +117,16 @@ async function cacheShowResources(values) {
     if (url) cachedUrls.add(url);
   }
 
-  const requiredUrls = urls.filter((value) => {
+  const showUrls = urls.filter((value) => {
     const url = new URL(value, self.location.origin);
     return url.pathname === "/" || url.pathname === "/api/show";
   });
+  // Every requested public resource is required, including extensionless scripts
+  // and styles. A fetch or cache-write failure must not certify a partial copy.
+  const requiredUrls = urls;
   return {
     ready:
-      requiredUrls.length >= 3 &&
+      showUrls.length >= 3 &&
       requiredUrls.every((url) => cachedUrls.has(url)),
     cached: cachedUrls.size,
   };

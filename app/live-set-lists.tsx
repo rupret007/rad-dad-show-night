@@ -364,8 +364,8 @@ function ShowLiveSetLists({
       );
     };
     const onOfflineReady = (event: Event) => {
-      const detail = (event as CustomEvent<{ showSlug?: string }>).detail;
-      if (detail?.showSlug === showSlug) setOfflineReady(true);
+      const detail = (event as CustomEvent<{ showSlug?: string; cachedAt?: string | null }>).detail;
+      if (detail?.showSlug === showSlug) setOfflineReady(Boolean(detail.cachedAt));
     };
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);

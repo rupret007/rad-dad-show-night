@@ -4,7 +4,7 @@ export const SHOW_SNAPSHOT_VERSION = 1;
 export const MAX_SNAPSHOT_SONGS = 180;
 export const CONFIRMED_FALLBACK_SHOW_SLUG = "guitars-growlers-2026-09-19";
 export const SHOW_TIME_ZONE = "America/Chicago";
-export const OFFLINE_CACHE_VERSION = 4;
+export const OFFLINE_CACHE_VERSION = 5;
 
 const SNAPSHOT_SET_SLUGS = new Set<ShowSong["setSlug"]>([
   "jeff-story-friends",
