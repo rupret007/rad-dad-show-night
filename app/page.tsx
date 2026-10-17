@@ -262,6 +262,14 @@ export default async function Home({
             <span>{eventIdentity.venue}</span>
           </div>
 
+          <div className={styles.heroShowTitle}>
+            <h1 className={styles.heroTitle}>
+              RAD DAD <span className={styles.heroPlus}>+</span>
+              <br />
+              FRIENDS
+            </h1>
+          </div>
+
           <section
             className={styles.nextActions}
             aria-label="One next step for this show"
@@ -319,12 +327,6 @@ export default async function Home({
           </section>
 
           <div className={styles.heroRest}>
-          <h1 className={styles.heroTitle}>
-            RAD DAD <span className={styles.heroPlus}>+</span>
-            <br />
-            FRIENDS
-          </h1>
-
           <p className={styles.heroDek}>
             The live set surface for this night: official order, handoffs, and
             keys. Covers can show YouTube and lyrics when saved; originals hide

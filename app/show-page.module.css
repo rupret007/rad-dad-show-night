@@ -170,10 +170,11 @@
 .poster { display: block; width: 100%; height: auto; filter: saturate(1.06) contrast(1.04); }
 .posterTape { position: absolute; top: -18px; left: 36%; z-index: 2; width: 96px; height: 38px; transform: rotate(5deg); background: rgba(184, 245, 39, 0.84); clip-path: polygon(3% 8%, 98% 0, 94% 95%, 0 100%); }
 
-.heroCopy { max-width: 660px; }
-.firstOpenLead { max-width: 660px; }
-.eventIdentity { display: none; }
-.heroRest { max-width: 660px; }
+.heroCopy { max-width: 660px; display: flex; flex-direction: column; }
+.firstOpenLead { max-width: 660px; order: 1; }
+.eventIdentity { display: none; order: 2; }
+.heroShowTitle { order: 4; }
+.heroRest { max-width: 660px; order: 5; }
 .eyebrow { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 10px; color: var(--blue); font-size: 0.83rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
 .publicShareLine { margin: 0 0 16px; color: var(--lime); font-size: 0.86rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
 .liveDot { width: 9px; height: 9px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 0 6px rgba(255, 61, 135, 0.12); animation: pulse 2.4s ease-out infinite; }
@@ -188,7 +189,7 @@
 .eventFact + .eventFact { padding-left: 17px; border-left: 1px solid rgba(255, 255, 255, 0.13); }
 .factLabel { display: block; margin-bottom: 5px; color: var(--lime); font-size: 0.69rem; font-weight: 800; letter-spacing: 0.17em; text-transform: uppercase; }
 .factValue { display: block; font-size: 1rem; line-height: 1.18; text-transform: uppercase; }
-.nextActions { margin: 22px 0 0; display: grid; grid-template-columns: 1fr; }
+.nextActions { order: 3; margin: 22px 0 0; display: grid; grid-template-columns: 1fr; }
 .nextAction { padding: 16px 18px 17px; border: 1px solid rgba(184, 245, 39, 0.38); background: rgba(184, 245, 39, 0.075); }
 .nextAction[data-kind="suggest-song"] { border-color: rgba(255, 61, 135, 0.42); background: rgba(255, 61, 135, 0.08); }
 .nextKicker { margin: 0; color: var(--lime); font-size: 0.67rem; font-weight: 800; letter-spacing: 0.17em; text-transform: uppercase; }
@@ -439,6 +440,7 @@
   }
   .nextActions { order: 3; margin-top: 0; }
   .heroPosterWrap { order: 4; justify-self: center; align-self: center; width: min(72vw, 280px); }
+  .heroShowTitle { order: 5; }
   .heroRest { order: 5; }
   .heroCopy { text-align: left; }
   .heroTitle { font-size: clamp(3.4rem, 16vw, 5.4rem); }

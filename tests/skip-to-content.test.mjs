@@ -38,6 +38,20 @@ test("the public show page skips past header navigation into main content", asyn
   assert.match(readme, /skip link/i);
 });
 
+test("the public hero keeps one show h1 before the one next step h2 in DOM order", async () => {
+  const page = await readFile(pageUrl, "utf8");
+
+  const showTitleAt = page.indexOf("styles.heroShowTitle");
+  const nextStepH2At = page.indexOf("<h2>{openAction.title}</h2>");
+  assert.ok(showTitleAt > 0 && nextStepH2At > showTitleAt);
+  assert.match(page, /className=\{styles\.heroTitle\}/);
+  assert.equal(
+    page.match(/className=\{styles\.heroTitle\}/g)?.length,
+    1,
+    "public hero uses a single show identity h1",
+  );
+});
+
 test("Show Control skips past owner chrome into the workspace", async () => {
   const [control, styles] = await Promise.all([
     readFile(controlUrl, "utf8"),
