@@ -73,6 +73,15 @@ type SetReview = {
   showId: string; showSlug: string; setSlug: SetSlug; songs: ShowSong[];
   reviewedBase: string; reviewedVersion: string;
 };
+const resourceFields = ["youtubeUrl", "youtubeVideoId", "chordsUrl", "lyricsUrl"] as const;
+type ResourceField = typeof resourceFields[number];
+type ResourceOperation = {
+  controller: AbortController;
+  showSlug: string;
+  song: ShowSong;
+  edited: Set<ResourceField>;
+};
+
 type OwnerOperation = { controller: AbortController; showSlug: string; showId: string; setSlug: SetSlug };
 
 const emptySongMap = (): SongMap => ({
@@ -108,7 +117,7 @@ export default function ShowControlClient({
   userEmail: string;
   signOutHref: string;
 }) {
-  const [songsBySet, setSongsBySet] = useState<SongMap>(emptySongMap);
+  const [songsBySet, setSongsBySetState] = useState<SongMap>(emptySongMap);
   const [activeSet, setActiveSet] = useState<SetSlug>("rad-dad");
   const [dirtySets, setDirtySets] = useState<Set<SetSlug>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -131,6 +140,7 @@ export default function ShowControlClient({
   const [reviewReadFailed, setReviewReadFailed] = useState<Partial<Record<SetSlug, boolean>>>({});
   const [checkingSet, setCheckingSet] = useState<SetSlug | null>(null);
   const ownerOperation = useRef<OwnerOperation | null>(null);
+  const resourceOperation = useRef<ResourceOperation | null>(null);
   const retiredVersions = useRef<Partial<Record<SetSlug, string[]>>>({});
   const mounted = useRef(true);
   const reviewRef = useRef<HTMLElement | null>(null);
@@ -138,12 +148,16 @@ export default function ShowControlClient({
   const previewReturnFocusRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; ownerOperation.current?.controller.abort(); ownerOperation.current = null; };
+    return () => { mounted.current = false; resourceOperation.current?.controller.abort(); resourceOperation.current = null; ownerOperation.current?.controller.abort(); ownerOperation.current = null; };
   }, []);
   const songsBySetRef = useRef<SongMap>(emptySongMap());
-  useEffect(() => {
-    songsBySetRef.current = songsBySet;
-  }, [songsBySet]);
+  function setSongsBySet(next: SongMap | ((current: SongMap) => SongMap)) {
+    // Save receipts and lookup bodies can settle before React commits a render.
+    // Every replacement must become visible to the next operation immediately.
+    const value = typeof next === "function" ? next(songsBySetRef.current) : next;
+    songsBySetRef.current = value;
+    setSongsBySetState(value);
+  }
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
   const [suggestionsVerified, setSuggestionsVerified] = useState(false);
@@ -313,27 +327,56 @@ export default function ShowControlClient({
     setNotice(showOwnerDirtyNotice(activeShow.status));
   }
 
+  function retireResourceLookup() {
+    resourceOperation.current?.controller.abort();
+    resourceOperation.current = null;
+    setEnriching(null);
+  }
+
+  function changeActiveSet(setSlug: SetSlug) {
+    if (setSlug !== activeSet) retireResourceLookup();
+    setActiveSet(setSlug);
+  }
+
   function replaceSet(setSlug: SetSlug, nextSongs: ShowSong[]) {
-    setSongsBySet((current) => ({
-      ...current,
+    const operation = resourceOperation.current;
+    if (operation?.song.setSlug === setSlug) {
+      // Reordering keeps the row; removal/replacement retires its request,
+      // including a later Undo that restores the same ID.
+      const retained = nextSongs.find((song) => song.id === operation.song.id);
+      if (!retained || retained.title !== operation.song.title || retained.artist !== operation.song.artist
+        || retained.isOriginal !== operation.song.isOriginal) retireResourceLookup();
+    }
+    const next = {
+      ...songsBySetRef.current,
       [setSlug]: nextSongs.map((song, index) => ({
         ...song,
         setSlug,
         position: index + 1,
       })),
-    }));
+    };
+    setSongsBySet(next);
     markDirty(setSlug);
   }
 
   function updateSong(id: number | string, patch: Partial<ShowSong>, setSlug = activeSet) {
-    setSongsBySet((current) => ({
-      ...current,
-      [setSlug]: current[setSlug].map((song, index) =>
-        String(song.id) === String(id)
-          ? { ...song, ...patch, position: index + 1 }
-          : { ...song, position: index + 1 },
+    const operation = resourceOperation.current;
+    if (operation?.song.setSlug === setSlug && operation.song.id === id) {
+      if ("title" in patch || "artist" in patch || "isOriginal" in patch) {
+        retireResourceLookup();
+      } else {
+        for (const field of resourceFields) {
+          if (field in patch) operation.edited.add(field);
+        }
+      }
+    }
+    const next = {
+      ...songsBySetRef.current,
+      [setSlug]: songsBySetRef.current[setSlug].map((song, index) =>
+        song.id === id ? { ...song, ...patch, position: index + 1 } : song,
       ),
-    }));
+    };
+    setSongsBySet(next);
     markDirty(setSlug);
   }
 
@@ -398,10 +441,24 @@ export default function ShowControlClient({
       setNotice(`${song.title} is marked original, so public resource links stay hidden.`);
       return;
     }
+    retireResourceLookup();
+    const operation: ResourceOperation = {
+      controller: new AbortController(), showSlug: activeShowSlug, song: { ...song }, edited: new Set(),
+    };
+    resourceOperation.current = operation;
+    const currentSong = () => {
+      if (!mounted.current || resourceOperation.current !== operation
+        || currentShow.current.id !== song.showId || currentShow.current.slug !== operation.showSlug) return null;
+      const current = songsBySetRef.current[song.setSlug].find((row) => row.id === song.id);
+      return current && current.showId === song.showId && current.setSlug === song.setSlug
+        && current.title === song.title && current.artist === song.artist && current.isOriginal === song.isOriginal
+        ? current : null;
+    };
     setEnriching(String(song.id));
     setNotice(`Finding YouTube for ${song.title}...`);
     try {
       const response = await fetch("/api/enrich", {
+        signal: operation.controller.signal,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: song.title, artist: song.artist }),
@@ -414,26 +471,30 @@ export default function ShowControlClient({
         chordsUrl?: string;
         lyricsUrl?: string;
       };
+      const current = currentSong();
+      if (!current) return;
       if (!response.ok) throw new Error(result.error || "Resource lookup failed.");
-      updateSong(
-        song.id,
-        {
-          youtubeUrl: savedOfficialMediaUrl(result.youtubeUrl) || song.youtubeUrl,
-          youtubeVideoId: result.youtubeVideoId || song.youtubeVideoId,
-          chordsUrl: savedOfficialMediaUrl(result.chordsUrl) || song.chordsUrl,
-          lyricsUrl: savedOfficialMediaUrl(result.lyricsUrl) || song.lyricsUrl,
-        },
-        song.setSlug,
-      );
+      const patch: Partial<Pick<ShowSong, ResourceField>> = {};
+      // The URL and video ID describe one resource and must be kept together.
+      const videoEdited = operation.edited.has("youtubeUrl") || operation.edited.has("youtubeVideoId")
+        || current.youtubeUrl !== song.youtubeUrl || current.youtubeVideoId !== song.youtubeVideoId;
+      for (const field of resourceFields) {
+        if (operation.edited.has(field) || current[field] !== song[field]
+          || (videoEdited && (field === "youtubeUrl" || field === "youtubeVideoId"))) continue;
+        const value = field === "youtubeVideoId" ? result[field] : savedOfficialMediaUrl(result[field]);
+        if (value && value !== current[field]) patch[field] = value;
+      }
+      if (Object.keys(patch).length) updateSong(song.id, patch, song.setSlug);
       setNotice(
         result.source === "youtube-api"
           ? `YouTube match found for ${song.title}.`
           : `YouTube search is ready for ${song.title}. Paste the video you want to feature.`,
       );
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Resource lookup failed.");
+      if (currentSong()) setNotice(error instanceof Error ? error.message : "Resource lookup failed.");
     } finally {
-      setEnriching(null);
+      // An old completion must not clear a newer request's busy state.
+      if (resourceOperation.current === operation) retireResourceLookup();
     }
   }
 
@@ -497,7 +558,8 @@ export default function ShowControlClient({
     const setDefinition =
       showSets.find((set) => set.slug === setSlug) ??
       SET_DEFINITIONS.find((set) => set.slug === setSlug)!;
-    const sentSongs = songsBySet[setSlug];
+    retireResourceLookup();
+    const sentSongs = songsBySetRef.current[setSlug];
     const reviewedBase = reviewedBases[setSlug];
     const reviewedVersion = readReviewedVersion(reviewedVersions[setSlug]);
     if (!reviewedBase || !reviewedVersion) {
@@ -655,7 +717,7 @@ export default function ShowControlClient({
         } }));
         setSaveHolds((current) => ({ ...current, [setSlug]: current[setSlug] ?? "conflict" }));
         setReviewReadFailed((current) => ({ ...current, [setSlug]: false }));
-        setActiveSet(setSlug);
+        changeActiveSet(setSlug);
         setNotice(`Review the saved ${setDefinition.title} list beside your browser draft. Nothing has been overwritten.`);
         window.requestAnimationFrame(() => {
           if (!mounted.current || currentShow.current.id !== operation.showId
@@ -667,6 +729,7 @@ export default function ShowControlClient({
       }
       adoptSetAuthority(setSlug, reconciled.reviewedBase, reconciled.reviewedVersion);
       if (!reconciled.stillDirty) {
+        retireResourceLookup();
         setSongsBySet((current) => ({ ...current, [setSlug]: reconciled.songs }));
       }
       setDirtySets((current) => {
@@ -713,6 +776,7 @@ export default function ShowControlClient({
       if (!reconciled) return;
       songs = reconciled.songs; stillDirty = reconciled.stillDirty;
     }
+    retireResourceLookup();
     setSongsBySet((current) => ({ ...current, [activeSet]: songs }));
     adoptSetAuthority(activeSet, candidate.reviewedBase, candidate.reviewedVersion);
     setDirtySets((current) => { const next = new Set(current); if (stillDirty) next.add(activeSet); else next.delete(activeSet); return next; });
@@ -746,6 +810,7 @@ export default function ShowControlClient({
   async function switchShow(slug: string) {
     if (ownerOperation.current) return;
     if (dirtySets.size && !window.confirm("Switch shows and discard unsaved changes?")) return;
+    retireResourceLookup();
     setLoading(true);
     setNotice("");
     try {
@@ -945,7 +1010,7 @@ export default function ShowControlClient({
   function runControlAction(action: ShowControlNextAction | ShowControlLeftoverAction) {
     if (action.kind === "check-saved-set" && action.setSlug) {
       if (setReviews[action.setSlug] && !reviewReadFailed[action.setSlug]) {
-        setActiveSet(action.setSlug);
+        changeActiveSet(action.setSlug);
         window.requestAnimationFrame(() => { reviewRef.current?.focus({ preventScroll: true }); reviewRef.current?.scrollIntoView({ block: "start" }); });
         return;
       }
@@ -957,7 +1022,7 @@ export default function ShowControlClient({
       return;
     }
     if (action.kind === "add-song" && action.setSlug) {
-      setActiveSet(action.setSlug);
+      changeActiveSet(action.setSlug);
       setDeleted(null);
       window.requestAnimationFrame(() => {
         draftTitleRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1230,7 +1295,7 @@ export default function ShowControlClient({
               disabled={saving || Boolean(checkingSet)}
               key={set.slug}
               onClick={() => {
-                setActiveSet(set.slug);
+                changeActiveSet(set.slug);
                 setDeleted(null);
                 setNotice("");
               }}
