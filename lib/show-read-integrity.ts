@@ -1,4 +1,4 @@
-import type { ShowSong } from "./show-data";
+import type { RunOfShowBlock, ShowSong } from "./show-data";
 
 export const SHOW_SNAPSHOT_VERSION = 1;
 export const MAX_SNAPSHOT_SONGS = 180;
@@ -44,15 +44,7 @@ const OFFICIAL_SET_SHELLS: Array<Omit<ShowSetDefinition, "time">> = [
   },
 ];
 
-export type ShowTimelineBlock = {
-  time: string;
-  duration: string;
-  title: string;
-  note: string;
-  type: "performance" | "changeover";
-  accent: "blue" | "lime" | "pink";
-  setSlug?: string | null;
-};
+export type ShowTimelineBlock = RunOfShowBlock;
 
 export type StoredShowSnapshot = {
   version: typeof SHOW_SNAPSHOT_VERSION;
@@ -145,7 +137,7 @@ export function formatShowSetTime(time: string): string {
 }
 
 export function buildShowSets(
-  timeline: Array<{
+  timeline: ReadonlyArray<{
     time: string;
     title: string;
     note?: string;
@@ -170,7 +162,7 @@ export function buildShowSets(
   });
 }
 
-export function featuredGuestSet(timeline: ShowTimelineBlock[]) {
+export function featuredGuestSet(timeline: readonly ShowTimelineBlock[]) {
   const performance = timeline.find(
     (block) =>
       block.type === "performance" && /fault lines/i.test(block.title),

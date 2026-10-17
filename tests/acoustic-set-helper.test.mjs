@@ -328,36 +328,36 @@ test("an empty candidate list adds an explicit 'none recorded' checklist item", 
   );
 });
 
-test("the seeded September 19 opening set from show-data has no open TBD acoustic slot", () => {
+test("the real September 19 opening set (from show-data) still has an open TBD decision", () => {
   const opening = DEFAULT_SONGS
     .filter((song) => song.setSlug === "jeff-story-friends")
     .slice()
     .sort((a, b) => a.position - b.position);
-  assert.equal(opening[0]?.title, "Badfish");
-  assert.equal(opening[1]?.title, "Nutshell");
-  assert.equal(
-    opening.some((song) => /acoustic song\s*[-–—]\s*tbd/i.test(song.title)),
-    false,
-  );
+  assert.equal(opening[0]?.title, "The Drinking Song");
+  assert.equal(opening[1]?.title, "Acoustic song - TBD");
 
   const result = assessTbdAcousticSlot({ songs: DEFAULT_SONGS, setTime: "7:00-7:35 PM" });
-  assert.equal(result.slot.hasTbdSlot, false);
-  assert.equal(result.slot.song, null);
-  assert.equal(result.decisionRequired, false);
-  assert.deepEqual(result.candidates, []);
-  assert.deepEqual(result.readinessChecklist, []);
+  assert.equal(result.slot.hasTbdSlot, true);
+  assert.equal(result.slot.song?.title, "Acoustic song - TBD");
+  assert.equal(result.decisionRequired, true);
+  assert.equal(result.candidates.length, 2);
   assert.deepEqual(
-    KNOWN_TBD_ACOUSTIC_OPTIONS.map((candidate) => candidate.title).sort(),
+    result.candidates.map((c) => c.title).sort(),
     ["Badfish", "Nutshell"],
   );
 });
 
 test("reopening a non-designated seeded slot as TBD does not open the helper", () => {
-  const reopenedElsewhere = DEFAULT_SONGS.map((song) => (
-    song.setSlug === "jeff-story-friends" && song.position === 4
-      ? { ...song, title: "Acoustic song - TBD" }
-      : song
-  ));
+  const reopenedElsewhere = DEFAULT_SONGS.map((song) => {
+    if (song.setSlug !== "jeff-story-friends") return song;
+    if (song.position === DESIGNATED_ACOUSTIC_SLOT_POSITION) {
+      return { ...song, title: "Badfish" };
+    }
+    if (song.position === 4) {
+      return { ...song, title: "Acoustic song - TBD" };
+    }
+    return song;
+  });
   const result = assessTbdAcousticSlot({ songs: reopenedElsewhere, setTime: "7:00-7:35 PM" });
   assert.equal(result.slot.hasTbdSlot, false);
   assert.equal(result.slot.song, null);
