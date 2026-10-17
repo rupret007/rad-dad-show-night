@@ -83,10 +83,10 @@ test("a verified device snapshot round-trips only for its exact show", () => {
 
   assert.equal(stored.version, SHOW_SNAPSHOT_VERSION);
   assert.equal(showSnapshotKey(SHOW_DETAILS.slug), `rad-dad-show-snapshot:${SHOW_DETAILS.slug}`);
-  assert.equal(OFFLINE_CACHE_VERSION, 4);
+  assert.equal(OFFLINE_CACHE_VERSION, 5);
   assert.equal(
     offlineReadyKey(SHOW_DETAILS.slug),
-    `rad-dad-offline-ready-v4:${SHOW_DETAILS.slug}`,
+    `rad-dad-offline-ready-v5:${SHOW_DETAILS.slug}`,
   );
   assert.equal(parsed?.showSlug, SHOW_DETAILS.slug);
   assert.equal(parsed?.savedAt, savedAt);
@@ -152,7 +152,7 @@ test("a verified payload cannot replace this show with another show's set", () =
 test("only the matching worker version can mark this offline cache ready", async () => {
   assert.equal(canConfirmOfflineReady({ ready: true, cacheVersion: OFFLINE_CACHE_VERSION }), true);
   for (const reply of [null, [], {}, { ready: true }, { ready: true, cacheVersion: 2 }, { ready: true, cacheVersion: 3 },
-    { ready: false, cacheVersion: 4 }, { ready: "true", cacheVersion: 4 }, { ready: true, cacheVersion: "4" }]) {
+    { ready: true, cacheVersion: 4 }, { ready: false, cacheVersion: 5 }, { ready: "true", cacheVersion: 5 }, { ready: true, cacheVersion: "5" }]) {
     assert.equal(canConfirmOfflineReady(reply), false);
   }
   const support = await readFile(offlineSupportUrl, "utf8");
@@ -332,7 +332,7 @@ test("server, client, and offline cache preserve the same verification boundary"
   assert.match(liveList, /songsBelongToShow\(snapshot\.songs/);
   assert.match(liveList, /last verified official set stays visible/i);
   assert.match(offlineSupport, /dataset\.showSource !== "database"/);
-  assert.match(serviceWorker, /rad-dad-show-offline-v4/);
+  assert.match(serviceWorker, /rad-dad-show-offline-v5/);
   assert.match(serviceWorker, /X-Rad-Dad-Data-Source/);
   assert.match(serviceWorker, /showApiMatchesRequest/);
   assert.match(serviceWorker, /payload\.show\.slug !== requestedSlug/);

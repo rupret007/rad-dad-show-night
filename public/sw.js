@@ -1,5 +1,6 @@
-// v2 could cache owner responses; v3 could announce readiness without JS/CSS.
-const CACHE_NAME = "rad-dad-show-offline-v4";
+// v2 could cache owner responses; v3 could announce readiness without JS/CSS;
+// v4 shipped separately (R13 HTML verification), so R14 readiness rules take v5.
+const CACHE_NAME = "rad-dad-show-offline-v5";
 const APP_SHELL = [
   "/offline.html",
   "/manifest.webmanifest",

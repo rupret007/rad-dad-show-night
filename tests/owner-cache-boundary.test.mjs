@@ -7,7 +7,7 @@ import * as integrity from "../lib/show-read-integrity.ts";
 
 const source = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
 const ORIGIN = "https://offline-fixture.invalid";
-const CACHE = "rad-dad-show-offline-v4";
+const CACHE = "rad-dad-show-offline-v5";
 const API = `${ORIGIN}/api/show?show=synthetic-night`;
 const OWNER = `${API}&scope=owner`;
 const resources = [`${ORIGIN}/?show=synthetic-night`, `${ORIGIN}/?show=synthetic-night&practice=1`, API];
@@ -25,7 +25,7 @@ async function offlineSupportFixture({ deferReplies = false } = {}) {
   const timers = new Map();
   const listeners = new Map();
   let nextTimer = 0;
-  let reply = { ready: false, cacheVersion: 4 };
+  let reply = { ready: false, cacheVersion: 5 };
   class Script { constructor(src) { this.src = src; } }
   const documentAssets = [new Script(`${ORIGIN}/assets/app`), { href: `${ORIGIN}/assets/styles` },
     { href: `${ORIGIN}/assets/preload.js` }, { href: `${ORIGIN}/assets/preload.css` },
@@ -83,7 +83,7 @@ async function offlineSupportFixture({ deferReplies = false } = {}) {
   } };
 }
 
-test("offline client includes document JS/CSS absent from timing, clears old readiness and announces only a successful v4 retry", async () => {
+test("offline client includes document JS/CSS absent from timing, clears old readiness and announces only a successful v5 retry", async () => {
   const fixture = await offlineSupportFixture();
   const key = integrity.offlineReadyKey("synthetic-night");
   assert.equal(fixture.storage.has(key), false);
@@ -94,9 +94,11 @@ test("offline client includes document JS/CSS absent from timing, clears old rea
   await fixture.retry({ ready: true, cacheVersion: 3 });
   assert.equal(fixture.storage.has(key), false, "Old worker cannot certify the new copy");
   await fixture.retry({ ready: true, cacheVersion: 4 });
+  assert.equal(fixture.storage.has(key), false, "The v4 worker cannot certify the v5 copy either");
+  await fixture.retry({ ready: true, cacheVersion: 5 });
   assert.ok(fixture.storage.get(key));
   assert.equal(fixture.events.at(-1).detail.cachedAt, fixture.storage.get(key));
-  await fixture.retry({ ready: false, cacheVersion: 4 });
+  await fixture.retry({ ready: false, cacheVersion: 5 });
   assert.equal(fixture.storage.has(key), false, "A partial refresh retires previous readiness");
   assert.equal(fixture.events.at(-1).detail.cachedAt, null);
 });
@@ -104,12 +106,12 @@ test("offline client includes document JS/CSS absent from timing, clears old rea
 test("offline client cannot restore readiness from an older success while a newer refresh is incomplete", async () => {
   const fixture = await offlineSupportFixture({ deferReplies: true });
   const key = integrity.offlineReadyKey("synthetic-night");
-  await fixture.retry({ ready: false, cacheVersion: 4 });
-  await fixture.replyTo(0, { ready: true, cacheVersion: 4 });
+  await fixture.retry({ ready: false, cacheVersion: 5 });
+  await fixture.replyTo(0, { ready: true, cacheVersion: 5 });
   assert.equal(fixture.messages.length, 2, "The online event still triggers a replacement attempt");
   assert.equal(fixture.storage.has(key), false, "An older success cannot certify an incomplete refresh");
   assert.equal(fixture.events.at(-1).detail.cachedAt, null);
-  await fixture.replyTo(1, { ready: false, cacheVersion: 4 });
+  await fixture.replyTo(1, { ready: false, cacheVersion: 5 });
   assert.equal(fixture.storage.has(key), false, "A failed replacement leaves readiness cleared");
 });
 
@@ -366,16 +368,17 @@ test("actual SW: every additional public API URL in CACHE_SHOW must independentl
   assert.ok(fixture.calls.fetch.every((call) => call.credentials === "omit"));
 });
 
-test("actual SW: activating v4 purges old app caches, including owner-contaminated API and HTML, only", async () => {
+test("actual SW: activating v5 purges old app caches, including owner-contaminated API and HTML, only", async () => {
   const fixture = worker();
   fixture.seed("rad-dad-show-offline-v1", API, publicResponse());
   fixture.seed("rad-dad-show-offline-v2", API, publicResponse(publicPayload({ setWriteVersions: {} })));
   fixture.seed("rad-dad-show-offline-v2", resources[0], new Response("Previously private fixture HTML"));
   fixture.seed("rad-dad-show-offline-v3", API, publicResponse());
+  fixture.seed("rad-dad-show-offline-v4", API, publicResponse());
   fixture.seed("unrelated-fixture-cache", API, new Response("Unrelated data stays"));
   fixture.seed(CACHE, API, publicResponse());
   await fixture.activate();
-  assert.deepEqual(fixture.calls.removedCaches.sort(), ["rad-dad-show-offline-v1", "rad-dad-show-offline-v2", "rad-dad-show-offline-v3"]);
+  assert.deepEqual(fixture.calls.removedCaches.sort(), ["rad-dad-show-offline-v1", "rad-dad-show-offline-v2", "rad-dad-show-offline-v3", "rad-dad-show-offline-v4"]);
   assert.equal(fixture.calls.claimed, 1);
   assert.deepEqual(await (await fixture.cached(API)).json(), publicPayload());
   assert.equal(await (await fixture.cached(API, "unrelated-fixture-cache")).text(), "Unrelated data stays");
