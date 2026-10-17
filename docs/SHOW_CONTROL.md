@@ -199,8 +199,8 @@ editor shows the **Acoustic slot helper** panel below Set Coach. It:
 - Names the still-open slot and the set's own America/Chicago time window (or
   says the window is unconfirmed instead of borrowing another set's minutes,
   merging adjacent/overlapping windows, or converting a foreign timezone).
-- Lists candidate songs (starting with Badfish and Nutshell, the two titles
-  already on record for that slot) with a runtime fit check
+- Lists candidate songs (starting with Badfish and Nutshell, the two options
+  recorded in the September 15 opener revision) with a runtime fit check
   against the minutes left in the set after every confirmed song.
 - Flags a candidate with no rehearsed runtime as **duration unconfirmed**
   rather than guessing one, and flags a candidate that would blow the
@@ -211,8 +211,7 @@ editor shows the **Acoustic slot helper** panel below Set Coach. It:
 The panel is read-only. It never auto-picks a song, never writes a runtime it
 has not been given, and never saves or publishes by itself; the owner still
 makes the call and presses Save. The panel disappears once the TBD title is
-replaced with a real song. On the seeded September 19 set the helper stays
-hidden because slot 2 is already a real title.
+replaced with a real song.
 
 ## Public list review
 

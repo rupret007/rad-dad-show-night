@@ -59,11 +59,10 @@ export type TbdAcousticHelperResult = {
 };
 
 /**
- * Recorded candidate titles if the second acoustic slot is opened as TBD.
- * On the seeded September 19 set those songs are already placed (see
- * docs/SHOW_PLAN.md). Neither has a confirmed rehearsed runtime in this
- * helper, so estimatedSeconds stays null rather than guessed. This list is a
- * starting point for the owner, not an automatic pick.
+ * Earlier options recorded in the September 15 opener revision
+ * (see docs/OPENING_SET_20260915.md and docs/SHOW_PLAN.md). Neither has a
+ * confirmed rehearsed runtime, so estimatedSeconds stays null rather than
+ * guessed. This list is a starting point for the owner, not an automatic pick.
  */
 export const KNOWN_TBD_ACOUSTIC_OPTIONS: readonly AcousticCandidate[] = [
   {
